@@ -109,13 +109,14 @@ export function InterviewsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const interviewsArray = Array.isArray(interviews) ? interviews : [];
 
   const loadData = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const [interviewData, candidateData, jobData] = await Promise.all([getInterviews(), getCandidates(), getJobOffers()]);
-      setInterviews(interviewData);
+      setInterviews(Array.isArray(interviewData) ? interviewData : []);
       setCandidates(candidateData);
       setJobs(jobData);
     } catch (loadError) {
@@ -131,14 +132,14 @@ export function InterviewsPage() {
 
   const stats = useMemo(() => {
     const today = new Date().toDateString();
-    const todayCount = interviews.filter((interview) => new Date(interview.scheduled_start_at).toDateString() === today).length;
-    const upcomingCount = interviews.filter(
+    const todayCount = interviewsArray.filter((interview) => new Date(interview.scheduled_start_at).toDateString() === today).length;
+    const upcomingCount = interviewsArray.filter(
       (interview) => new Date(interview.scheduled_start_at) > new Date() && interview.status === "scheduled",
     ).length;
-    const completedCount = interviews.filter((interview) => interview.status === "completed").length;
-    const cancelledCount = interviews.filter((interview) => ["cancelled", "no_show"].includes(interview.status)).length;
+    const completedCount = interviewsArray.filter((interview) => interview.status === "completed").length;
+    const cancelledCount = interviewsArray.filter((interview) => ["cancelled", "no_show"].includes(interview.status)).length;
     return { todayCount, upcomingCount, completedCount, cancelledCount };
-  }, [interviews]);
+  }, [interviewsArray]);
 
   const openCreateModal = () => {
     setEditingInterview(null);
@@ -260,7 +261,7 @@ export function InterviewsPage() {
         />
       ) : null}
 
-      {!isLoading && interviews.length === 0 && candidates.length > 0 && jobs.length > 0 ? (
+      {!isLoading && interviewsArray.length === 0 && candidates.length > 0 && jobs.length > 0 ? (
         <EmptyState
           title="No interviews scheduled"
           description="Schedule the first interview for a candidate and job offer."
@@ -269,7 +270,7 @@ export function InterviewsPage() {
         />
       ) : null}
 
-      {interviews.length > 0 ? (
+      {interviewsArray.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
             <h3 className="text-base font-semibold text-[#0B1F3A]">Interview calendar</h3>
@@ -288,7 +289,7 @@ export function InterviewsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {interviews.map((interview) => {
+                {interviewsArray.map((interview) => {
                   const candidate = candidates.find((item) => item.id === interview.candidate_id);
                   const job = jobs.find((item) => item.id === interview.job_offer_id);
                   return (

@@ -30,9 +30,31 @@ export type InterviewPayload = {
   notes?: string | null;
 };
 
+type InterviewsResponse = Interview[] | { items?: Interview[]; data?: Interview[]; results?: Interview[] };
+
+function normalizeInterviewsResponse(data: InterviewsResponse): Interview[] {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data.items)) {
+    return data.items;
+  }
+
+  if (Array.isArray(data.data)) {
+    return data.data;
+  }
+
+  if (Array.isArray(data.results)) {
+    return data.results;
+  }
+
+  return [];
+}
+
 export async function getInterviews(): Promise<Interview[]> {
-  const response = await apiClient.get<Interview[]>("/api/interviews");
-  return response.data;
+  const response = await apiClient.get<InterviewsResponse>("/api/interviews");
+  return normalizeInterviewsResponse(response.data);
 }
 
 export async function getInterviewById(interviewId: string): Promise<Interview> {
