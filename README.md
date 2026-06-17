@@ -49,6 +49,7 @@ npm run dev
 ```
 
 The React app runs at `http://localhost:5173` and expects the API base URL in `VITE_API_BASE_URL`.
+Use `VITE_API_BASE_URL=http://localhost:8001` when local port `8000` is occupied.
 
 Build the frontend with:
 
