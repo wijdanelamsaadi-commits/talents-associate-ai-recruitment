@@ -1,6 +1,7 @@
 from app.services.candidate_service import create_candidate, delete_candidate, get_candidate, list_candidates, update_candidate
 from app.services.cv_service import delete_cv_file, get_cv_file, get_extracted_text, list_cv_files, upload_cv
 from app.services.cv_parser import parse_cv_text
+from app.services.dashboard_service import get_dashboard_stats
 from app.services.evaluation_service import (
     create_evaluation,
     delete_evaluation,
@@ -49,6 +50,7 @@ __all__ = [
     "delete_matching_result",
     "delete_timeline_event",
     "get_candidate",
+    "get_dashboard_stats",
     "get_cv_file",
     "get_extracted_text",
     "get_evaluation",

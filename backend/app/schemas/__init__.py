@@ -1,5 +1,6 @@
 from app.schemas.candidate import CandidateCreate, CandidateRead, CandidateUpdate
 from app.schemas.cv import CVFileRead, ExtractedCVTextRead, ParsedCVRead
+from app.schemas.dashboard import DashboardActivity, DashboardCount, DashboardStatsRead
 from app.schemas.evaluation import EvaluationCreate, EvaluationRead, EvaluationUpdate
 from app.schemas.interview import InterviewCreate, InterviewRead, InterviewStatusUpdate, InterviewUpdate
 from app.schemas.job import JobOfferCreate, JobOfferRead, JobOfferUpdate
@@ -11,6 +12,9 @@ __all__ = [
     "CandidateCreate",
     "CandidateRead",
     "CandidateUpdate",
+    "DashboardActivity",
+    "DashboardCount",
+    "DashboardStatsRead",
     "EvaluationCreate",
     "EvaluationRead",
     "EvaluationUpdate",
