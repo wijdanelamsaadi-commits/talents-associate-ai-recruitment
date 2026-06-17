@@ -38,3 +38,20 @@ Run database migrations from `backend/` after configuring PostgreSQL:
 ```bash
 alembic upgrade head
 ```
+
+## Frontend Setup
+
+```bash
+cd frontend
+npm install
+copy .env.example .env
+npm run dev
+```
+
+The React app runs at `http://localhost:5173` and expects the API base URL in `VITE_API_BASE_URL`.
+
+Build the frontend with:
+
+```bash
+npm run build
+```
