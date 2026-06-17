@@ -1,1 +1,35 @@
-"""SQLAlchemy models will be defined here in future backend iterations."""
+from app.models.base import Base
+from app.models.entities import (
+    AIMatchingResult,
+    Application,
+    Candidate,
+    CandidateSkill,
+    CandidateTimelineEvent,
+    CVFile,
+    Education,
+    Evaluation,
+    Experience,
+    ExtractedCVData,
+    Interview,
+    JobOffer,
+    Skill,
+    User,
+)
+
+__all__ = [
+    "AIMatchingResult",
+    "Application",
+    "Base",
+    "Candidate",
+    "CandidateSkill",
+    "CandidateTimelineEvent",
+    "CVFile",
+    "Education",
+    "Evaluation",
+    "Experience",
+    "ExtractedCVData",
+    "Interview",
+    "JobOffer",
+    "Skill",
+    "User",
+]

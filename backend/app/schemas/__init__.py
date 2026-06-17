@@ -1,1 +1,3 @@
-"""Pydantic schemas will be defined here in future backend iterations."""
+from app.schemas.candidate import CandidateCreate, CandidateRead
+
+__all__ = ["CandidateCreate", "CandidateRead"]

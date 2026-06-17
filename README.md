@@ -32,3 +32,9 @@ uvicorn app.main:app --reload
 ```
 
 Health check: `GET http://localhost:8000/api/health`
+
+Run database migrations from `backend/` after configuring PostgreSQL:
+
+```bash
+alembic upgrade head
+```
