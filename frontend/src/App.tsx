@@ -5,6 +5,7 @@ import { CandidateDetailsPage } from "./pages/CandidateDetailsPage";
 import { CandidatesPage } from "./pages/CandidatesPage";
 import { CVUploadPage } from "./pages/CVUploadPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { EvaluationsPage } from "./pages/EvaluationsPage";
 import { InterviewsPage } from "./pages/InterviewsPage";
 import { JobOffersPage } from "./pages/JobOffersPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/jobs" element={<JobOffersPage />} />
         <Route path="/matching" element={<MatchingPage />} />
         <Route path="/interviews" element={<InterviewsPage />} />
+        <Route path="/evaluations" element={<EvaluationsPage />} />
       </Route>
     </Routes>
   );

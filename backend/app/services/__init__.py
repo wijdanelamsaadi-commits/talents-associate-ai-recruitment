@@ -1,6 +1,14 @@
 from app.services.candidate_service import create_candidate, delete_candidate, get_candidate, list_candidates, update_candidate
 from app.services.cv_service import delete_cv_file, get_cv_file, get_extracted_text, list_cv_files, upload_cv
 from app.services.cv_parser import parse_cv_text
+from app.services.evaluation_service import (
+    create_evaluation,
+    delete_evaluation,
+    get_evaluation,
+    list_evaluations,
+    list_interview_evaluations,
+    update_evaluation,
+)
 from app.services.interview_service import (
     create_interview,
     delete_interview,
@@ -21,16 +29,19 @@ from app.services.matching_service import (
 
 __all__ = [
     "create_candidate",
+    "create_evaluation",
     "create_interview",
     "create_job_offer",
     "delete_candidate",
     "delete_cv_file",
+    "delete_evaluation",
     "delete_interview",
     "delete_job_offer",
     "delete_matching_result",
     "get_candidate",
     "get_cv_file",
     "get_extracted_text",
+    "get_evaluation",
     "get_interview",
     "get_interview_job_offer_id",
     "get_job_offer",
@@ -38,13 +49,16 @@ __all__ = [
     "list_candidate_matching_results",
     "list_candidates",
     "list_cv_files",
+    "list_evaluations",
     "list_interviews",
+    "list_interview_evaluations",
     "list_job_offers",
     "list_matching_results",
     "match_candidate_to_job",
     "parse_cv_text",
     "upload_cv",
     "update_candidate",
+    "update_evaluation",
     "update_interview",
     "update_interview_status",
     "update_job_offer",

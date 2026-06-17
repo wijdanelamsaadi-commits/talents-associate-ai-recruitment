@@ -7,6 +7,7 @@ const pageTitles: Record<string, string> = {
   "/jobs": "Job Offers",
   "/matching": "AI Matching",
   "/interviews": "Interviews",
+  "/evaluations": "Evaluations",
 };
 
 export function Header() {

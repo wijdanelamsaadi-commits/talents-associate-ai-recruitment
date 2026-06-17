@@ -13,6 +13,7 @@ const navigation: NavigationItem[] = [
   { label: "Job Offers", to: "/jobs", icon: "J" },
   { label: "Matching", to: "/matching", icon: "M" },
   { label: "Interviews", to: "/interviews", icon: "I" },
+  { label: "Evaluations", to: "/evaluations", icon: "E" },
 ];
 
 export function Sidebar() {

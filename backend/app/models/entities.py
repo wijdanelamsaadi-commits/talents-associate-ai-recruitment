@@ -451,6 +451,12 @@ class Evaluation(TimestampMixin, Base):
     __tablename__ = "evaluations"
     __table_args__ = (
         CheckConstraint("rating IS NULL OR rating BETWEEN 1 AND 5", name="ck_evaluations_rating"),
+        CheckConstraint("technical_score IS NULL OR technical_score BETWEEN 0 AND 100", name="ck_evaluations_technical_score"),
+        CheckConstraint("soft_skills_score IS NULL OR soft_skills_score BETWEEN 0 AND 100", name="ck_evaluations_soft_skills_score"),
+        CheckConstraint("motivation_score IS NULL OR motivation_score BETWEEN 0 AND 100", name="ck_evaluations_motivation_score"),
+        CheckConstraint("communication_score IS NULL OR communication_score BETWEEN 0 AND 100", name="ck_evaluations_communication_score"),
+        CheckConstraint("culture_fit_score IS NULL OR culture_fit_score BETWEEN 0 AND 100", name="ck_evaluations_culture_fit_score"),
+        CheckConstraint("global_score IS NULL OR global_score BETWEEN 0 AND 100", name="ck_evaluations_global_score"),
         CheckConstraint(
             "recommendation IN ('strong_yes', 'yes', 'hold', 'no', 'strong_no')",
             name="ck_evaluations_recommendation",
@@ -465,11 +471,20 @@ class Evaluation(TimestampMixin, Base):
     )
     interview_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("interviews.id", ondelete="CASCADE"), index=True)
     application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("applications.id", ondelete="CASCADE"), index=True)
+    candidate_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("candidates.id", ondelete="CASCADE"), index=True)
     evaluator_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    evaluator_name: Mapped[str | None] = mapped_column(String(150))
     rating: Mapped[int | None] = mapped_column(Integer)
+    technical_score: Mapped[int | None] = mapped_column(Integer)
+    soft_skills_score: Mapped[int | None] = mapped_column(Integer)
+    motivation_score: Mapped[int | None] = mapped_column(Integer)
+    communication_score: Mapped[int | None] = mapped_column(Integer)
+    culture_fit_score: Mapped[int | None] = mapped_column(Integer)
+    global_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     recommendation: Mapped[str] = mapped_column(String(30), default="hold", index=True, nullable=False)
     strengths: Mapped[str | None] = mapped_column(Text)
     weaknesses: Mapped[str | None] = mapped_column(Text)
+    comments: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

@@ -317,6 +317,12 @@ export function InterviewsPage() {
                       </td>
                       <td className="whitespace-nowrap px-5 py-4">
                         <div className="flex gap-2">
+                          <Link
+                            className="rounded-lg bg-[#1D6EEA] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#165AC0]"
+                            to={`/evaluations?interviewId=${interview.id}`}
+                          >
+                            Evaluate
+                          </Link>
                           <button
                             className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                             onClick={() => openEditModal(interview)}
