@@ -1,0 +1,119 @@
+import hashlib
+import uuid
+from pathlib import Path
+from uuid import UUID
+
+from fastapi import UploadFile
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.models import CVFile, Candidate, ExtractedCVData
+from app.services.text_extraction import TextExtractionError, extract_text_from_file
+
+
+MAX_CV_FILE_SIZE_BYTES = 5 * 1024 * 1024
+UPLOAD_DIRECTORY = Path(__file__).resolve().parents[2] / "uploads" / "cvs"
+SUPPORTED_EXTENSIONS = {".pdf", ".doc", ".docx"}
+SUPPORTED_CONTENT_TYPES = {
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+
+
+class CVUploadError(ValueError):
+    pass
+
+
+def upload_cv(db: Session, candidate_id: UUID, upload_file: UploadFile) -> CVFile:
+    candidate = db.get(Candidate, candidate_id)
+    if candidate is None:
+        raise CVUploadError("Candidate not found.")
+
+    original_filename = upload_file.filename or ""
+    extension = Path(original_filename).suffix.lower()
+    if extension not in SUPPORTED_EXTENSIONS:
+        raise CVUploadError("Unsupported file format. Only PDF, DOC, and DOCX files are allowed.")
+
+    if upload_file.content_type and upload_file.content_type not in SUPPORTED_CONTENT_TYPES:
+        raise CVUploadError("Unsupported file type. Please upload a PDF, DOC, or DOCX file.")
+
+    if extension == ".doc":
+        raise CVUploadError("DOC text extraction is not supported yet. Please upload a PDF or DOCX file.")
+
+    UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    stored_filename = f"{uuid.uuid4()}{extension}"
+    stored_path = UPLOAD_DIRECTORY / stored_filename
+
+    file_size, checksum = _save_upload_file(upload_file, stored_path)
+    if file_size == 0:
+        stored_path.unlink(missing_ok=True)
+        raise CVUploadError("Uploaded file is empty.")
+
+    try:
+        raw_text = extract_text_from_file(stored_path, extension)
+        if not raw_text:
+            raise CVUploadError("No text could be extracted from this CV.")
+
+        cv_file = CVFile(
+            candidate_id=candidate_id,
+            original_filename=original_filename,
+            storage_path=str(stored_path),
+            mime_type=upload_file.content_type,
+            file_size_bytes=file_size,
+            checksum_sha256=checksum,
+            parsing_status="parsed",
+        )
+        db.add(cv_file)
+        db.flush()
+
+        extracted_data = ExtractedCVData(
+            cv_file_id=cv_file.id,
+            candidate_id=candidate_id,
+            raw_text=raw_text,
+            parsed_json=None,
+            ai_output=None,
+            confidence_score=None,
+            parsing_status="extracted",
+            status="parsed",
+        )
+        db.add(extracted_data)
+        db.commit()
+        db.refresh(cv_file)
+        return cv_file
+    except (CVUploadError, TextExtractionError, IntegrityError):
+        db.rollback()
+        stored_path.unlink(missing_ok=True)
+        raise
+
+
+def list_cv_files(db: Session, skip: int = 0, limit: int = 100) -> list[CVFile]:
+    statement = select(CVFile).order_by(CVFile.uploaded_at.desc()).offset(skip).limit(limit)
+    return list(db.scalars(statement).all())
+
+
+def get_cv_file(db: Session, cv_file_id: UUID) -> CVFile | None:
+    return db.get(CVFile, cv_file_id)
+
+
+def get_extracted_text(db: Session, cv_file_id: UUID) -> ExtractedCVData | None:
+    statement = select(ExtractedCVData).where(ExtractedCVData.cv_file_id == cv_file_id)
+    return db.scalar(statement)
+
+
+def _save_upload_file(upload_file: UploadFile, stored_path: Path) -> tuple[int, str]:
+    sha256 = hashlib.sha256()
+    file_size = 0
+
+    with stored_path.open("wb") as buffer:
+        while chunk := upload_file.file.read(1024 * 1024):
+            file_size += len(chunk)
+            if file_size > MAX_CV_FILE_SIZE_BYTES:
+                stored_path.unlink(missing_ok=True)
+                raise CVUploadError("File is too large. Maximum allowed size is 5MB.")
+
+            sha256.update(chunk)
+            buffer.write(chunk)
+
+    return file_size, sha256.hexdigest()

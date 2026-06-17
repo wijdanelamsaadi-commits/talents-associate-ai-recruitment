@@ -19,6 +19,8 @@ backend/.venv/
 # Local database and generated files
 *.sqlite
 *.sqlite3
+backend/uploads/cvs/*
+!backend/uploads/cvs/.gitkeep
 
 # Frontend dependencies and builds
 node_modules/

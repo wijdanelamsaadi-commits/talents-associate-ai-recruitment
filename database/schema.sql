@@ -68,12 +68,15 @@ CREATE TABLE extracted_cv_data (
     candidate_id UUID NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
     raw_text TEXT,
     parsed_json JSONB,
+    ai_output JSONB,
     summary TEXT,
     total_years_experience NUMERIC(4, 1) CHECK (total_years_experience IS NULL OR total_years_experience >= 0),
     highest_degree VARCHAR(150),
     language_codes TEXT[],
     parser_model VARCHAR(100),
     confidence_score NUMERIC(5, 4) CHECK (confidence_score IS NULL OR confidence_score BETWEEN 0 AND 1),
+    parsing_status VARCHAR(30) NOT NULL DEFAULT 'extracted'
+        CHECK (parsing_status IN ('extracted', 'empty', 'failed')),
     status VARCHAR(30) NOT NULL DEFAULT 'parsed'
         CHECK (status IN ('parsed', 'needs_review', 'approved', 'failed')),
     reviewed_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,

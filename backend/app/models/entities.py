@@ -146,6 +146,10 @@ class ExtractedCVData(TimestampMixin, Base):
             "confidence_score IS NULL OR confidence_score BETWEEN 0 AND 1",
             name="ck_extracted_cv_data_confidence",
         ),
+        CheckConstraint(
+            "parsing_status IN ('extracted', 'empty', 'failed')",
+            name="ck_extracted_cv_data_parsing_status",
+        ),
         CheckConstraint("status IN ('parsed', 'needs_review', 'approved', 'failed')", name="ck_extracted_cv_data_status"),
     )
 
@@ -159,12 +163,14 @@ class ExtractedCVData(TimestampMixin, Base):
     candidate_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidates.id", ondelete="CASCADE"), index=True)
     raw_text: Mapped[str | None] = mapped_column(Text)
     parsed_json: Mapped[dict | None] = mapped_column(JSONB)
+    ai_output: Mapped[dict | None] = mapped_column(JSONB)
     summary: Mapped[str | None] = mapped_column(Text)
     total_years_experience: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
     highest_degree: Mapped[str | None] = mapped_column(String(150))
     language_codes: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     parser_model: Mapped[str | None] = mapped_column(String(100))
     confidence_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
+    parsing_status: Mapped[str] = mapped_column(String(30), default="extracted", nullable=False)
     status: Mapped[str] = mapped_column(String(30), default="parsed", index=True, nullable=False)
     reviewed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
