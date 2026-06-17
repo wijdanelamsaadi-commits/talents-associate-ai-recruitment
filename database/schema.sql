@@ -147,14 +147,20 @@ CREATE TABLE job_offers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     title VARCHAR(180) NOT NULL,
+    company_name VARCHAR(180),
     department VARCHAR(120),
     location VARCHAR(180),
+    contract_type VARCHAR(60),
     employment_type VARCHAR(40) NOT NULL DEFAULT 'full_time'
         CHECK (employment_type IN ('full_time', 'part_time', 'contract', 'internship', 'temporary')),
     work_mode VARCHAR(30) NOT NULL DEFAULT 'onsite'
         CHECK (work_mode IN ('onsite', 'remote', 'hybrid')),
     description TEXT NOT NULL,
     requirements TEXT,
+    required_skills JSONB,
+    preferred_skills JSONB,
+    required_experience_years INTEGER CHECK (required_experience_years IS NULL OR required_experience_years >= 0),
+    education_level VARCHAR(120),
     status VARCHAR(30) NOT NULL DEFAULT 'draft'
         CHECK (status IN ('draft', 'open', 'paused', 'closed', 'archived')),
     opened_at TIMESTAMPTZ,
@@ -190,6 +196,8 @@ CREATE TABLE ai_matching_results (
     explanation TEXT,
     matched_skills JSONB,
     missing_skills JSONB,
+    detailed_scores JSONB,
+    recommendation VARCHAR(40),
     embedding_version VARCHAR(100),
     status VARCHAR(30) NOT NULL DEFAULT 'generated'
         CHECK (status IN ('generated', 'reviewed', 'accepted', 'dismissed')),
@@ -285,6 +293,7 @@ CREATE INDEX idx_education_institution_name ON education (institution_name);
 CREATE INDEX idx_job_offers_status ON job_offers (status);
 CREATE INDEX idx_job_offers_created_by_user_id ON job_offers (created_by_user_id);
 CREATE INDEX idx_job_offers_title ON job_offers (title);
+CREATE INDEX idx_job_offers_company_name ON job_offers (company_name);
 
 CREATE INDEX idx_applications_candidate_id ON applications (candidate_id);
 CREATE INDEX idx_applications_job_offer_id ON applications (job_offer_id);
@@ -295,6 +304,7 @@ CREATE INDEX idx_ai_matching_results_application_id ON ai_matching_results (appl
 CREATE INDEX idx_ai_matching_results_candidate_job ON ai_matching_results (candidate_id, job_offer_id);
 CREATE INDEX idx_ai_matching_results_score ON ai_matching_results (score DESC);
 CREATE INDEX idx_ai_matching_results_status ON ai_matching_results (status);
+CREATE INDEX idx_ai_matching_results_recommendation ON ai_matching_results (recommendation);
 
 CREATE INDEX idx_interviews_application_id ON interviews (application_id);
 CREATE INDEX idx_interviews_candidate_id ON interviews (candidate_id);

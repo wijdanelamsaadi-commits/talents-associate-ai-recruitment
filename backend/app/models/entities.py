@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     Numeric,
     String,
     Text,
@@ -298,6 +299,10 @@ class JobOffer(TimestampMixin, Base):
         ),
         CheckConstraint("work_mode IN ('onsite', 'remote', 'hybrid')", name="ck_job_offers_work_mode"),
         CheckConstraint("status IN ('draft', 'open', 'paused', 'closed', 'archived')", name="ck_job_offers_status"),
+        CheckConstraint(
+            "required_experience_years IS NULL OR required_experience_years >= 0",
+            name="ck_job_offers_required_experience",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -308,12 +313,18 @@ class JobOffer(TimestampMixin, Base):
     )
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
     title: Mapped[str] = mapped_column(String(180), index=True, nullable=False)
+    company_name: Mapped[str | None] = mapped_column(String(180), index=True)
     department: Mapped[str | None] = mapped_column(String(120))
     location: Mapped[str | None] = mapped_column(String(180))
+    contract_type: Mapped[str | None] = mapped_column(String(60))
     employment_type: Mapped[str] = mapped_column(String(40), default="full_time", nullable=False)
     work_mode: Mapped[str] = mapped_column(String(30), default="onsite", nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     requirements: Mapped[str | None] = mapped_column(Text)
+    required_skills: Mapped[list[str] | None] = mapped_column(JSON)
+    preferred_skills: Mapped[list[str] | None] = mapped_column(JSON)
+    required_experience_years: Mapped[int | None] = mapped_column(Integer)
+    education_level: Mapped[str | None] = mapped_column(String(120))
     status: Mapped[str] = mapped_column(String(30), default="draft", index=True, nullable=False)
     opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -387,8 +398,10 @@ class AIMatchingResult(TimestampMixin, Base):
     score: Mapped[Decimal] = mapped_column(Numeric(5, 4), index=True, nullable=False)
     rank_position: Mapped[int | None] = mapped_column(Integer)
     explanation: Mapped[str | None] = mapped_column(Text)
-    matched_skills: Mapped[dict | None] = mapped_column(JSONB)
-    missing_skills: Mapped[dict | None] = mapped_column(JSONB)
+    matched_skills: Mapped[dict | list | None] = mapped_column(JSON)
+    missing_skills: Mapped[dict | list | None] = mapped_column(JSON)
+    detailed_scores: Mapped[dict | None] = mapped_column(JSON)
+    recommendation: Mapped[str | None] = mapped_column(String(40), index=True)
     embedding_version: Mapped[str | None] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(30), default="generated", index=True, nullable=False)
     reviewed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

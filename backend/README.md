@@ -26,8 +26,14 @@ The API will run at `http://localhost:8000`.
 - `GET /api/cv/files/{id}/text`: get extracted raw CV text.
 - `POST /api/cv/{id}/parse`: parse extracted text into structured candidate JSON.
 - `GET /api/cv/{id}/parsed`: get parsing status, confidence score, and structured JSON.
-- `GET /api/jobs`: jobs module placeholder.
-- `GET /api/matching`: AI matching module placeholder.
+- `POST /api/jobs`: create a job offer.
+- `GET /api/jobs`: list job offers.
+- `GET /api/jobs/{id}`: get one job offer.
+- `PUT /api/jobs/{id}`: update one job offer.
+- `DELETE /api/jobs/{id}`: delete one job offer.
+- `POST /api/matching/candidate/{candidate_id}/job/{job_id}`: match a parsed candidate against a job.
+- `GET /api/matching/results`: list matching results.
+- `GET /api/matching/candidate/{candidate_id}`: list matching results for one candidate.
 - `GET /api/interviews`: interviews module placeholder.
 
 ## Database Migrations
@@ -94,3 +100,38 @@ Invoke-RestMethod -Method Get -Uri "http://localhost:8000/api/cv/$($cv.id)/parse
 ```
 
 The first parser version uses regex and section heuristics only. It does not call any LLM API yet.
+
+## Matching Test
+
+Create a job offer:
+
+```powershell
+$job = Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8000/api/jobs" `
+  -ContentType "application/json" `
+  -Body '{
+    "title":"Backend Developer",
+    "company_name":"TalentCo",
+    "location":"Casablanca",
+    "contract_type":"full_time",
+    "required_skills":["Python","FastAPI","PostgreSQL"],
+    "preferred_skills":["React","Docker"],
+    "required_experience_years":2,
+    "education_level":"master",
+    "description":"Backend role requiring English and French.",
+    "status":"open"
+  }'
+```
+
+Run matching after uploading and parsing a CV:
+
+```powershell
+$match = Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8000/api/matching/candidate/$($candidate.id)/job/$($job.id)"
+
+Invoke-RestMethod -Method Get -Uri "http://localhost:8000/api/matching/candidate/$($candidate.id)"
+```
+
+The first matching engine uses weighted heuristics: 50% skills, 25% experience, 15% education, and 10% language match.
