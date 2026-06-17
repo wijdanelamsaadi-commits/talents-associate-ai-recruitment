@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Application, Candidate, Interview, JobOffer
 from app.schemas import InterviewCreate, InterviewUpdate
+from app.services.timeline_service import create_timeline_event
 
 
 class InterviewError(ValueError):
@@ -30,6 +31,19 @@ def create_interview(db: Session, interview_in: InterviewCreate) -> Interview:
     application.current_stage = interview_in.interview_type
 
     db.add(interview)
+    db.flush()
+    create_timeline_event(
+        db,
+        candidate_id=interview.candidate_id,
+        event_type="interview_scheduled",
+        title="Interview scheduled",
+        description=f"{interview.interview_type.title()} interview scheduled.",
+        metadata={
+            "interview_id": str(interview.id),
+            "job_offer_id": str(interview_in.job_offer_id),
+            "scheduled_start_at": interview.scheduled_start_at.isoformat(),
+        },
+    )
     db.commit()
     db.refresh(interview)
     return interview

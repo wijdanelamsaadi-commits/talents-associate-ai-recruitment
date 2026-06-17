@@ -4,6 +4,7 @@ from app.schemas.evaluation import EvaluationCreate, EvaluationRead, EvaluationU
 from app.schemas.interview import InterviewCreate, InterviewRead, InterviewStatusUpdate, InterviewUpdate
 from app.schemas.job import JobOfferCreate, JobOfferRead, JobOfferUpdate
 from app.schemas.matching import MatchingOutput, MatchingResultRead
+from app.schemas.timeline import TimelineEventCreate, TimelineEventRead
 
 __all__ = [
     "CVFileRead",
@@ -24,4 +25,6 @@ __all__ = [
     "MatchingOutput",
     "MatchingResultRead",
     "ParsedCVRead",
+    "TimelineEventCreate",
+    "TimelineEventRead",
 ]

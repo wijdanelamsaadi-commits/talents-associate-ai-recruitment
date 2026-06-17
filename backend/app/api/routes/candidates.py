@@ -5,11 +5,24 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas import CandidateCreate, CandidateRead, CandidateUpdate
-from app.services import candidate_service
+from app.models import CandidateTimelineEvent
+from app.schemas import CandidateCreate, CandidateRead, CandidateUpdate, TimelineEventCreate, TimelineEventRead
+from app.services import candidate_service, timeline_service
 
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
+
+
+def _serialize_timeline_event(event: CandidateTimelineEvent) -> TimelineEventRead:
+    return TimelineEventRead(
+        id=event.id,
+        candidate_id=event.candidate_id,
+        event_type=event.event_type,
+        title=event.title,
+        description=event.description,
+        metadata=event.event_metadata,
+        created_at=event.occurred_at,
+    )
 
 
 @router.post("", response_model=CandidateRead, status_code=status.HTTP_201_CREATED)
@@ -62,3 +75,26 @@ def delete_candidate(candidate_id: UUID, db: Session = Depends(get_db)) -> None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
 
     candidate_service.delete_candidate(db, candidate)
+
+
+@router.get("/{candidate_id}/timeline", response_model=list[TimelineEventRead])
+def list_candidate_timeline(candidate_id: UUID, db: Session = Depends(get_db)) -> list[TimelineEventRead]:
+    candidate = candidate_service.get_candidate(db, candidate_id)
+    if candidate is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
+
+    events = timeline_service.list_candidate_timeline(db, candidate_id)
+    return [_serialize_timeline_event(event) for event in events]
+
+
+@router.post("/{candidate_id}/timeline", response_model=TimelineEventRead, status_code=status.HTTP_201_CREATED)
+def create_candidate_timeline_event(
+    candidate_id: UUID,
+    event_in: TimelineEventCreate,
+    db: Session = Depends(get_db),
+) -> TimelineEventRead:
+    event = timeline_service.create_manual_timeline_event(db, candidate_id, event_in)
+    if event is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
+
+    return _serialize_timeline_event(event)

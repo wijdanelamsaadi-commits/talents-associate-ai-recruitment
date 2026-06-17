@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Evaluation, Interview
 from app.schemas import EvaluationCreate, EvaluationUpdate
+from app.services.timeline_service import create_timeline_event
 
 
 class EvaluationError(ValueError):
@@ -35,6 +36,20 @@ def create_evaluation(db: Session, evaluation_in: EvaluationCreate) -> Evaluatio
 
     evaluation = Evaluation(**data)
     db.add(evaluation)
+    db.flush()
+    create_timeline_event(
+        db,
+        candidate_id=candidate_id,
+        event_type="evaluation_added",
+        title="Evaluation added",
+        description=f"{evaluation_in.evaluator_name} added an interview evaluation.",
+        metadata={
+            "evaluation_id": str(evaluation.id),
+            "interview_id": str(evaluation.interview_id),
+            "global_score": float(evaluation.global_score),
+            "recommendation": evaluation.recommendation,
+        },
+    )
     db.commit()
     db.refresh(evaluation)
     return evaluation

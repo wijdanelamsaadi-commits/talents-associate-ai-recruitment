@@ -496,8 +496,9 @@ class CandidateTimelineEvent(TimestampMixin, Base):
     __tablename__ = "candidate_timeline_events"
     __table_args__ = (
         CheckConstraint(
-            "event_type IN ('note', 'email', 'call', 'status_change', 'cv_uploaded', 'interview_scheduled', "
-            "'evaluation_added', 'ai_match_generated', 'portal_update')",
+            "event_type IN ('candidate_created', 'candidate_updated', 'note', 'email', 'call', 'status_change', "
+            "'cv_uploaded', 'cv_parsed', 'interview_scheduled', 'evaluation_added', 'ai_match_generated', "
+            "'portal_update')",
             name="ck_candidate_timeline_events_type",
         ),
     )

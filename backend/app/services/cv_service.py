@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.models import CVFile, Candidate, ExtractedCVData
 from app.services.cv_parser import parse_cv_text
 from app.services.text_extraction import TextExtractionError, extract_text_from_file
+from app.services.timeline_service import create_timeline_event
 
 
 MAX_CV_FILE_SIZE_BYTES = 5 * 1024 * 1024
@@ -80,6 +81,14 @@ def upload_cv(db: Session, candidate_id: UUID, upload_file: UploadFile) -> CVFil
             status="parsed",
         )
         db.add(extracted_data)
+        create_timeline_event(
+            db,
+            candidate_id=candidate_id,
+            event_type="cv_uploaded",
+            title="CV uploaded",
+            description=f"Uploaded and extracted text from {original_filename}.",
+            metadata={"cv_file_id": str(cv_file.id), "filename": original_filename, "file_size_bytes": file_size},
+        )
         db.commit()
         db.refresh(cv_file)
         return cv_file
@@ -120,6 +129,15 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
     cv_file = db.get(CVFile, cv_file_id)
     if cv_file is not None:
         cv_file.parsing_status = "parsed"
+
+    create_timeline_event(
+        db,
+        candidate_id=extracted_data.candidate_id,
+        event_type="cv_parsed",
+        title="CV parsed",
+        description="Extracted CV text was converted into structured candidate data.",
+        metadata={"cv_file_id": str(cv_file_id), "confidence_score": float(parsed_cv.confidence_score)},
+    )
 
     db.commit()
     db.refresh(extracted_data)

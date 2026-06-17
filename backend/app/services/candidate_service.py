@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Candidate
 from app.schemas import CandidateCreate, CandidateUpdate
+from app.services.timeline_service import create_timeline_event
 
 
 def create_candidate(db: Session, candidate_in: CandidateCreate) -> Candidate:
@@ -18,6 +19,15 @@ def create_candidate(db: Session, candidate_in: CandidateCreate) -> Candidate:
     db.add(candidate)
 
     try:
+        db.flush()
+        create_timeline_event(
+            db,
+            candidate_id=candidate.id,
+            event_type="candidate_created",
+            title="Candidate created",
+            description=f"{candidate.first_name} {candidate.last_name} was added to the database.",
+            metadata={"source": candidate.source, "status": candidate.status},
+        )
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -46,6 +56,14 @@ def update_candidate(db: Session, candidate: Candidate, candidate_in: CandidateU
         setattr(candidate, field, value)
 
     try:
+        create_timeline_event(
+            db,
+            candidate_id=candidate.id,
+            event_type="candidate_updated",
+            title="Candidate updated",
+            description="Candidate profile information was updated.",
+            metadata={"updated_fields": sorted(candidate_data.keys())},
+        )
         db.commit()
     except IntegrityError:
         db.rollback()

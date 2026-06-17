@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models import AIMatchingResult, Candidate, ExtractedCVData, JobOffer
 from app.schemas import MatchingOutput
+from app.services.timeline_service import create_timeline_event
 
 
 class MatchingError(ValueError):
@@ -48,6 +49,20 @@ def match_candidate_to_job(db: Session, candidate_id: UUID, job_id: UUID) -> AIM
     result.status = "generated"
 
     db.add(result)
+    db.flush()
+    create_timeline_event(
+        db,
+        candidate_id=candidate_id,
+        event_type="ai_match_generated",
+        title="AI matching generated",
+        description=f"Generated a {output.score}/100 match score for {job.title}.",
+        metadata={
+            "matching_result_id": str(result.id),
+            "job_offer_id": str(job_id),
+            "score": output.score,
+            "recommendation": output.recommendation,
+        },
+    )
     db.commit()
     db.refresh(result)
     return result
