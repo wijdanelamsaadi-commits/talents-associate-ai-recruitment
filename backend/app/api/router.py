@@ -1,15 +1,18 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from app.api.routes import candidates, cv_upload, dashboard, evaluations, health, interviews, jobs, matching, timeline
+from app.api.dependencies import get_current_user
+from app.api.routes import auth, candidates, cv_upload, dashboard, evaluations, health, interviews, jobs, matching, timeline
 
 
 api_router = APIRouter()
 api_router.include_router(health.router)
-api_router.include_router(candidates.router)
-api_router.include_router(cv_upload.router)
-api_router.include_router(dashboard.router)
-api_router.include_router(jobs.router)
-api_router.include_router(matching.router)
-api_router.include_router(interviews.router)
-api_router.include_router(evaluations.router)
-api_router.include_router(timeline.router)
+api_router.include_router(auth.router)
+protected_dependencies = [Depends(get_current_user)]
+api_router.include_router(candidates.router, dependencies=protected_dependencies)
+api_router.include_router(cv_upload.router, dependencies=protected_dependencies)
+api_router.include_router(dashboard.router, dependencies=protected_dependencies)
+api_router.include_router(jobs.router, dependencies=protected_dependencies)
+api_router.include_router(matching.router, dependencies=protected_dependencies)
+api_router.include_router(interviews.router, dependencies=protected_dependencies)
+api_router.include_router(evaluations.router, dependencies=protected_dependencies)
+api_router.include_router(timeline.router, dependencies=protected_dependencies)

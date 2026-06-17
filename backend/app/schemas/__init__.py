@@ -1,3 +1,4 @@
+from app.schemas.auth import RecruiterLogin, RecruiterRegister, TokenResponse, UserRead
 from app.schemas.candidate import CandidateCreate, CandidateRead, CandidateUpdate
 from app.schemas.cv import CVFileRead, ExtractedCVTextRead, ParsedCVRead
 from app.schemas.dashboard import DashboardActivity, DashboardCount, DashboardStatsRead
@@ -29,6 +30,10 @@ __all__ = [
     "MatchingOutput",
     "MatchingResultRead",
     "ParsedCVRead",
+    "RecruiterLogin",
+    "RecruiterRegister",
     "TimelineEventCreate",
     "TimelineEventRead",
+    "TokenResponse",
+    "UserRead",
 ]

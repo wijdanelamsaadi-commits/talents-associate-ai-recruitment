@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str | None = None
 
     CORS_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    JWT_SECRET_KEY: str = "change-this-secret-key"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     model_config = SettingsConfigDict(
         env_file=".env",

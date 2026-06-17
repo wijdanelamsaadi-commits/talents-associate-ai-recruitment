@@ -1,3 +1,4 @@
+from app.services.auth_service import authenticate_recruiter, create_token_response, get_user_by_email, register_recruiter
 from app.services.candidate_service import create_candidate, delete_candidate, get_candidate, list_candidates, update_candidate
 from app.services.cv_service import delete_cv_file, get_cv_file, get_extracted_text, list_cv_files, upload_cv
 from app.services.cv_parser import parse_cv_text
@@ -41,6 +42,8 @@ __all__ = [
     "create_interview",
     "create_job_offer",
     "create_manual_timeline_event",
+    "create_token_response",
+    "authenticate_recruiter",
     "create_timeline_event",
     "delete_candidate",
     "delete_cv_file",
@@ -51,6 +54,7 @@ __all__ = [
     "delete_timeline_event",
     "get_candidate",
     "get_dashboard_stats",
+    "get_user_by_email",
     "get_cv_file",
     "get_extracted_text",
     "get_evaluation",
@@ -70,6 +74,7 @@ __all__ = [
     "list_candidate_timeline",
     "match_candidate_to_job",
     "parse_cv_text",
+    "register_recruiter",
     "upload_cv",
     "update_candidate",
     "update_evaluation",

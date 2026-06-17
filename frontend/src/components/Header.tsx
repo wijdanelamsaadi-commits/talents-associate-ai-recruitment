@@ -1,4 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+
+import { useAuth } from "../contexts/AuthContext";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -12,7 +14,14 @@ const pageTitles: Record<string, string> = {
 
 export function Header() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { logout, user } = useAuth();
   const title = pageTitles[pathname] ?? (pathname.startsWith("/candidates/") ? "Candidate Details" : "Workspace");
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <header className="sticky top-16 z-20 border-b border-slate-200 bg-white/95 backdrop-blur lg:top-0">
@@ -23,14 +32,15 @@ export function Header() {
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600 sm:inline">
-            Demo mode
+            {user?.full_name ?? "Recruiter"}
           </span>
-          <Link
-            to="/login"
+          <button
+            onClick={handleLogout}
             className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#1D6EEA] hover:text-[#1D6EEA]"
+            type="button"
           >
-            Login
-          </Link>
+            Logout
+          </button>
         </div>
       </div>
     </header>
