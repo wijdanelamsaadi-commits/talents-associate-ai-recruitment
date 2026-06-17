@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas import CVFileRead, ExtractedCVTextRead
+from app.schemas import CVFileRead, ExtractedCVTextRead, ParsedCVRead
 from app.services import cv_service
 from app.services.cv_service import CVUploadError
 from app.services.text_extraction import TextExtractionError
@@ -56,3 +56,32 @@ def get_cv_text(cv_file_id: UUID, db: Session = Depends(get_db)) -> ExtractedCVT
     if extracted_text is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extracted CV text not found.")
     return extracted_text
+
+
+@router.post("/{cv_file_id}/parse", response_model=ParsedCVRead)
+def parse_cv(cv_file_id: UUID, db: Session = Depends(get_db)) -> ParsedCVRead:
+    try:
+        extracted_text = cv_service.parse_extracted_cv(db, cv_file_id)
+    except CVUploadError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return ParsedCVRead(
+        cv_file_id=extracted_text.cv_file_id,
+        parsing_status=extracted_text.parsing_status,
+        confidence_score=float(extracted_text.confidence_score) if extracted_text.confidence_score is not None else None,
+        structured_json=extracted_text.ai_output,
+    )
+
+
+@router.get("/{cv_file_id}/parsed", response_model=ParsedCVRead)
+def get_parsed_cv(cv_file_id: UUID, db: Session = Depends(get_db)) -> ParsedCVRead:
+    extracted_text = cv_service.get_extracted_text(db, cv_file_id)
+    if extracted_text is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extracted CV text not found.")
+
+    return ParsedCVRead(
+        cv_file_id=extracted_text.cv_file_id,
+        parsing_status=extracted_text.parsing_status,
+        confidence_score=float(extracted_text.confidence_score) if extracted_text.confidence_score is not None else None,
+        structured_json=extracted_text.ai_output,
+    )

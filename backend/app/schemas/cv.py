@@ -29,3 +29,12 @@ class ExtractedCVTextRead(BaseModel):
     ai_output: dict | None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ParsedCVRead(BaseModel):
+    cv_file_id: UUID
+    parsing_status: str
+    confidence_score: float | None
+    structured_json: dict | None
+
+    model_config = ConfigDict(from_attributes=True)

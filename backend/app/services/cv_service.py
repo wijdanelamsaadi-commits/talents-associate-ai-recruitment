@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import CVFile, Candidate, ExtractedCVData
+from app.services.cv_parser import parse_cv_text
 from app.services.text_extraction import TextExtractionError, extract_text_from_file
 
 
@@ -100,6 +101,29 @@ def get_cv_file(db: Session, cv_file_id: UUID) -> CVFile | None:
 def get_extracted_text(db: Session, cv_file_id: UUID) -> ExtractedCVData | None:
     statement = select(ExtractedCVData).where(ExtractedCVData.cv_file_id == cv_file_id)
     return db.scalar(statement)
+
+
+def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
+    extracted_data = get_extracted_text(db, cv_file_id)
+    if extracted_data is None:
+        raise CVUploadError("Extracted CV text not found.")
+
+    if not extracted_data.raw_text or not extracted_data.raw_text.strip():
+        raise CVUploadError("Cannot parse CV because extracted text is empty.")
+
+    parsed_cv = parse_cv_text(extracted_data.raw_text)
+    extracted_data.ai_output = parsed_cv.data
+    extracted_data.confidence_score = parsed_cv.confidence_score
+    extracted_data.parsing_status = "parsed"
+    extracted_data.status = "approved"
+
+    cv_file = db.get(CVFile, cv_file_id)
+    if cv_file is not None:
+        cv_file.parsing_status = "parsed"
+
+    db.commit()
+    db.refresh(extracted_data)
+    return extracted_data
 
 
 def _save_upload_file(upload_file: UploadFile, stored_path: Path) -> tuple[int, str]:

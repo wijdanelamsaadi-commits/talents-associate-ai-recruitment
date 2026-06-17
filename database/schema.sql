@@ -76,7 +76,7 @@ CREATE TABLE extracted_cv_data (
     parser_model VARCHAR(100),
     confidence_score NUMERIC(5, 4) CHECK (confidence_score IS NULL OR confidence_score BETWEEN 0 AND 1),
     parsing_status VARCHAR(30) NOT NULL DEFAULT 'extracted'
-        CHECK (parsing_status IN ('extracted', 'empty', 'failed')),
+        CHECK (parsing_status IN ('extracted', 'parsed', 'empty', 'failed')),
     status VARCHAR(30) NOT NULL DEFAULT 'parsed'
         CHECK (status IN ('parsed', 'needs_review', 'approved', 'failed')),
     reviewed_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,

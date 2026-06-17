@@ -24,6 +24,8 @@ The API will run at `http://localhost:8000`.
 - `GET /api/cv/files`: list uploaded CV files.
 - `GET /api/cv/files/{id}`: get one uploaded CV file by ID.
 - `GET /api/cv/files/{id}/text`: get extracted raw CV text.
+- `POST /api/cv/{id}/parse`: parse extracted text into structured candidate JSON.
+- `GET /api/cv/{id}/parsed`: get parsing status, confidence score, and structured JSON.
 - `GET /api/jobs`: jobs module placeholder.
 - `GET /api/matching`: AI matching module placeholder.
 - `GET /api/interviews`: interviews module placeholder.
@@ -83,3 +85,12 @@ Read extracted text:
 ```powershell
 Invoke-RestMethod -Method Get -Uri "http://localhost:8000/api/cv/files/$($cv.id)/text"
 ```
+
+Parse extracted text into structured JSON:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://localhost:8000/api/cv/$($cv.id)/parse"
+Invoke-RestMethod -Method Get -Uri "http://localhost:8000/api/cv/$($cv.id)/parsed"
+```
+
+The first parser version uses regex and section heuristics only. It does not call any LLM API yet.

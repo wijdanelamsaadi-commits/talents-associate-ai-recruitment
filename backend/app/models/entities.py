@@ -147,7 +147,7 @@ class ExtractedCVData(TimestampMixin, Base):
             name="ck_extracted_cv_data_confidence",
         ),
         CheckConstraint(
-            "parsing_status IN ('extracted', 'empty', 'failed')",
+            "parsing_status IN ('extracted', 'parsed', 'empty', 'failed')",
             name="ck_extracted_cv_data_parsing_status",
         ),
         CheckConstraint("status IN ('parsed', 'needs_review', 'approved', 'failed')", name="ck_extracted_cv_data_status"),
