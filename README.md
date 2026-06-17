@@ -19,3 +19,16 @@ AI-powered recruitment platform for CV parsing, candidate centralization, semant
 - Database: PostgreSQL
 - AI: LLM API + embeddings
 - Versioning: Git/GitHub
+
+## Backend Setup
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+uvicorn app.main:app --reload
+```
+
+Health check: `GET http://localhost:8000/api/health`
