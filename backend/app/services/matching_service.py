@@ -112,6 +112,15 @@ def list_candidate_matching_results(db: Session, candidate_id: UUID) -> list[AIM
     return list(db.scalars(statement).all())
 
 
+def get_matching_result(db: Session, matching_result_id: UUID) -> AIMatchingResult | None:
+    return db.get(AIMatchingResult, matching_result_id)
+
+
+def delete_matching_result(db: Session, matching_result: AIMatchingResult) -> None:
+    db.delete(matching_result)
+    db.commit()
+
+
 def _get_latest_parsed_cv(db: Session, candidate_id: UUID) -> ExtractedCVData | None:
     statement = (
         select(ExtractedCVData)

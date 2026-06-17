@@ -29,3 +29,7 @@ export async function getCandidateMatchingResults(candidateId: string): Promise<
   const response = await apiClient.get<MatchingResult[]>(`/api/matching/candidate/${candidateId}`);
   return response.data;
 }
+
+export async function deleteMatchingResult(matchingResultId: string): Promise<void> {
+  await apiClient.delete(`/api/matching/results/${matchingResultId}`);
+}

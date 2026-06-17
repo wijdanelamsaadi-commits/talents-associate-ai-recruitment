@@ -25,7 +25,10 @@ export type CandidateCreatePayload = {
   phone?: string | null;
   location?: string | null;
   source: string;
+  status?: string;
 };
+
+export type CandidateUpdatePayload = Partial<CandidateCreatePayload>;
 
 export async function getCandidates(): Promise<Candidate[]> {
   const response = await apiClient.get<Candidate[]>("/api/candidates");
@@ -40,4 +43,13 @@ export async function createCandidate(payload: CandidateCreatePayload): Promise<
 export async function getCandidateById(candidateId: string): Promise<Candidate> {
   const response = await apiClient.get<Candidate>(`/api/candidates/${candidateId}`);
   return response.data;
+}
+
+export async function updateCandidate(candidateId: string, payload: CandidateUpdatePayload): Promise<Candidate> {
+  const response = await apiClient.put<Candidate>(`/api/candidates/${candidateId}`, payload);
+  return response.data;
+}
+
+export async function deleteCandidate(candidateId: string): Promise<void> {
+  await apiClient.delete(`/api/candidates/${candidateId}`);
 }

@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { DataTable } from "../components/DataTable";
 import { EmptyState } from "../components/EmptyState";
 import { StatCard } from "../components/StatCard";
+import { getApiErrorMessage } from "../lib/errors";
 import { Candidate, getCandidateById } from "../services/candidates";
 
 const timelineRows = [
@@ -31,8 +32,8 @@ export function CandidateDetailsPage() {
       try {
         const data = await getCandidateById(candidateId);
         setCandidate(data);
-      } catch {
-        setError("Unable to load candidate details. Check the candidate ID and backend connection.");
+      } catch (loadError) {
+        setError(getApiErrorMessage(loadError, "Unable to load candidate details. Check the candidate ID and backend connection."));
       } finally {
         setIsLoading(false);
       }

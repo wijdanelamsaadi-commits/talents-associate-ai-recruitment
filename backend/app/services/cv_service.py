@@ -126,6 +126,13 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
     return extracted_data
 
 
+def delete_cv_file(db: Session, cv_file: CVFile) -> None:
+    stored_path = Path(cv_file.storage_path)
+    db.delete(cv_file)
+    db.commit()
+    stored_path.unlink(missing_ok=True)
+
+
 def _save_upload_file(upload_file: UploadFile, stored_path: Path) -> tuple[int, str]:
     sha256 = hashlib.sha256()
     file_size = 0

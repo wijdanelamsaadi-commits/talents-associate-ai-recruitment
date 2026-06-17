@@ -50,6 +50,15 @@ def get_cv_file(cv_file_id: UUID, db: Session = Depends(get_db)) -> CVFileRead:
     return cv_file
 
 
+@router.delete("/files/{cv_file_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_cv_file(cv_file_id: UUID, db: Session = Depends(get_db)) -> None:
+    cv_file = cv_service.get_cv_file(db, cv_file_id)
+    if cv_file is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="CV file not found.")
+
+    cv_service.delete_cv_file(db, cv_file)
+
+
 @router.get("/files/{cv_file_id}/text", response_model=ExtractedCVTextRead)
 def get_cv_text(cv_file_id: UUID, db: Session = Depends(get_db)) -> ExtractedCVTextRead:
     extracted_text = cv_service.get_extracted_text(db, cv_file_id)

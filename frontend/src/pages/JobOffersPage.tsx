@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
-import { isAxiosError } from "axios";
 
 import { EmptyState } from "../components/EmptyState";
+import { getApiErrorMessage } from "../lib/errors";
 import { JobOffer, JobOfferPayload, createJobOffer, deleteJobOffer, getJobOffers, updateJobOffer } from "../services/jobs";
 
 type JobFormState = {
@@ -45,16 +45,6 @@ function splitSkills(value: string) {
 
 function joinSkills(value: string[]) {
   return value.join(", ");
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (isAxiosError(error)) {
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string") {
-      return detail;
-    }
-  }
-  return fallback;
 }
 
 function toFormState(job: JobOffer): JobFormState {
@@ -103,8 +93,8 @@ export function JobOffersPage() {
     try {
       const data = await getJobOffers();
       setJobs(data);
-    } catch {
-      setError("Unable to load job offers. Check that the backend is running on localhost:8001.");
+    } catch (loadError) {
+      setError(getApiErrorMessage(loadError, "Unable to load job offers. Check that the backend is running on localhost:8001."));
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +140,7 @@ export function JobOffersPage() {
       setFormState(initialFormState);
       await loadJobs();
     } catch (submitError) {
-      setError(getErrorMessage(submitError, "Job offer could not be saved. Verify required fields."));
+      setError(getApiErrorMessage(submitError, "Job offer could not be saved. Verify required fields."));
     } finally {
       setIsSubmitting(false);
     }
@@ -169,7 +159,7 @@ export function JobOffersPage() {
       setMessage("Job offer deleted.");
       await loadJobs();
     } catch (deleteError) {
-      setError(getErrorMessage(deleteError, "Job offer could not be deleted."));
+      setError(getApiErrorMessage(deleteError, "Job offer could not be deleted."));
     }
   };
 

@@ -31,3 +31,12 @@ def list_matching_results(
 @router.get("/candidate/{candidate_id}", response_model=list[MatchingResultRead])
 def list_candidate_matching_results(candidate_id: UUID, db: Session = Depends(get_db)) -> list[MatchingResultRead]:
     return matching_service.list_candidate_matching_results(db, candidate_id)
+
+
+@router.delete("/results/{matching_result_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_matching_result(matching_result_id: UUID, db: Session = Depends(get_db)) -> None:
+    matching_result = matching_service.get_matching_result(db, matching_result_id)
+    if matching_result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Matching result not found.")
+
+    matching_service.delete_matching_result(db, matching_result)

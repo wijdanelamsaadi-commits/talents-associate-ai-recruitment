@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import Candidate
-from app.schemas import CandidateCreate
+from app.schemas import CandidateCreate, CandidateUpdate
 
 
 def create_candidate(db: Session, candidate_in: CandidateCreate) -> Candidate:
@@ -34,3 +34,27 @@ def list_candidates(db: Session, skip: int = 0, limit: int = 100) -> list[Candid
 
 def get_candidate(db: Session, candidate_id: UUID) -> Candidate | None:
     return db.get(Candidate, candidate_id)
+
+
+def update_candidate(db: Session, candidate: Candidate, candidate_in: CandidateUpdate) -> Candidate:
+    candidate_data = candidate_in.model_dump(exclude_unset=True)
+    for url_field in ("linkedin_url", "portfolio_url"):
+        if url_field in candidate_data and candidate_data[url_field] is not None:
+            candidate_data[url_field] = str(candidate_data[url_field])
+
+    for field, value in candidate_data.items():
+        setattr(candidate, field, value)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise
+
+    db.refresh(candidate)
+    return candidate
+
+
+def delete_candidate(db: Session, candidate: Candidate) -> None:
+    db.delete(candidate)
+    db.commit()

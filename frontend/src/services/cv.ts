@@ -86,3 +86,7 @@ export async function getParsedCV(cvFileId: string): Promise<ParsedCV> {
   const response = await apiClient.get<ParsedCV>(`/api/cv/${cvFileId}/parsed`);
   return response.data;
 }
+
+export async function deleteCVFile(cvFileId: string): Promise<void> {
+  await apiClient.delete(`/api/cv/files/${cvFileId}`);
+}

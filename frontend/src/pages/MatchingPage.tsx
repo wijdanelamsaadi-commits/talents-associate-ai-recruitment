@@ -1,22 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { isAxiosError } from "axios";
 import { Link } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
 import { StatCard } from "../components/StatCard";
+import { getApiErrorMessage } from "../lib/errors";
 import { Candidate, getCandidates } from "../services/candidates";
 import { JobOffer, getJobOffers } from "../services/jobs";
-import { MatchingResult, getMatchingResults, runMatching } from "../services/matching";
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (isAxiosError(error)) {
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string") {
-      return detail;
-    }
-  }
-  return fallback;
-}
+import { MatchingResult, deleteMatchingResult, getMatchingResults, runMatching } from "../services/matching";
 
 function findCandidate(candidates: Candidate[], candidateId: string) {
   return candidates.find((candidate) => candidate.id === candidateId);
@@ -87,8 +77,8 @@ export function MatchingPage() {
       if (!selectedJobId && jobData.length > 0) {
         setSelectedJobId(jobData[0].id);
       }
-    } catch {
-      setError("Unable to load matching workspace. Check that the backend is running on localhost:8001.");
+    } catch (loadError) {
+      setError(getApiErrorMessage(loadError, "Unable to load matching workspace. Check that the backend is running on localhost:8001."));
     } finally {
       setIsLoading(false);
     }
@@ -130,13 +120,33 @@ export function MatchingPage() {
       setResults(updatedResults);
     } catch (matchingError) {
       setError(
-        getErrorMessage(
+        getApiErrorMessage(
           matchingError,
           "Matching failed. Make sure the candidate has a parsed CV and the selected job offer exists.",
         ),
       );
     } finally {
       setIsRunning(false);
+    }
+  };
+
+  const handleDeleteResult = async (result: MatchingResult) => {
+    const shouldDelete = window.confirm(`Delete matching result with score ${result.score}%?`);
+    if (!shouldDelete) {
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    try {
+      await deleteMatchingResult(result.id);
+      if (currentResult?.id === result.id) {
+        setCurrentResult(null);
+      }
+      setMessage("Matching result deleted.");
+      setResults(await getMatchingResults());
+    } catch (deleteError) {
+      setError(getApiErrorMessage(deleteError, "Matching result could not be deleted."));
     }
   };
 
@@ -299,6 +309,7 @@ export function MatchingPage() {
                   <th className="px-5 py-3 font-semibold">Score</th>
                   <th className="px-5 py-3 font-semibold">Recommendation</th>
                   <th className="px-5 py-3 font-semibold">Created</th>
+                  <th className="px-5 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -315,6 +326,15 @@ export function MatchingPage() {
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
                         {new Date(result.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <button
+                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
+                          onClick={() => void handleDeleteResult(result)}
+                          type="button"
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   );

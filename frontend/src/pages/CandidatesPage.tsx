@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
 import { StatCard } from "../components/StatCard";
-import { Candidate, createCandidate, getCandidates } from "../services/candidates";
+import { getApiErrorMessage } from "../lib/errors";
+import { Candidate, createCandidate, deleteCandidate, getCandidates, updateCandidate } from "../services/candidates";
 
 type CandidateFormState = {
   first_name: string;
@@ -12,6 +13,7 @@ type CandidateFormState = {
   phone: string;
   city: string;
   source: string;
+  status: string;
 };
 
 const initialFormState: CandidateFormState = {
@@ -21,19 +23,35 @@ const initialFormState: CandidateFormState = {
   phone: "",
   city: "",
   source: "manual",
+  status: "new",
 };
 
 const sourceOptions = ["manual", "cv_upload", "linkedin_csv", "candidate_portal", "referral", "other"];
+const statusOptions = ["new", "active", "shortlisted", "interviewing", "offered", "hired", "rejected", "archived"];
 
 function formatStatus(status: string) {
   return status.replaceAll("_", " ");
+}
+
+function toFormState(candidate: Candidate): CandidateFormState {
+  return {
+    first_name: candidate.first_name,
+    last_name: candidate.last_name,
+    email: candidate.email ?? "",
+    phone: candidate.phone ?? "",
+    city: candidate.location ?? "",
+    source: candidate.source,
+    status: candidate.status,
+  };
 }
 
 export function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formState, setFormState] = useState<CandidateFormState>(initialFormState);
   const [formError, setFormError] = useState<string | null>(null);
@@ -44,8 +62,8 @@ export function CandidatesPage() {
     try {
       const data = await getCandidates();
       setCandidates(data);
-    } catch {
-      setError("Unable to load candidates. Check that the FastAPI backend is running on localhost:8000.");
+    } catch (loadError) {
+      setError(getApiErrorMessage(loadError, "Unable to load candidates. Check that the backend is running on localhost:8001."));
     } finally {
       setIsLoading(false);
     }
@@ -65,27 +83,70 @@ export function CandidatesPage() {
     };
   }, [candidates]);
 
+  const openCreateModal = () => {
+    setEditingCandidate(null);
+    setFormState(initialFormState);
+    setFormError(null);
+    setMessage(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (candidate: Candidate) => {
+    setEditingCandidate(candidate);
+    setFormState(toFormState(candidate));
+    setFormError(null);
+    setMessage(null);
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError(null);
     setIsSubmitting(true);
 
+    const payload = {
+      first_name: formState.first_name.trim(),
+      last_name: formState.last_name.trim(),
+      email: formState.email.trim() || null,
+      phone: formState.phone.trim() || null,
+      location: formState.city.trim() || null,
+      source: formState.source,
+      status: formState.status,
+    };
+
     try {
-      await createCandidate({
-        first_name: formState.first_name.trim(),
-        last_name: formState.last_name.trim(),
-        email: formState.email.trim() || null,
-        phone: formState.phone.trim() || null,
-        location: formState.city.trim() || null,
-        source: formState.source,
-      });
+      if (editingCandidate) {
+        await updateCandidate(editingCandidate.id, payload);
+        setMessage("Candidate updated successfully.");
+      } else {
+        await createCandidate(payload);
+        setMessage("Candidate created successfully.");
+      }
       setFormState(initialFormState);
+      setEditingCandidate(null);
       setIsModalOpen(false);
       await loadCandidates();
-    } catch {
-      setFormError("Candidate could not be created. Verify required fields and duplicate email.");
+    } catch (submitError) {
+      setFormError(getApiErrorMessage(submitError, "Candidate could not be saved."));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (candidate: Candidate) => {
+    const shouldDelete = window.confirm(`Delete candidate "${candidate.first_name} ${candidate.last_name}"?`);
+    if (!shouldDelete) {
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    try {
+      await deleteCandidate(candidate.id);
+      setMessage("Candidate deleted.");
+      await loadCandidates();
+    } catch (deleteError) {
+      setError(getApiErrorMessage(deleteError, "Candidate could not be deleted."));
     }
   };
 
@@ -100,16 +161,19 @@ export function CandidatesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-[#0B1F3A]">Candidate database</h2>
-          <p className="mt-1 text-sm text-slate-600">Live candidate records from the FastAPI backend.</p>
+          <p className="mt-1 text-sm text-slate-600">Create, update, delete, and review candidate records.</p>
         </div>
         <button
           className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#165AC0]"
-          onClick={() => setIsModalOpen(true)}
+          onClick={openCreateModal}
           type="button"
         >
           Create candidate
         </button>
       </div>
+
+      {message ? <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p> : null}
+      {error ? <section className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</section> : null}
 
       {isLoading ? (
         <section className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">
@@ -117,16 +181,12 @@ export function CandidatesPage() {
         </section>
       ) : null}
 
-      {error ? (
-        <section className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</section>
-      ) : null}
-
       {!isLoading && !error && candidates.length === 0 ? (
         <EmptyState
           title="No candidates yet"
           description="Create the first candidate profile to start building the recruitment database."
           actionLabel="Create candidate"
-          onAction={() => setIsModalOpen(true)}
+          onAction={openCreateModal}
         />
       ) : null}
 
@@ -145,6 +205,7 @@ export function CandidatesPage() {
                   <th className="px-5 py-3 font-semibold">City</th>
                   <th className="px-5 py-3 font-semibold">Source</th>
                   <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -164,6 +225,24 @@ export function CandidatesPage() {
                         {formatStatus(candidate.status)}
                       </span>
                     </td>
+                    <td className="whitespace-nowrap px-5 py-4">
+                      <div className="flex gap-2">
+                        <button
+                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          onClick={() => openEditModal(candidate)}
+                          type="button"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
+                          onClick={() => void handleDelete(candidate)}
+                          type="button"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -178,11 +257,13 @@ export function CandidatesPage() {
       />
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B1F3A]/40 px-4 py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#0B1F3A]/40 px-4 py-6">
           <section className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
             <div className="border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-[#0B1F3A]">Create candidate</h3>
-              <p className="mt-1 text-sm text-slate-600">Add a manual profile to the backend candidate database.</p>
+              <h3 className="text-lg font-semibold text-[#0B1F3A]">
+                {editingCandidate ? "Edit candidate" : "Create candidate"}
+              </h3>
+              <p className="mt-1 text-sm text-slate-600">Candidate records are saved directly to the FastAPI backend.</p>
             </div>
             <form className="space-y-5 p-6" onSubmit={handleSubmit}>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -232,13 +313,27 @@ export function CandidatesPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Source</span>
                   <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm capitalize outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, source: event.target.value }))}
                     value={formState.source}
                   >
                     {sourceOptions.map((source) => (
                       <option key={source} value={source}>
                         {formatStatus(source)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-700">Status</span>
+                  <select
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm capitalize outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    onChange={(event) => setFormState((current) => ({ ...current, status: event.target.value }))}
+                    value={formState.status}
+                  >
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {formatStatus(status)}
                       </option>
                     ))}
                   </select>
@@ -260,7 +355,7 @@ export function CandidatesPage() {
                   disabled={isSubmitting}
                   type="submit"
                 >
-                  {isSubmitting ? "Creating..." : "Create candidate"}
+                  {isSubmitting ? "Saving..." : "Save candidate"}
                 </button>
               </div>
             </form>

@@ -1,23 +1,13 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { isAxiosError } from "axios";
 import { Link } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
+import { getApiErrorMessage } from "../lib/errors";
 import { Candidate, getCandidates } from "../services/candidates";
-import { CVFile, ExtractedCVText, ParsedCV, getCVFiles, getCVText, parseCV, uploadCV } from "../services/cv";
+import { CVFile, ExtractedCVText, ParsedCV, deleteCVFile, getCVFiles, getCVText, parseCV, uploadCV } from "../services/cv";
 
 const allowedExtensions = [".pdf", ".doc", ".docx"];
 const maxFileSizeBytes = 5 * 1024 * 1024;
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (isAxiosError(error)) {
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string") {
-      return detail;
-    }
-  }
-  return fallback;
-}
 
 function formatBytes(bytes: number | null) {
   if (!bytes) {
@@ -76,8 +66,8 @@ export function CVUploadPage() {
       if (!selectedCandidateId && candidateData.length > 0) {
         setSelectedCandidateId(candidateData[0].id);
       }
-    } catch {
-      setError("Unable to load candidates or CV files. Check that the FastAPI backend is running on localhost:8001.");
+    } catch (loadError) {
+      setError(getApiErrorMessage(loadError, "Unable to load candidates or CV files. Check that the FastAPI backend is running on localhost:8001."));
     } finally {
       setIsLoadingPage(false);
     }
@@ -133,7 +123,7 @@ export function CVUploadPage() {
       await loadPageData();
       await handleViewText(uploaded.id);
     } catch (uploadError) {
-      setError(getErrorMessage(uploadError, "CV upload failed. Check the file format, file size, and candidate."));
+      setError(getApiErrorMessage(uploadError, "CV upload failed. Check the file format, file size, and candidate."));
     } finally {
       setIsUploading(false);
       setUploadProgress(null);
@@ -152,7 +142,7 @@ export function CVUploadPage() {
       setMessage("Extracted raw text loaded.");
     } catch (textError) {
       setExtractedText(null);
-      setError(getErrorMessage(textError, "Unable to load extracted text for this CV."));
+      setError(getApiErrorMessage(textError, "Unable to load extracted text for this CV."));
     } finally {
       setIsTextLoading(false);
     }
@@ -169,9 +159,31 @@ export function CVUploadPage() {
       setMessage("CV parsed successfully.");
       await loadPageData();
     } catch (parseError) {
-      setError(getErrorMessage(parseError, "CV parsing failed. Make sure extracted text exists for this file."));
+      setError(getApiErrorMessage(parseError, "CV parsing failed. Make sure extracted text exists for this file."));
     } finally {
       setIsParsing(false);
+    }
+  };
+
+  const handleDeleteCV = async (cvFile: CVFile) => {
+    const shouldDelete = window.confirm(`Delete CV file "${cvFile.original_filename}"?`);
+    if (!shouldDelete) {
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    try {
+      await deleteCVFile(cvFile.id);
+      if (selectedCVId === cvFile.id) {
+        setSelectedCVId(null);
+        setExtractedText(null);
+        setParsedCV(null);
+      }
+      setMessage("CV file deleted.");
+      await loadPageData();
+    } catch (deleteError) {
+      setError(getApiErrorMessage(deleteError, "CV file could not be deleted."));
     }
   };
 
@@ -316,6 +328,13 @@ export function CVUploadPage() {
                             type="button"
                           >
                             {isParsing && selectedCVId === cvFile.id ? "Parsing..." : "Parse CV"}
+                          </button>
+                          <button
+                            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
+                            onClick={() => void handleDeleteCV(cvFile)}
+                            type="button"
+                          >
+                            Delete
                           </button>
                         </div>
                       </td>
