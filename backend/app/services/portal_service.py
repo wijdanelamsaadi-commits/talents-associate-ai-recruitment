@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import Application, Candidate, JobOffer
-from app.schemas.portal import PortalApplicationResponse, PortalCandidateData
+from app.models import AIMatchingResult, Application, Candidate, JobOffer
+from app.schemas.portal import PortalApplicationResponse, PortalApplicationStatusItem, PortalApplicationStatusResponse, PortalCandidateData
 from app.services.cv_service import parse_and_auto_match_cv, upload_cv
 from app.services.timeline_service import create_timeline_event
 
@@ -23,6 +23,39 @@ def list_public_jobs(db: Session) -> list[JobOffer]:
 def get_public_job(db: Session, job_id: UUID) -> JobOffer | None:
     statement = select(JobOffer).where(JobOffer.id == job_id).where(JobOffer.status == "open")
     return db.scalar(statement)
+
+
+def get_application_status_by_email(db: Session, email: str) -> PortalApplicationStatusResponse:
+    normalized_email = email.lower().strip()
+    candidate = db.scalar(select(Candidate).where(Candidate.email == normalized_email))
+    if candidate is None:
+        return PortalApplicationStatusResponse(email=normalized_email, candidate_id=None, applications=[])
+
+    statement = (
+        select(Application, JobOffer)
+        .join(JobOffer, Application.job_offer_id == JobOffer.id)
+        .where(Application.candidate_id == candidate.id)
+        .order_by(Application.applied_at.desc())
+    )
+    applications = []
+    for application, job in db.execute(statement).all():
+        best_match = _get_best_application_match(db, application.id)
+        applications.append(
+            PortalApplicationStatusItem(
+                application_id=application.id,
+                job_offer_id=job.id,
+                job_title=job.title,
+                company_name=job.company_name,
+                application_status=application.status,
+                current_stage=application.current_stage,
+                applied_at=application.applied_at,
+                cv_file_id=application.cv_file_id,
+                best_matching_score=_score_percent(best_match.score) if best_match else None,
+                recommendation=best_match.recommendation if best_match else None,
+            )
+        )
+
+    return PortalApplicationStatusResponse(email=normalized_email, candidate_id=candidate.id, applications=applications)
 
 
 def submit_application(
@@ -155,3 +188,17 @@ def _get_or_create_application(db: Session, candidate_id: UUID, job_id: UUID) ->
     db.commit()
     db.refresh(application)
     return application
+
+
+def _get_best_application_match(db: Session, application_id: UUID) -> AIMatchingResult | None:
+    statement = (
+        select(AIMatchingResult)
+        .where(AIMatchingResult.application_id == application_id)
+        .order_by(AIMatchingResult.score.desc(), AIMatchingResult.created_at.desc())
+    )
+    return db.scalar(statement)
+
+
+def _score_percent(score) -> float:
+    numeric_score = float(score)
+    return round(numeric_score * 100, 2) if numeric_score <= 1 else round(numeric_score, 2)

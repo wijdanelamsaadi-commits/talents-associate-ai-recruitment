@@ -6,7 +6,13 @@ from app.schemas.evaluation import EvaluationCreate, EvaluationRead, EvaluationU
 from app.schemas.interview import InterviewCreate, InterviewRead, InterviewStatusUpdate, InterviewUpdate
 from app.schemas.job import JobOfferCreate, JobOfferRead, JobOfferUpdate
 from app.schemas.matching import MatchingOutput, MatchingResultRead
-from app.schemas.portal import PortalApplicationResponse, PortalCandidateData, PublicJobRead
+from app.schemas.portal import (
+    PortalApplicationResponse,
+    PortalApplicationStatusItem,
+    PortalApplicationStatusResponse,
+    PortalCandidateData,
+    PublicJobRead,
+)
 from app.schemas.timeline import TimelineEventCreate, TimelineEventRead
 
 __all__ = [
@@ -33,6 +39,8 @@ __all__ = [
     "MatchingResultRead",
     "ParsedCVRead",
     "PortalApplicationResponse",
+    "PortalApplicationStatusItem",
+    "PortalApplicationStatusResponse",
     "PortalCandidateData",
     "PublicJobRead",
     "RecruiterLogin",

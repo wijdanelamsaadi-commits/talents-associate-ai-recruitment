@@ -1,14 +1,20 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas import PortalApplicationResponse, PortalCandidateData, PublicJobRead
+from app.schemas import PortalApplicationResponse, PortalApplicationStatusResponse, PortalCandidateData, PublicJobRead
 from app.services.cv_service import CVUploadError
-from app.services.portal_service import PortalApplicationError, get_public_job, list_public_jobs, submit_application
+from app.services.portal_service import (
+    PortalApplicationError,
+    get_application_status_by_email,
+    get_public_job,
+    list_public_jobs,
+    submit_application,
+)
 from app.services.text_extraction import TextExtractionError
 
 router = APIRouter(prefix="/portal", tags=["candidate portal"])
@@ -25,6 +31,14 @@ def get_job(job_id: UUID, db: Session = Depends(get_db)) -> PublicJobRead:
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job offer not found.")
     return job
+
+
+@router.get("/status", response_model=PortalApplicationStatusResponse)
+def get_application_status(
+    email: str = Query(..., min_length=3),
+    db: Session = Depends(get_db),
+) -> PortalApplicationStatusResponse:
+    return get_application_status_by_email(db, email)
 
 
 @router.post("/jobs/{job_id}/apply", response_model=PortalApplicationResponse, status_code=status.HTTP_201_CREATED)

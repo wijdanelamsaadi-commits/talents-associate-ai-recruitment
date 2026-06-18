@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "./components/AppLayout";
+import { PortalLayout } from "./components/PortalLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { CandidateDetailsPage } from "./pages/CandidateDetailsPage";
 import { CandidatesPage } from "./pages/CandidatesPage";
@@ -11,14 +12,22 @@ import { InterviewsPage } from "./pages/InterviewsPage";
 import { JobOffersPage } from "./pages/JobOffersPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MatchingPage } from "./pages/MatchingPage";
+import { PortalApplyPage } from "./pages/PortalApplyPage";
+import { PortalHomePage } from "./pages/PortalHomePage";
 import { PortalJobDetailsPage } from "./pages/PortalJobDetailsPage";
 import { PortalJobsPage } from "./pages/PortalJobsPage";
+import { PortalStatusPage } from "./pages/PortalStatusPage";
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/portal" element={<PortalJobsPage />} />
-      <Route path="/portal/jobs/:jobId" element={<PortalJobDetailsPage />} />
+      <Route element={<PortalLayout />}>
+        <Route path="/portal" element={<PortalHomePage />} />
+        <Route path="/portal/jobs" element={<PortalJobsPage />} />
+        <Route path="/portal/jobs/:jobId" element={<PortalJobDetailsPage />} />
+        <Route path="/portal/apply/:jobId" element={<PortalApplyPage />} />
+        <Route path="/portal/status" element={<PortalStatusPage />} />
+      </Route>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>

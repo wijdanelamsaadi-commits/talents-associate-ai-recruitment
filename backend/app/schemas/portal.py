@@ -14,6 +14,25 @@ class PortalApplicationResponse(BaseModel):
     message: str
 
 
+class PortalApplicationStatusItem(BaseModel):
+    application_id: UUID
+    job_offer_id: UUID
+    job_title: str
+    company_name: str | None
+    application_status: str
+    current_stage: str | None
+    applied_at: datetime
+    cv_file_id: UUID | None
+    best_matching_score: float | None
+    recommendation: str | None
+
+
+class PortalApplicationStatusResponse(BaseModel):
+    email: EmailStr
+    candidate_id: UUID | None
+    applications: list[PortalApplicationStatusItem]
+
+
 class PortalCandidateData(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)

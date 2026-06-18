@@ -20,6 +20,25 @@ export type PortalApplicationResponse = {
   message: string;
 };
 
+export type PortalApplicationStatusItem = {
+  application_id: string;
+  job_offer_id: string;
+  job_title: string;
+  company_name: string | null;
+  application_status: string;
+  current_stage: string | null;
+  applied_at: string;
+  cv_file_id: string | null;
+  best_matching_score: number | null;
+  recommendation: string | null;
+};
+
+export type PortalApplicationStatusResponse = {
+  email: string;
+  candidate_id: string | null;
+  applications: PortalApplicationStatusItem[];
+};
+
 export async function getPublicJobs(): Promise<JobOffer[]> {
   const response = await apiClient.get<JobOffer[]>("/api/portal/jobs");
   return Array.isArray(response.data) ? response.data : [];
@@ -47,4 +66,14 @@ export async function submitPortalApplication(jobId: string, payload: PortalAppl
     headers: { "Content-Type": "multipart/form-data" },
   });
   return response.data;
+}
+
+export async function getPortalApplicationStatus(email: string): Promise<PortalApplicationStatusResponse> {
+  const response = await apiClient.get<PortalApplicationStatusResponse>("/api/portal/status", {
+    params: { email },
+  });
+  return {
+    ...response.data,
+    applications: Array.isArray(response.data.applications) ? response.data.applications : [],
+  };
 }

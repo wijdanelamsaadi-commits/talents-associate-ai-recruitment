@@ -29,7 +29,7 @@ from app.services.matching_service import (
     list_matching_results,
     match_candidate_to_job,
 )
-from app.services.portal_service import get_public_job, list_public_jobs, submit_application
+from app.services.portal_service import get_application_status_by_email, get_public_job, list_public_jobs, submit_application
 from app.services.timeline_service import (
     create_manual_timeline_event,
     create_timeline_event,
@@ -57,6 +57,7 @@ __all__ = [
     "delete_timeline_event",
     "get_candidate",
     "get_dashboard_stats",
+    "get_application_status_by_email",
     "get_user_by_email",
     "get_cv_file",
     "get_extracted_text",
