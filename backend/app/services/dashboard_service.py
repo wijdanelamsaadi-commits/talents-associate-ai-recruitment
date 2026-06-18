@@ -4,7 +4,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import AIMatchingResult, Candidate, CandidateTimelineEvent, Evaluation, Interview, JobOffer
+from app.models import AIMatchingResult, Candidate, CandidateTimelineEvent, Evaluation, Interview, JobOffer, OutlookCVImport
 from app.schemas.dashboard import DashboardActivity, DashboardCount, DashboardStatsRead
 
 
@@ -38,6 +38,8 @@ def get_dashboard_stats(db: Session) -> DashboardStatsRead:
         ),
         interview_counts=_count_by_status(db, Interview.status),
         total_evaluations=_count_total(db, Evaluation),
+        total_outlook_imports=_count_total(db, OutlookCVImport),
+        total_outlook_imported=_sum_column(db, OutlookCVImport.imported_count),
         average_matching_score=average_matching_score,
         matching_score_buckets=_matching_buckets(matching_scores),
         recent_activities=_recent_activities(db),
@@ -55,6 +57,10 @@ def _count_where(db: Session, condition) -> int:
 def _count_by_status(db: Session, column) -> list[DashboardCount]:
     statement = select(column, func.count()).group_by(column).order_by(column)
     return [DashboardCount(name=status or "unknown", count=int(count)) for status, count in db.execute(statement).all()]
+
+
+def _sum_column(db: Session, column) -> int:
+    return int(db.scalar(select(func.coalesce(func.sum(column), 0))) or 0)
 
 
 def _as_percent(score: Decimal | float | int) -> float:

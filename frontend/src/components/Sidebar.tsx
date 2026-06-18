@@ -11,6 +11,7 @@ const navigation: NavigationItem[] = [
   { label: "Candidates", to: "/candidates", icon: "C" },
   { label: "CV Upload", to: "/cv-upload", icon: "U" },
   { label: "Imports", to: "/imports", icon: "L" },
+  { label: "Outlook Import", to: "/outlook-import", icon: "O" },
   { label: "Job Offers", to: "/jobs", icon: "J" },
   { label: "Matching", to: "/matching", icon: "M" },
   { label: "Interviews", to: "/interviews", icon: "I" },

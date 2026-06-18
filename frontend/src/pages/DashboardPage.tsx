@@ -187,8 +187,8 @@ export function DashboardPage() {
           detail="Mean score across generated matching results"
         />
         <StatCard label="Candidate statuses" value={String(pipelineCounts.length)} detail="Pipeline stages represented in the database" />
+        <StatCard label="Outlook imports" value={String(stats.total_outlook_imports)} detail={`${stats.total_outlook_imported} candidates imported from Outlook`} />
         <StatCard label="Job statuses" value={String(safeCounts(stats.job_counts).length)} detail="Draft, open, paused, closed, or archived jobs" />
-        <StatCard label="Interview statuses" value={String(safeCounts(stats.interview_counts).length)} detail="Scheduling states currently represented" />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">

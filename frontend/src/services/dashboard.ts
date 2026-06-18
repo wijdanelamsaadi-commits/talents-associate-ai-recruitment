@@ -25,6 +25,8 @@ export type DashboardStats = {
   upcoming_interviews: number;
   interview_counts: DashboardCount[];
   total_evaluations: number;
+  total_outlook_imports: number;
+  total_outlook_imported: number;
   average_matching_score: number | null;
   matching_score_buckets: DashboardCount[];
   recent_activities: DashboardActivity[];

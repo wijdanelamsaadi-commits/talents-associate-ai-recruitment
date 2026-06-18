@@ -20,7 +20,14 @@ from app.services.interview_service import (
     update_interview,
     update_interview_status,
 )
-from app.services.import_service import get_linkedin_import_summary, import_linkedin_csv, list_linkedin_imports
+from app.services.import_service import (
+    get_linkedin_import_summary,
+    get_outlook_import_summary,
+    import_linkedin_csv,
+    import_outlook_cvs,
+    list_linkedin_imports,
+    list_outlook_imports,
+)
 from app.services.job_service import create_job_offer, delete_job_offer, get_job_offer, list_job_offers, update_job_offer
 from app.services.matching_service import (
     auto_match_candidate,
@@ -66,6 +73,7 @@ __all__ = [
     "get_interview",
     "get_interview_job_offer_id",
     "get_linkedin_import_summary",
+    "get_outlook_import_summary",
     "get_job_offer",
     "get_public_job",
     "get_matching_result",
@@ -77,6 +85,7 @@ __all__ = [
     "list_interviews",
     "list_interview_evaluations",
     "list_linkedin_imports",
+    "list_outlook_imports",
     "list_job_offers",
     "list_public_jobs",
     "list_matching_results",
@@ -85,6 +94,7 @@ __all__ = [
     "parse_cv_text",
     "register_recruiter",
     "import_linkedin_csv",
+    "import_outlook_cvs",
     "submit_application",
     "upload_cv",
     "update_candidate",

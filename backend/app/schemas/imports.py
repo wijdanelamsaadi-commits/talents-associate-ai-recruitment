@@ -22,3 +22,25 @@ class LinkedInImportSummary(BaseModel):
     total_imported: int
     total_updated: int
     total_skipped: int
+
+
+class OutlookImportRead(BaseModel):
+    id: UUID
+    filename: str
+    imported_count: int
+    updated_count: int
+    skipped_count: int
+    failed_count: int
+    report: dict | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OutlookImportSummary(BaseModel):
+    total_imports: int
+    total_imported: int
+    total_updated: int
+    total_skipped: int
+    total_failed: int

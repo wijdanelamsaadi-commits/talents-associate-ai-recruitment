@@ -29,6 +29,8 @@ class DashboardStatsRead(BaseModel):
     upcoming_interviews: int
     interview_counts: list[DashboardCount]
     total_evaluations: int
+    total_outlook_imports: int
+    total_outlook_imported: int
     average_matching_score: float | None
     matching_score_buckets: list[DashboardCount]
     recent_activities: list[DashboardActivity]

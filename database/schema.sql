@@ -46,6 +46,18 @@ CREATE TABLE candidates (
     CONSTRAINT candidates_email_unique UNIQUE (email)
 );
 
+CREATE TABLE outlook_cv_imports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    filename VARCHAR(255) NOT NULL,
+    imported_count INTEGER NOT NULL DEFAULT 0,
+    updated_count INTEGER NOT NULL DEFAULT 0,
+    skipped_count INTEGER NOT NULL DEFAULT 0,
+    failed_count INTEGER NOT NULL DEFAULT 0,
+    report JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE cv_files (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     candidate_id UUID NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
@@ -328,6 +340,10 @@ FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER trg_candidates_updated_at
 BEFORE UPDATE ON candidates
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER trg_outlook_cv_imports_updated_at
+BEFORE UPDATE ON outlook_cv_imports
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER trg_cv_files_updated_at
