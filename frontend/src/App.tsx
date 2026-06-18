@@ -11,10 +11,14 @@ import { InterviewsPage } from "./pages/InterviewsPage";
 import { JobOffersPage } from "./pages/JobOffersPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MatchingPage } from "./pages/MatchingPage";
+import { PortalJobDetailsPage } from "./pages/PortalJobDetailsPage";
+import { PortalJobsPage } from "./pages/PortalJobsPage";
 
 export default function App() {
   return (
     <Routes>
+      <Route path="/portal" element={<PortalJobsPage />} />
+      <Route path="/portal/jobs/:jobId" element={<PortalJobDetailsPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>

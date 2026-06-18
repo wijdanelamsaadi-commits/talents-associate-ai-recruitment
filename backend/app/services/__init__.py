@@ -22,12 +22,14 @@ from app.services.interview_service import (
 )
 from app.services.job_service import create_job_offer, delete_job_offer, get_job_offer, list_job_offers, update_job_offer
 from app.services.matching_service import (
+    auto_match_candidate,
     delete_matching_result,
     get_matching_result,
     list_candidate_matching_results,
     list_matching_results,
     match_candidate_to_job,
 )
+from app.services.portal_service import get_public_job, list_public_jobs, submit_application
 from app.services.timeline_service import (
     create_manual_timeline_event,
     create_timeline_event,
@@ -44,6 +46,7 @@ __all__ = [
     "create_manual_timeline_event",
     "create_token_response",
     "authenticate_recruiter",
+    "auto_match_candidate",
     "create_timeline_event",
     "delete_candidate",
     "delete_cv_file",
@@ -61,6 +64,7 @@ __all__ = [
     "get_interview",
     "get_interview_job_offer_id",
     "get_job_offer",
+    "get_public_job",
     "get_matching_result",
     "get_timeline_event",
     "list_candidate_matching_results",
@@ -70,11 +74,13 @@ __all__ = [
     "list_interviews",
     "list_interview_evaluations",
     "list_job_offers",
+    "list_public_jobs",
     "list_matching_results",
     "list_candidate_timeline",
     "match_candidate_to_job",
     "parse_cv_text",
     "register_recruiter",
+    "submit_application",
     "upload_cv",
     "update_candidate",
     "update_evaluation",

@@ -14,7 +14,7 @@ class MatchingError(ValueError):
     pass
 
 
-def match_candidate_to_job(db: Session, candidate_id: UUID, job_id: UUID) -> AIMatchingResult:
+def match_candidate_to_job(db: Session, candidate_id: UUID, job_id: UUID, application_id: UUID | None = None) -> AIMatchingResult:
     candidate = db.get(Candidate, candidate_id)
     if candidate is None:
         raise MatchingError("Candidate not found.")
@@ -35,6 +35,8 @@ def match_candidate_to_job(db: Session, candidate_id: UUID, job_id: UUID) -> AIM
         job_offer_id=job_id,
         model_name="heuristic-v1",
     )
+    if application_id is not None:
+        result.application_id = application_id
     result.score = Decimal(output.score) / Decimal(100)
     result.detailed_scores = {
         "skill_score": output.skill_score,
@@ -86,18 +88,19 @@ def calculate_match(parsed_candidate: dict, job: JobOffer) -> MatchingOutput:
     language_score = _language_score(parsed_candidate.get("languages", []), job.description)
 
     total_score = round(
-        (skill_score * 0.5)
-        + (experience_score * 0.25)
-        + (education_score * 0.15)
-        + (language_score * 0.10)
+        (skill_score * 0.40)
+        + (experience_score * 0.30)
+        + (education_score * 0.25)
+        + (language_score * 0.05)
     )
     recommendation = _recommendation(total_score)
 
     explanation = (
         f"Matched {len(matched_required)} of {len(required_skills)} required skills"
         f" and {len(matched_preferred)} preferred skills. "
-        f"Experience score is {experience_score}/100, education score is {education_score}/100, "
-        f"and language score is {language_score}/100. Recommendation: {recommendation}."
+        f"Experience score is {experience_score}/100, diploma/education score is {education_score}/100, "
+        f"and language score is {language_score}/100. Weights prioritize competences, experience, "
+        f"and diplome: skills 40%, experience 30%, diploma 25%, languages 5%. Recommendation: {recommendation}."
     )
 
     return MatchingOutput(
@@ -154,6 +157,26 @@ def _get_existing_generated_result(db: Session, candidate_id: UUID, job_id: UUID
         .where(AIMatchingResult.status == "generated")
     )
     return db.scalar(statement)
+
+
+def list_active_job_offers(db: Session) -> list[JobOffer]:
+    statement = select(JobOffer).where(JobOffer.status == "open").order_by(JobOffer.created_at.desc())
+    return list(db.scalars(statement).all())
+
+
+def auto_match_candidate(
+    db: Session,
+    candidate_id: UUID,
+    selected_job_id: UUID | None = None,
+    application_id: UUID | None = None,
+) -> list[AIMatchingResult]:
+    job_ids = [selected_job_id] if selected_job_id is not None else [job.id for job in list_active_job_offers(db)]
+    results = []
+    for job_id in job_ids:
+        if job_id is None:
+            continue
+        results.append(match_candidate_to_job(db, candidate_id=candidate_id, job_id=job_id, application_id=application_id))
+    return results
 
 
 def _normalize_set(items: list[str]) -> set[str]:

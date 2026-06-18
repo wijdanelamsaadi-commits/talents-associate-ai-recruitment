@@ -21,7 +21,9 @@ def upload_cv(
     db: Session = Depends(get_db),
 ) -> CVFileRead:
     try:
-        return cv_service.upload_cv(db, candidate_id=candidate_id, upload_file=file)
+        cv_file = cv_service.upload_cv(db, candidate_id=candidate_id, upload_file=file)
+        cv_service.parse_and_auto_match_cv(db, cv_file_id=cv_file.id)
+        return cv_file
     except CVUploadError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except TextExtractionError as exc:
@@ -70,7 +72,7 @@ def get_cv_text(cv_file_id: UUID, db: Session = Depends(get_db)) -> ExtractedCVT
 @router.post("/{cv_file_id}/parse", response_model=ParsedCVRead)
 def parse_cv(cv_file_id: UUID, db: Session = Depends(get_db)) -> ParsedCVRead:
     try:
-        extracted_text = cv_service.parse_extracted_cv(db, cv_file_id)
+        extracted_text, _matching_results = cv_service.parse_and_auto_match_cv(db, cv_file_id)
     except CVUploadError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

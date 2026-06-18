@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models import CVFile, Candidate, ExtractedCVData
 from app.services.cv_parser import parse_cv_text
+from app.services.matching_service import auto_match_candidate
 from app.services.text_extraction import TextExtractionError, extract_text_from_file
 from app.services.timeline_service import create_timeline_event
 
@@ -28,7 +29,13 @@ class CVUploadError(ValueError):
     pass
 
 
-def upload_cv(db: Session, candidate_id: UUID, upload_file: UploadFile) -> CVFile:
+def upload_cv(
+    db: Session,
+    candidate_id: UUID,
+    upload_file: UploadFile,
+    uploaded_by: str = "recruiter",
+    application_id: UUID | None = None,
+) -> CVFile:
     candidate = db.get(Candidate, candidate_id)
     if candidate is None:
         raise CVUploadError("Candidate not found.")
@@ -85,9 +92,19 @@ def upload_cv(db: Session, candidate_id: UUID, upload_file: UploadFile) -> CVFil
             db,
             candidate_id=candidate_id,
             event_type="cv_uploaded",
-            title="CV uploaded",
-            description=f"Uploaded and extracted text from {original_filename}.",
-            metadata={"cv_file_id": str(cv_file.id), "filename": original_filename, "file_size_bytes": file_size},
+            title="CV uploaded by candidate" if uploaded_by == "candidate_portal" else "CV uploaded",
+            description=(
+                f"Candidate uploaded and extracted text from {original_filename}."
+                if uploaded_by == "candidate_portal"
+                else f"Uploaded and extracted text from {original_filename}."
+            ),
+            metadata={
+                "cv_file_id": str(cv_file.id),
+                "filename": original_filename,
+                "file_size_bytes": file_size,
+                "source": uploaded_by,
+                "application_id": str(application_id) if application_id else None,
+            },
         )
         db.commit()
         db.refresh(cv_file)
@@ -117,6 +134,9 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
     if extracted_data is None:
         raise CVUploadError("Extracted CV text not found.")
 
+    if extracted_data.parsing_status == "parsed" and extracted_data.ai_output:
+        return extracted_data
+
     if not extracted_data.raw_text or not extracted_data.raw_text.strip():
         raise CVUploadError("Cannot parse CV because extracted text is empty.")
 
@@ -141,7 +161,59 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
 
     db.commit()
     db.refresh(extracted_data)
+    update_candidate_profile_from_parsed_cv(db, extracted_data)
     return extracted_data
+
+
+def update_candidate_profile_from_parsed_cv(db: Session, extracted_data: ExtractedCVData) -> Candidate:
+    candidate = db.get(Candidate, extracted_data.candidate_id)
+    if candidate is None:
+        raise CVUploadError("Candidate not found.")
+
+    parsed_data = extracted_data.ai_output or {}
+    updates: dict[str, str] = {}
+    for candidate_field, parsed_field in (
+        ("first_name", "first_name"),
+        ("last_name", "last_name"),
+        ("email", "email"),
+        ("phone", "phone"),
+    ):
+        parsed_value = str(parsed_data.get(parsed_field) or "").strip()
+        if parsed_value and not getattr(candidate, candidate_field):
+            updates[candidate_field] = parsed_value
+
+    for field, value in updates.items():
+        setattr(candidate, field, value)
+
+    if updates:
+        create_timeline_event(
+            db,
+            candidate_id=candidate.id,
+            event_type="candidate_updated",
+            title="Candidate updated from parsed CV",
+            description="Candidate profile fields were completed from parsed CV data.",
+            metadata={"updated_fields": sorted(updates.keys()), "cv_file_id": str(extracted_data.cv_file_id)},
+        )
+        db.commit()
+        db.refresh(candidate)
+
+    return candidate
+
+
+def parse_and_auto_match_cv(
+    db: Session,
+    cv_file_id: UUID,
+    selected_job_id: UUID | None = None,
+    application_id: UUID | None = None,
+) -> tuple[ExtractedCVData, list]:
+    extracted_data = parse_extracted_cv(db, cv_file_id)
+    matching_results = auto_match_candidate(
+        db,
+        candidate_id=extracted_data.candidate_id,
+        selected_job_id=selected_job_id,
+        application_id=application_id,
+    )
+    return extracted_data, matching_results
 
 
 def delete_cv_file(db: Session, cv_file: CVFile) -> None:
