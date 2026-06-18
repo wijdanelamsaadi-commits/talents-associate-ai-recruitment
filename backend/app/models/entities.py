@@ -66,7 +66,7 @@ class Candidate(TimestampMixin, Base):
     __tablename__ = "candidates"
     __table_args__ = (
         CheckConstraint(
-            "source IN ('manual', 'cv_upload', 'linkedin_csv', 'candidate_portal', 'referral', 'other')",
+            "source IN ('manual', 'cv_upload', 'linkedin_csv', 'candidate_portal', 'outlook_import', 'referral', 'other')",
             name="ck_candidates_source",
         ),
         CheckConstraint(
@@ -514,7 +514,8 @@ class CandidateTimelineEvent(TimestampMixin, Base):
         CheckConstraint(
             "event_type IN ('candidate_created', 'candidate_updated', 'note', 'email', 'call', 'status_change', "
             "'cv_uploaded', 'cv_parsed', 'interview_scheduled', 'evaluation_added', 'ai_match_generated', "
-            "'candidate_application_submitted', 'portal_update')",
+            "'candidate_application_submitted', 'linkedin_csv_imported', 'outlook_imported', 'manual_cv_uploaded', "
+            "'portal_update')",
             name="ck_candidate_timeline_events_type",
         ),
     )

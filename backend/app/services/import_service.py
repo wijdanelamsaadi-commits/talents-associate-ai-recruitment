@@ -76,7 +76,7 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
             create_timeline_event(
                 db,
                 candidate_id=candidate.id,
-                event_type="candidate_created",
+                event_type="linkedin_csv_imported",
                 title="Candidate imported from LinkedIn CSV",
                 description=f"{candidate.first_name} {candidate.last_name} was imported from a LinkedIn CSV file.",
                 metadata={"source": "linkedin_csv", "filename": filename, "row": row_number},
@@ -91,7 +91,7 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
             create_timeline_event(
                 db,
                 candidate_id=candidate.id,
-                event_type="candidate_updated",
+                event_type="linkedin_csv_imported",
                 title="Candidate updated from LinkedIn CSV",
                 description="Candidate profile was updated during LinkedIn CSV import.",
                 metadata={"source": "linkedin_csv", "filename": filename, "row": row_number, "updated_fields": changed_fields},

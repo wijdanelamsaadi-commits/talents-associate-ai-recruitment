@@ -13,7 +13,7 @@ class CandidateBase(BaseModel):
     linkedin_url: HttpUrl | None = None
     portfolio_url: HttpUrl | None = None
     current_title: str | None = Field(default=None, max_length=150)
-    source: str = Field(default="manual", pattern="^(manual|cv_upload|linkedin_csv|candidate_portal|referral|other)$")
+    source: str = Field(default="manual", pattern="^(manual|cv_upload|linkedin_csv|candidate_portal|outlook_import|referral|other)$")
     status: str = Field(
         default="new",
         pattern="^(new|active|shortlisted|interviewing|offered|hired|rejected|archived)$",
@@ -37,7 +37,7 @@ class CandidateUpdate(BaseModel):
     current_title: str | None = Field(default=None, max_length=150)
     source: str | None = Field(
         default=None,
-        pattern="^(manual|cv_upload|linkedin_csv|candidate_portal|referral|other)$",
+        pattern="^(manual|cv_upload|linkedin_csv|candidate_portal|outlook_import|referral|other)$",
     )
     status: str | None = Field(
         default=None,

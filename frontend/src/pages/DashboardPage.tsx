@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
+import { SourceBadge } from "../components/SourceBadge";
 import { StatCard } from "../components/StatCard";
 import { getApiErrorMessage } from "../lib/errors";
 import { DashboardActivity, DashboardCount, DashboardStats, getDashboardStats } from "../services/dashboard";
@@ -9,6 +10,9 @@ import { DashboardActivity, DashboardCount, DashboardStats, getDashboardStats } 
 const eventLabels: Record<string, string> = {
   candidate_created: "Candidate",
   candidate_updated: "Update",
+  linkedin_csv_imported: "LinkedIn",
+  outlook_imported: "Outlook",
+  manual_cv_uploaded: "CV",
   cv_uploaded: "CV",
   cv_parsed: "CV",
   ai_match_generated: "Match",
@@ -95,6 +99,8 @@ function RecentActivityFeed({ activities }: { activities: DashboardActivity[] })
                 </div>
                 <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
                   <span className="rounded-full bg-slate-100 px-2 py-1 capitalize">{eventLabels[activity.event_type] ?? formatLabel(activity.event_type)}</span>
+                  {typeof activity.metadata?.source === "string" ? <SourceBadge source={activity.metadata.source} /> : null}
+                  {typeof activity.metadata?.candidate_source === "string" ? <SourceBadge source={activity.metadata.candidate_source} /> : null}
                   <Link className="font-semibold text-[#1D6EEA] hover:text-[#165AC0]" to={`/candidates/${activity.candidate_id}`}>
                     View candidate
                   </Link>

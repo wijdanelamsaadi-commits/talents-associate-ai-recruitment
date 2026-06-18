@@ -36,7 +36,7 @@ CREATE TABLE candidates (
     portfolio_url TEXT,
     current_title VARCHAR(150),
     source VARCHAR(50) NOT NULL DEFAULT 'manual'
-        CHECK (source IN ('manual', 'cv_upload', 'linkedin_csv', 'candidate_portal', 'referral', 'other')),
+        CHECK (source IN ('manual', 'cv_upload', 'linkedin_csv', 'candidate_portal', 'outlook_import', 'referral', 'other')),
     status VARCHAR(40) NOT NULL DEFAULT 'new'
         CHECK (status IN ('new', 'active', 'shortlisted', 'interviewing', 'offered', 'hired', 'rejected', 'archived')),
     consent_given BOOLEAN NOT NULL DEFAULT FALSE,

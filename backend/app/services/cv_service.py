@@ -39,6 +39,8 @@ def upload_cv(
     candidate = db.get(Candidate, candidate_id)
     if candidate is None:
         raise CVUploadError("Candidate not found.")
+    if uploaded_by == "recruiter":
+        candidate.source = "cv_upload"
 
     original_filename = upload_file.filename or ""
     extension = Path(original_filename).suffix.lower()
@@ -91,7 +93,7 @@ def upload_cv(
         create_timeline_event(
             db,
             candidate_id=candidate_id,
-            event_type="cv_uploaded",
+            event_type="manual_cv_uploaded" if uploaded_by == "recruiter" else "cv_uploaded",
             title="CV uploaded by candidate" if uploaded_by == "candidate_portal" else "CV uploaded",
             description=(
                 f"Candidate uploaded and extracted text from {original_filename}."
@@ -103,6 +105,7 @@ def upload_cv(
                 "filename": original_filename,
                 "file_size_bytes": file_size,
                 "source": uploaded_by,
+                "candidate_source": "cv_upload" if uploaded_by == "recruiter" else uploaded_by,
                 "application_id": str(application_id) if application_id else None,
             },
         )

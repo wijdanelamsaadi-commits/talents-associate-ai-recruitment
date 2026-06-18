@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
+import { SourceBadge, formatSource } from "../components/SourceBadge";
 import { StatCard } from "../components/StatCard";
 import { getApiErrorMessage } from "../lib/errors";
 import { Candidate, createCandidate, deleteCandidate, getCandidates, updateCandidate } from "../services/candidates";
@@ -26,7 +27,7 @@ const initialFormState: CandidateFormState = {
   status: "new",
 };
 
-const sourceOptions = ["manual", "cv_upload", "linkedin_csv", "candidate_portal", "referral", "other"];
+const sourceOptions = ["manual", "cv_upload", "linkedin_csv", "candidate_portal", "outlook_import", "referral", "other"];
 const statusOptions = ["new", "active", "shortlisted", "interviewing", "offered", "hired", "rejected", "archived"];
 
 function formatStatus(status: string) {
@@ -55,6 +56,7 @@ export function CandidatesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formState, setFormState] = useState<CandidateFormState>(initialFormState);
   const [formError, setFormError] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState("all");
 
   const loadCandidates = async () => {
     setIsLoading(true);
@@ -82,6 +84,13 @@ export function CandidatesPage() {
       interviewing: interviewingCount,
     };
   }, [candidates]);
+
+  const filteredCandidates = useMemo(() => {
+    if (sourceFilter === "all") {
+      return candidates;
+    }
+    return candidates.filter((candidate) => candidate.source === sourceFilter);
+  }, [candidates, sourceFilter]);
 
   const openCreateModal = () => {
     setEditingCandidate(null);
@@ -172,6 +181,24 @@ export function CandidatesPage() {
         </button>
       </div>
 
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <label className="block max-w-xs">
+          <span className="text-sm font-medium text-slate-700">Filter by source</span>
+          <select
+            className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm capitalize outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+            onChange={(event) => setSourceFilter(event.target.value)}
+            value={sourceFilter}
+          >
+            <option value="all">All sources</option>
+            {sourceOptions.map((source) => (
+              <option key={source} value={source}>
+                {formatSource(source)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </section>
+
       {message ? <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p> : null}
       {error ? <section className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</section> : null}
 
@@ -209,7 +236,7 @@ export function CandidatesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {candidates.map((candidate) => (
+                {filteredCandidates.map((candidate) => (
                   <tr key={candidate.id} className="hover:bg-slate-50">
                     <td className="whitespace-nowrap px-5 py-4">
                       <Link className="font-semibold text-[#1D6EEA] hover:text-[#165AC0]" to={`/candidates/${candidate.id}`}>
@@ -219,7 +246,9 @@ export function CandidatesPage() {
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{candidate.email ?? "-"}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{candidate.phone ?? "-"}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{candidate.location ?? "-"}</td>
-                    <td className="whitespace-nowrap px-5 py-4 text-slate-700">{formatStatus(candidate.source)}</td>
+                    <td className="whitespace-nowrap px-5 py-4">
+                      <SourceBadge source={candidate.source} />
+                    </td>
                     <td className="whitespace-nowrap px-5 py-4">
                       <span className="rounded-full bg-[#1D6EEA]/10 px-3 py-1 text-xs font-semibold capitalize text-[#1D6EEA]">
                         {formatStatus(candidate.status)}
@@ -251,10 +280,9 @@ export function CandidatesPage() {
         </section>
       ) : null}
 
-      <EmptyState
-        title="LinkedIn CSV import placeholder"
-        description="Bulk import and enrichment screens will be added after the backend modules are ready."
-      />
+      {!isLoading && !error && candidates.length > 0 && filteredCandidates.length === 0 ? (
+        <EmptyState title="No candidates for this source" description="Change the source filter to view other candidate records." />
+      ) : null}
 
       {isModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#0B1F3A]/40 px-4 py-6">
@@ -319,7 +347,7 @@ export function CandidatesPage() {
                   >
                     {sourceOptions.map((source) => (
                       <option key={source} value={source}>
-                        {formatStatus(source)}
+                        {formatSource(source)}
                       </option>
                     ))}
                   </select>

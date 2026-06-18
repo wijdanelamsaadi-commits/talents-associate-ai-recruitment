@@ -20,12 +20,19 @@ def create_candidate(db: Session, candidate_in: CandidateCreate) -> Candidate:
 
     try:
         db.flush()
+        event_type = "outlook_imported" if candidate.source == "outlook_import" else "candidate_created"
+        title = "Candidate imported from Outlook" if candidate.source == "outlook_import" else "Candidate created"
+        description = (
+            f"{candidate.first_name} {candidate.last_name} was imported from Outlook."
+            if candidate.source == "outlook_import"
+            else f"{candidate.first_name} {candidate.last_name} was added to the database."
+        )
         create_timeline_event(
             db,
             candidate_id=candidate.id,
-            event_type="candidate_created",
-            title="Candidate created",
-            description=f"{candidate.first_name} {candidate.last_name} was added to the database.",
+            event_type=event_type,
+            title=title,
+            description=description,
             metadata={"source": candidate.source, "status": candidate.status},
         )
         db.commit()

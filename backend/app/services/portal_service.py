@@ -137,11 +137,12 @@ def _get_or_create_candidate(db: Session, candidate_data: PortalCandidateData) -
         value = getattr(candidate_data, field)
         if value and getattr(candidate, field) != value:
             updates[field] = value
+    if candidate.source != "candidate_portal":
+        updates["source"] = "candidate_portal"
 
     if updates:
         for field, value in updates.items():
             setattr(candidate, field, value)
-        candidate.source = "candidate_portal"
         create_timeline_event(
             db,
             candidate_id=candidate.id,
@@ -181,9 +182,9 @@ def _get_or_create_application(db: Session, candidate_id: UUID, job_id: UUID) ->
         db,
         candidate_id=candidate_id,
         event_type="candidate_application_submitted",
-        title="Application submitted",
+        title="Candidate applied through portal",
         description="Candidate submitted an application through the public portal.",
-        metadata={"application_id": str(application.id), "job_offer_id": str(job_id)},
+        metadata={"source": "candidate_portal", "application_id": str(application.id), "job_offer_id": str(job_id)},
     )
     db.commit()
     db.refresh(application)

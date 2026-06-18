@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
+import { SourceBadge } from "../components/SourceBadge";
 import { StatCard } from "../components/StatCard";
 import { getApiErrorMessage } from "../lib/errors";
 import { Candidate, getCandidateById } from "../services/candidates";
@@ -18,7 +19,7 @@ const filters: Array<{ label: string; value: TimelineFilter }> = [
 ];
 
 const filterEventTypes: Record<Exclude<TimelineFilter, "all">, string[]> = {
-  cv: ["cv_uploaded", "cv_parsed"],
+  cv: ["cv_uploaded", "manual_cv_uploaded", "cv_parsed"],
   matching: ["ai_match_generated"],
   interview: ["interview_scheduled"],
   evaluation: ["evaluation_added"],
@@ -26,6 +27,7 @@ const filterEventTypes: Record<Exclude<TimelineFilter, "all">, string[]> = {
 
 function eventIcon(eventType: string) {
   if (eventType.startsWith("cv_")) return "CV";
+  if (eventType === "manual_cv_uploaded") return "CV";
   if (eventType === "ai_match_generated") return "AI";
   if (eventType === "interview_scheduled") return "IN";
   if (eventType === "evaluation_added") return "EV";
@@ -116,7 +118,9 @@ export function CandidateDetailsPage() {
           </p>
           <p>
             <span className="block font-semibold text-slate-500">Source</span>
-            {candidate.source.replaceAll("_", " ")}
+            <span className="mt-1 inline-block">
+              <SourceBadge source={candidate.source} />
+            </span>
           </p>
         </div>
       </section>
