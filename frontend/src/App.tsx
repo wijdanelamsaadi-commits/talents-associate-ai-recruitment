@@ -9,6 +9,7 @@ import { CVUploadPage } from "./pages/CVUploadPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EvaluationsPage } from "./pages/EvaluationsPage";
 import { InterviewsPage } from "./pages/InterviewsPage";
+import { ImportsPage } from "./pages/ImportsPage";
 import { JobOffersPage } from "./pages/JobOffersPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MatchingPage } from "./pages/MatchingPage";
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/candidates" element={<CandidatesPage />} />
           <Route path="/candidates/:candidateId" element={<CandidateDetailsPage />} />
           <Route path="/cv-upload" element={<CVUploadPage />} />
+          <Route path="/imports" element={<ImportsPage />} />
           <Route path="/jobs" element={<JobOffersPage />} />
           <Route path="/matching" element={<MatchingPage />} />
           <Route path="/interviews" element={<InterviewsPage />} />

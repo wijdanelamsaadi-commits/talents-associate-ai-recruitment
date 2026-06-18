@@ -12,6 +12,7 @@ from app.models.entities import (
     ExtractedCVData,
     Interview,
     JobOffer,
+    LinkedInCSVImport,
     Skill,
     User,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "ExtractedCVData",
     "Interview",
     "JobOffer",
+    "LinkedInCSVImport",
     "Skill",
     "User",
 ]

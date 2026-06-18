@@ -10,6 +10,7 @@ const navigation: NavigationItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: "D" },
   { label: "Candidates", to: "/candidates", icon: "C" },
   { label: "CV Upload", to: "/cv-upload", icon: "U" },
+  { label: "Imports", to: "/imports", icon: "L" },
   { label: "Job Offers", to: "/jobs", icon: "J" },
   { label: "Matching", to: "/matching", icon: "M" },
   { label: "Interviews", to: "/interviews", icon: "I" },

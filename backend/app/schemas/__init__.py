@@ -4,6 +4,7 @@ from app.schemas.cv import CVFileRead, CVUploadProcessedRead, ExtractedCVTextRea
 from app.schemas.dashboard import DashboardActivity, DashboardCount, DashboardStatsRead
 from app.schemas.evaluation import EvaluationCreate, EvaluationRead, EvaluationUpdate
 from app.schemas.interview import InterviewCreate, InterviewRead, InterviewStatusUpdate, InterviewUpdate
+from app.schemas.imports import LinkedInImportRead, LinkedInImportSummary
 from app.schemas.job import JobOfferCreate, JobOfferRead, JobOfferUpdate
 from app.schemas.matching import MatchingOutput, MatchingResultRead
 from app.schemas.portal import (
@@ -32,6 +33,8 @@ __all__ = [
     "InterviewRead",
     "InterviewStatusUpdate",
     "InterviewUpdate",
+    "LinkedInImportRead",
+    "LinkedInImportSummary",
     "JobOfferCreate",
     "JobOfferRead",
     "JobOfferUpdate",

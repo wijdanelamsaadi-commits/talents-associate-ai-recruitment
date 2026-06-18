@@ -104,6 +104,22 @@ class Candidate(TimestampMixin, Base):
     timeline_events: Mapped[list[CandidateTimelineEvent]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
 
 
+class LinkedInCSVImport(TimestampMixin, Base):
+    __tablename__ = "linkedin_csv_imports"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    imported_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    updated_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    skipped_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    report: Mapped[dict | None] = mapped_column(JSONB)
+
+
 class CVFile(TimestampMixin, Base):
     __tablename__ = "cv_files"
     __table_args__ = (
