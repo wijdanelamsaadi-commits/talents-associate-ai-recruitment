@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas import CVFileRead, ExtractedCVTextRead, ParsedCVRead
+from app.schemas import CVFileRead, CVUploadProcessedRead, ExtractedCVTextRead, ParsedCVRead
 from app.services import cv_service
 from app.services.cv_service import CVUploadError
 from app.services.text_extraction import TextExtractionError
@@ -14,16 +14,32 @@ from app.services.text_extraction import TextExtractionError
 router = APIRouter(prefix="/cv", tags=["cv"])
 
 
-@router.post("/upload", response_model=CVFileRead, status_code=status.HTTP_201_CREATED)
+@router.post("/upload", response_model=CVUploadProcessedRead, status_code=status.HTTP_201_CREATED)
 def upload_cv(
     candidate_id: UUID = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-) -> CVFileRead:
+) -> CVUploadProcessedRead:
     try:
         cv_file = cv_service.upload_cv(db, candidate_id=candidate_id, upload_file=file)
-        cv_service.parse_and_auto_match_cv(db, cv_file_id=cv_file.id)
-        return cv_file
+        extracted_text, matching_results = cv_service.parse_and_auto_match_cv(db, cv_file_id=cv_file.id)
+        return CVUploadProcessedRead(
+            id=cv_file.id,
+            candidate_id=cv_file.candidate_id,
+            original_filename=cv_file.original_filename,
+            storage_path=cv_file.storage_path,
+            mime_type=cv_file.mime_type,
+            file_size_bytes=cv_file.file_size_bytes,
+            checksum_sha256=cv_file.checksum_sha256,
+            parsing_status=cv_file.parsing_status,
+            uploaded_at=cv_file.uploaded_at,
+            created_at=cv_file.created_at,
+            updated_at=cv_file.updated_at,
+            processing_status="completed",
+            confidence_score=float(extracted_text.confidence_score) if extracted_text.confidence_score is not None else None,
+            structured_json=extracted_text.ai_output,
+            matching_result_ids=[result.id for result in matching_results],
+        )
     except CVUploadError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except TextExtractionError as exc:

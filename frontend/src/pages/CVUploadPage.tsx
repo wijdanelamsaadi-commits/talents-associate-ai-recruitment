@@ -8,6 +8,7 @@ import { CVFile, ExtractedCVText, ParsedCV, deleteCVFile, getCVFiles, getCVText,
 
 const allowedExtensions = [".pdf", ".doc", ".docx"];
 const maxFileSizeBytes = 5 * 1024 * 1024;
+type ProcessingStage = "idle" | "uploading" | "parsing" | "matching" | "completed";
 
 function formatBytes(bytes: number | null) {
   if (!bytes) {
@@ -47,6 +48,8 @@ export function CVUploadPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isTextLoading, setIsTextLoading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
+  const [processingStage, setProcessingStage] = useState<ProcessingStage>("idle");
+  const [matchingCount, setMatchingCount] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +100,7 @@ export function CVUploadPage() {
     setMessage(null);
     setExtractedText(null);
     setParsedCV(null);
+    setMatchingCount(null);
 
     if (!selectedCandidateId) {
       setError("Select a candidate before uploading a CV.");
@@ -110,19 +114,39 @@ export function CVUploadPage() {
     }
 
     setIsUploading(true);
+    setProcessingStage("uploading");
     setUploadProgress(0);
     try {
       const uploaded = await uploadCV(selectedCandidateId, selectedFile as File, (progressEvent) => {
         if (progressEvent.total) {
-          setUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(progress);
+          if (progress >= 100) {
+            setProcessingStage("parsing");
+          }
         }
       });
+      setProcessingStage("matching");
       setSelectedCVId(uploaded.id);
-      setMessage(`Uploaded ${uploaded.original_filename} and extracted raw text.`);
+      setParsedCV({
+        cv_file_id: uploaded.id,
+        parsing_status: uploaded.processing_status,
+        confidence_score: uploaded.confidence_score,
+        structured_json: uploaded.structured_json,
+      });
+      setMatchingCount(uploaded.matching_result_ids.length);
+      setMessage(
+        `Uploaded ${uploaded.original_filename}. Text extraction, CV parsing, profile update, and automatic matching completed.`,
+      );
       setSelectedFile(null);
       await loadPageData();
       await handleViewText(uploaded.id);
+      setProcessingStage("completed");
+      setMessage(
+        `Uploaded ${uploaded.original_filename}. Text extraction, CV parsing, profile update, and ${uploaded.matching_result_ids.length} matching result(s) completed.`,
+      );
     } catch (uploadError) {
+      setProcessingStage("idle");
       setError(getApiErrorMessage(uploadError, "CV upload failed. Check the file format, file size, and candidate."));
     } finally {
       setIsUploading(false);
@@ -139,6 +163,14 @@ export function CVUploadPage() {
     try {
       const data = await getCVText(cvFileId);
       setExtractedText(data);
+      if (data.ai_output) {
+        setParsedCV({
+          cv_file_id: data.cv_file_id,
+          parsing_status: data.parsing_status,
+          confidence_score: data.confidence_score,
+          structured_json: data.ai_output,
+        });
+      }
       setMessage("Extracted raw text loaded.");
     } catch (textError) {
       setExtractedText(null);
@@ -188,6 +220,13 @@ export function CVUploadPage() {
   };
 
   const selectedParsedJson = parsedCV?.structured_json;
+  const processingSteps: Array<{ key: ProcessingStage; label: string }> = [
+    { key: "uploading", label: "Uploading" },
+    { key: "parsing", label: "Parsing" },
+    { key: "matching", label: "Matching" },
+    { key: "completed", label: "Completed" },
+  ];
+  const activeStepIndex = processingSteps.findIndex((step) => step.key === processingStage);
 
   return (
     <div className="space-y-6">
@@ -196,7 +235,8 @@ export function CVUploadPage() {
           <div>
             <h2 className="text-lg font-semibold text-[#0B1F3A]">Upload candidate CV</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Select a candidate, upload a PDF or DOCX file, then review extracted text and heuristic parsing output.
+              Select a candidate and upload a PDF or DOCX file. The platform extracts text, parses the CV, updates the profile,
+              and runs matching automatically.
             </p>
           </div>
           <Link className="text-sm font-semibold text-[#1D6EEA] hover:text-[#165AC0]" to="/candidates">
@@ -243,17 +283,37 @@ export function CVUploadPage() {
               disabled={isUploading || isLoadingPage}
               type="submit"
             >
-              {isUploading ? "Uploading..." : "Upload CV"}
+              {isUploading ? "Processing..." : "Upload and process CV"}
             </button>
           </div>
         </form>
 
-        {isUploading && uploadProgress !== null ? (
+        {(isUploading || processingStage === "completed") && processingStage !== "idle" ? (
           <div className="mt-5">
             <div className="h-2 rounded-full bg-slate-100">
               <div className="h-2 rounded-full bg-[#1D6EEA]" style={{ width: `${uploadProgress}%` }} />
             </div>
-            <p className="mt-2 text-xs text-slate-500">Upload progress: {uploadProgress}%</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-4">
+              {processingSteps.map((step, index) => {
+                const isDone = activeStepIndex >= index;
+                return (
+                  <div
+                    className={[
+                      "rounded-lg border px-3 py-2 text-xs font-semibold",
+                      isDone ? "border-[#1D6EEA] bg-[#1D6EEA]/10 text-[#1D6EEA]" : "border-slate-200 bg-white text-slate-500",
+                    ].join(" ")}
+                    key={step.key}
+                  >
+                    {step.label}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              {processingStage === "completed"
+                ? `Completed. ${matchingCount ?? 0} automatic matching result(s) saved.`
+                : `Current step: ${processingSteps[activeStepIndex]?.label ?? "Uploading"}. Upload progress: ${uploadProgress ?? 0}%`}
+            </p>
           </div>
         ) : null}
 
@@ -322,14 +382,6 @@ export function CVUploadPage() {
                             View text
                           </button>
                           <button
-                            className="rounded-lg bg-[#1D6EEA] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#165AC0] disabled:cursor-not-allowed disabled:opacity-60"
-                            disabled={isParsing}
-                            onClick={() => void handleParse(cvFile.id)}
-                            type="button"
-                          >
-                            {isParsing && selectedCVId === cvFile.id ? "Parsing..." : "Parse CV"}
-                          </button>
-                          <button
                             className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
                             onClick={() => void handleDeleteCV(cvFile)}
                             type="button"
@@ -345,6 +397,28 @@ export function CVUploadPage() {
             </table>
           </div>
         </section>
+      ) : null}
+
+      {cvFiles.length > 0 ? (
+        <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <summary className="cursor-pointer text-sm font-semibold text-[#0B1F3A]">Admin debugging actions</summary>
+          <p className="mt-2 text-sm text-slate-600">
+            Manual parsing is kept only for troubleshooting. Normal CV uploads already parse and match automatically.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {cvFiles.map((cvFile) => (
+              <button
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isParsing}
+                key={cvFile.id}
+                onClick={() => void handleParse(cvFile.id)}
+                type="button"
+              >
+                {isParsing && selectedCVId === cvFile.id ? "Parsing..." : `Reprocess ${cvFile.original_filename}`}
+              </button>
+            ))}
+          </div>
+        </details>
       ) : null}
 
       {extractedText ? (

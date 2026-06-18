@@ -16,6 +16,13 @@ export type CVFile = {
   updated_at: string;
 };
 
+export type CVUploadProcessed = CVFile & {
+  processing_status: string;
+  confidence_score: number | null;
+  structured_json: ParsedCVJson | null;
+  matching_result_ids: string[];
+};
+
 export type ExtractedCVText = {
   cv_file_id: string;
   candidate_id: string;
@@ -48,12 +55,12 @@ export async function uploadCV(
   candidateId: string,
   file: File,
   onUploadProgress?: (progressEvent: AxiosProgressEvent) => void,
-): Promise<CVFile> {
+): Promise<CVUploadProcessed> {
   const formData = new FormData();
   formData.append("candidate_id", candidateId);
   formData.append("file", file);
 
-  const response = await apiClient.post<CVFile>("/api/cv/upload", formData, {
+  const response = await apiClient.post<CVUploadProcessed>("/api/cv/upload", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },

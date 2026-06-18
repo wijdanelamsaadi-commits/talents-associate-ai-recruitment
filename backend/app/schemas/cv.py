@@ -20,6 +20,13 @@ class CVFileRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CVUploadProcessedRead(CVFileRead):
+    processing_status: str
+    confidence_score: float | None
+    structured_json: dict | None
+    matching_result_ids: list[UUID]
+
+
 class ExtractedCVTextRead(BaseModel):
     cv_file_id: UUID
     candidate_id: UUID

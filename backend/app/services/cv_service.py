@@ -72,7 +72,7 @@ def upload_cv(
             mime_type=upload_file.content_type,
             file_size_bytes=file_size,
             checksum_sha256=checksum,
-            parsing_status="parsed",
+            parsing_status="processing",
         )
         db.add(cv_file)
         db.flush()

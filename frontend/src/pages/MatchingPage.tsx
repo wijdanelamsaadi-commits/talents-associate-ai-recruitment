@@ -155,18 +155,40 @@ export function MatchingPage() {
       <section className="grid gap-4 md:grid-cols-3">
         <StatCard label="Average score" value={`${averageScore}%`} detail="Across saved matching results" />
         <StatCard label="Strong matches" value={String(strongMatches)} detail="Candidates scoring 80% or higher" />
-        <StatCard label="Saved results" value={String(results.length)} detail="Persisted in the backend database" />
+        <StatCard label="Saved results" value={String(results.length)} detail="Created automatically after CV processing" />
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-[#0B1F3A]">Run candidate matching</h2>
-            <p className="mt-1 text-sm text-slate-600">Select a parsed candidate profile and compare it with a job offer.</p>
+            <h2 className="text-lg font-semibold text-[#0B1F3A]">Automatic matching results</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Matching is generated automatically after recruiter CV upload or candidate portal application.
+            </p>
           </div>
           <div className="flex gap-3 text-sm font-semibold">
             <Link className="text-[#1D6EEA] hover:text-[#165AC0]" to="/cv-upload">
-              Parse CV
+              Upload CV
+            </Link>
+            <Link className="text-[#1D6EEA] hover:text-[#165AC0]" to="/jobs">
+              Manage jobs
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <details className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <summary className="cursor-pointer text-sm font-semibold text-[#0B1F3A]">Admin debugging actions</summary>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="mt-5 text-lg font-semibold text-[#0B1F3A]">Manual candidate matching</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Use this only to troubleshoot or regenerate a specific candidate/job comparison. Normal matching runs automatically.
+            </p>
+          </div>
+          <div className="flex gap-3 text-sm font-semibold">
+            <Link className="text-[#1D6EEA] hover:text-[#165AC0]" to="/cv-upload">
+              Upload CV
             </Link>
             <Link className="text-[#1D6EEA] hover:text-[#165AC0]" to="/jobs">
               Manage jobs
@@ -227,7 +249,7 @@ export function MatchingPage() {
             <span className="font-semibold">{selectedJob?.title ?? "no job selected"}</span>.
           </p>
         ) : null}
-      </section>
+      </details>
 
       {message ? <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p> : null}
       {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
@@ -291,7 +313,7 @@ export function MatchingPage() {
       {!isLoading && results.length === 0 ? (
         <EmptyState
           title="No matching results yet"
-          description="Run a candidate and job comparison to save the first matching result."
+          description="Upload a CV or submit a portal application to generate matching results automatically."
         />
       ) : null}
 

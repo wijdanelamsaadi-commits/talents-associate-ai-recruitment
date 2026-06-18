@@ -1,6 +1,6 @@
 from app.schemas.auth import RecruiterLogin, RecruiterRegister, TokenResponse, UserRead
 from app.schemas.candidate import CandidateCreate, CandidateRead, CandidateUpdate
-from app.schemas.cv import CVFileRead, ExtractedCVTextRead, ParsedCVRead
+from app.schemas.cv import CVFileRead, CVUploadProcessedRead, ExtractedCVTextRead, ParsedCVRead
 from app.schemas.dashboard import DashboardActivity, DashboardCount, DashboardStatsRead
 from app.schemas.evaluation import EvaluationCreate, EvaluationRead, EvaluationUpdate
 from app.schemas.interview import InterviewCreate, InterviewRead, InterviewStatusUpdate, InterviewUpdate
@@ -11,6 +11,7 @@ from app.schemas.timeline import TimelineEventCreate, TimelineEventRead
 
 __all__ = [
     "CVFileRead",
+    "CVUploadProcessedRead",
     "CandidateCreate",
     "CandidateRead",
     "CandidateUpdate",
