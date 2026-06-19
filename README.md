@@ -93,6 +93,100 @@ Quand `LLM_ENABLED=false`, quand `OPENAI_API_KEY` est vide, ou si l'appel LLM é
 La sortie structurée contient notamment `prenom`, `nom`, `email`, `phone`, `linkedin_url`, `current_company`, `current_title`, `total_experience_years`, `detailed_experience`, `education`, `skills`, `languages`, `soft_skills`, `gender`, `parser_used` et `parser_confidence`.
 Le prompt interdit explicitement l'invention d'informations : les champs absents du CV doivent rester à `null` ou `[]`.
 
+### Structure JSON Talents Associate
+
+La sortie structurée conserve les clés techniques utilisées par la base (`first_name`, `last_name`, `phone`, `linkedin_url`, `current_company`, `current_title`, `total_experience_years`, `detailed_experience`, `education`, `skills`, `languages`, `gender`) et ajoute les alias métier du cahier des charges (`prenom`, `nom`, `telephone`, `linkedin`, `entreprise_actuelle`, `poste_actuel`, `experience_totale`, `experiences_detaillees`, `diplomes`, `competences`, `langues`, `sexe`).
+
+Notes de sécurité :
+
+- Le sexe ne doit jamais être deviné. Il doit rester `null` sauf s'il est explicitement présent dans le CV.
+- Aucune information absente du CV ne doit être inventée. Les champs non trouvés doivent rester à `null` ou `[]`.
+
+Exemple de sortie JSON complet :
+
+```json
+{
+  "prenom": "Sara",
+  "nom": "El Amrani",
+  "first_name": "Sara",
+  "last_name": "El Amrani",
+  "email": "sara.elamrani@example.com",
+  "phone": "+212 600 000 000",
+  "telephone": "+212 600 000 000",
+  "linkedin_url": "https://www.linkedin.com/in/sara-elamrani",
+  "linkedin": "https://www.linkedin.com/in/sara-elamrani",
+  "current_company": "Atlas Consulting",
+  "entreprise_actuelle": "Atlas Consulting",
+  "current_title": "Talent Acquisition Specialist",
+  "poste_actuel": "Talent Acquisition Specialist",
+  "total_experience_years": 5,
+  "experience_totale": 5,
+  "experience": [
+    "Talent Acquisition Specialist - Atlas Consulting - 2021 - 2024"
+  ],
+  "detailed_experience": [
+    {
+      "company": "Atlas Consulting",
+      "entreprise": "Atlas Consulting",
+      "title": "Talent Acquisition Specialist",
+      "poste": "Talent Acquisition Specialist",
+      "start_date": "2021",
+      "date_debut": "2021",
+      "end_date": "2024",
+      "date_fin": "2024",
+      "location": "Casablanca",
+      "description": "Gestion du recrutement et sourcing de profils cadres."
+    }
+  ],
+  "experiences_detaillees": [
+    {
+      "company": "Atlas Consulting",
+      "entreprise": "Atlas Consulting",
+      "title": "Talent Acquisition Specialist",
+      "poste": "Talent Acquisition Specialist",
+      "start_date": "2021",
+      "date_debut": "2021",
+      "end_date": "2024",
+      "date_fin": "2024",
+      "location": "Casablanca",
+      "description": "Gestion du recrutement et sourcing de profils cadres."
+    }
+  ],
+  "education": [
+    {
+      "degree": "Master Ressources Humaines",
+      "diplome": "Master Ressources Humaines",
+      "school": "Université Hassan II",
+      "etablissement": "Université Hassan II",
+      "obtained_date": "2019",
+      "date_obtention": "2019",
+      "description": null
+    }
+  ],
+  "diplomes": [
+    {
+      "degree": "Master Ressources Humaines",
+      "diplome": "Master Ressources Humaines",
+      "school": "Université Hassan II",
+      "etablissement": "Université Hassan II",
+      "obtained_date": "2019",
+      "date_obtention": "2019",
+      "description": null
+    }
+  ],
+  "skills": ["Sourcing", "Entretiens", "LinkedIn Recruiter"],
+  "competences": ["Sourcing", "Entretiens", "LinkedIn Recruiter"],
+  "languages": ["Français", "Anglais", "Arabe"],
+  "langues": ["Français", "Anglais", "Arabe"],
+  "certifications": [],
+  "soft_skills": ["Communication", "Organisation"],
+  "gender": null,
+  "sexe": null,
+  "parser_used": "llm",
+  "parser_confidence": 0.9
+}
+```
+
 ## Notes
 
 - Outlook CV attachments can be handled first with a VBA macro that saves attachments locally, then those CV files can be imported into the platform. Microsoft Graph integration can remain optional for a later version. See [docs/outlook-cv-extraction.md](docs/outlook-cv-extraction.md).

@@ -28,34 +28,51 @@ Format JSON obligatoire :
   "last_name": null,
   "email": null,
   "phone": null,
+  "telephone": null,
   "linkedin_url": null,
+  "linkedin": null,
   "current_company": null,
+  "entreprise_actuelle": null,
   "current_title": null,
+  "poste_actuel": null,
   "total_experience_years": null,
+  "experience_totale": null,
   "experience": [],
   "detailed_experience": [
     {
       "company": null,
+      "entreprise": null,
       "title": null,
+      "poste": null,
       "start_date": null,
+      "date_debut": null,
       "end_date": null,
+      "date_fin": null,
       "location": null,
       "description": null
     }
   ],
+  "experiences_detaillees": [],
   "education": [
     {
       "degree": null,
+      "diplome": null,
       "school": null,
+      "etablissement": null,
       "obtained_date": null,
+      "date_obtention": null,
       "description": null
     }
   ],
+  "diplomes": [],
   "skills": [],
+  "competences": [],
   "languages": [],
+  "langues": [],
   "certifications": [],
   "soft_skills": [],
   "gender": null,
+  "sexe": null,
   "parser_confidence": null
 }
 """.strip()
@@ -68,18 +85,28 @@ EXPECTED_FIELDS: dict[str, Any] = {
     "last_name": None,
     "email": None,
     "phone": None,
+    "telephone": None,
     "linkedin_url": None,
+    "linkedin": None,
     "current_company": None,
+    "entreprise_actuelle": None,
     "current_title": None,
+    "poste_actuel": None,
     "total_experience_years": None,
+    "experience_totale": None,
     "experience": [],
     "detailed_experience": [],
+    "experiences_detaillees": [],
     "education": [],
+    "diplomes": [],
     "skills": [],
+    "competences": [],
     "languages": [],
+    "langues": [],
     "certifications": [],
     "soft_skills": [],
     "gender": None,
+    "sexe": None,
     "parser_confidence": None,
 }
 
@@ -173,6 +200,28 @@ def _normalize_llm_payload(payload: dict[str, Any]) -> dict[str, Any]:
     normalized["last_name"] = normalized["last_name"] or normalized["nom"]
     normalized["prenom"] = normalized["prenom"] or normalized["first_name"]
     normalized["nom"] = normalized["nom"] or normalized["last_name"]
+    normalized["phone"] = normalized["phone"] or normalized["telephone"]
+    normalized["telephone"] = normalized["telephone"] or normalized["phone"]
+    normalized["linkedin_url"] = normalized["linkedin_url"] or normalized["linkedin"]
+    normalized["linkedin"] = normalized["linkedin"] or normalized["linkedin_url"]
+    normalized["current_company"] = normalized["current_company"] or normalized["entreprise_actuelle"]
+    normalized["entreprise_actuelle"] = normalized["entreprise_actuelle"] or normalized["current_company"]
+    normalized["current_title"] = normalized["current_title"] or normalized["poste_actuel"]
+    normalized["poste_actuel"] = normalized["poste_actuel"] or normalized["current_title"]
+    normalized["total_experience_years"] = normalized["total_experience_years"] or normalized["experience_totale"]
+    normalized["experience_totale"] = normalized["experience_totale"] or normalized["total_experience_years"]
+    normalized["detailed_experience"] = _normalize_experience_items(
+        normalized["detailed_experience"] or normalized["experiences_detaillees"]
+    )
+    normalized["experiences_detaillees"] = normalized["detailed_experience"]
+    normalized["education"] = _normalize_education_items(normalized["education"] or normalized["diplomes"])
+    normalized["diplomes"] = normalized["education"]
+    normalized["skills"] = normalized["skills"] or normalized["competences"]
+    normalized["competences"] = normalized["competences"] or normalized["skills"]
+    normalized["languages"] = normalized["languages"] or normalized["langues"]
+    normalized["langues"] = normalized["langues"] or normalized["languages"]
+    normalized["gender"] = normalized["gender"] or normalized["sexe"]
+    normalized["sexe"] = normalized["sexe"] or normalized["gender"]
 
     if normalized["detailed_experience"] and not normalized["experience"]:
         normalized["experience"] = [
@@ -185,6 +234,46 @@ def _normalize_llm_payload(payload: dict[str, Any]) -> dict[str, Any]:
         ]
 
     return normalized
+
+
+def _normalize_experience_items(items: Any) -> list[Any]:
+    if not isinstance(items, list):
+        return []
+    normalized_items = []
+    for item in items:
+        if not isinstance(item, dict):
+            normalized_items.append(item)
+            continue
+        normalized_item = dict(item)
+        normalized_item["company"] = normalized_item.get("company") or normalized_item.get("entreprise")
+        normalized_item["entreprise"] = normalized_item.get("entreprise") or normalized_item.get("company")
+        normalized_item["title"] = normalized_item.get("title") or normalized_item.get("poste")
+        normalized_item["poste"] = normalized_item.get("poste") or normalized_item.get("title")
+        normalized_item["start_date"] = normalized_item.get("start_date") or normalized_item.get("date_debut")
+        normalized_item["date_debut"] = normalized_item.get("date_debut") or normalized_item.get("start_date")
+        normalized_item["end_date"] = normalized_item.get("end_date") or normalized_item.get("date_fin")
+        normalized_item["date_fin"] = normalized_item.get("date_fin") or normalized_item.get("end_date")
+        normalized_items.append(normalized_item)
+    return normalized_items
+
+
+def _normalize_education_items(items: Any) -> list[Any]:
+    if not isinstance(items, list):
+        return []
+    normalized_items = []
+    for item in items:
+        if not isinstance(item, dict):
+            normalized_items.append(item)
+            continue
+        normalized_item = dict(item)
+        normalized_item["degree"] = normalized_item.get("degree") or normalized_item.get("diplome")
+        normalized_item["diplome"] = normalized_item.get("diplome") or normalized_item.get("degree")
+        normalized_item["school"] = normalized_item.get("school") or normalized_item.get("etablissement")
+        normalized_item["etablissement"] = normalized_item.get("etablissement") or normalized_item.get("school")
+        normalized_item["obtained_date"] = normalized_item.get("obtained_date") or normalized_item.get("date_obtention")
+        normalized_item["date_obtention"] = normalized_item.get("date_obtention") or normalized_item.get("obtained_date")
+        normalized_items.append(normalized_item)
+    return normalized_items
 
 
 def _clean_value(value: Any, default: Any) -> Any:
@@ -230,6 +319,16 @@ def _heuristic_result(raw_text: str) -> ParsedCV:
     data["last_name"] = parsed.data.get("last_name") or None
     data["email"] = parsed.data.get("email") or None
     data["phone"] = parsed.data.get("phone") or None
+    data["telephone"] = data["phone"]
+    data["linkedin"] = data["linkedin_url"]
+    data["entreprise_actuelle"] = data["current_company"]
+    data["poste_actuel"] = data["current_title"]
+    data["experience_totale"] = data["total_experience_years"]
+    data["experiences_detaillees"] = data["detailed_experience"]
+    data["diplomes"] = data["education"]
+    data["competences"] = data["skills"]
+    data["langues"] = data["languages"]
+    data["sexe"] = data["gender"]
     data["parser_used"] = "heuristic"
     data["parser_confidence"] = parsed.confidence_score
     return ParsedCV(data=data, confidence_score=parsed.confidence_score)
