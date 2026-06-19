@@ -35,6 +35,13 @@ The API will run at `http://localhost:8000`.
 - `GET /api/matching/results`: list matching results.
 - `GET /api/matching/candidate/{candidate_id}`: list matching results for one candidate.
 - `GET /api/interviews`: interviews module placeholder.
+- `POST /api/portal/auth/register`: create a candidate portal account.
+- `POST /api/portal/auth/login`: login as a candidate.
+- `GET /api/portal/profile`: read the authenticated candidate profile.
+- `PUT /api/portal/profile`: update the authenticated candidate profile.
+- `PUT /api/portal/profile/cv`: upload or replace the authenticated candidate CV.
+- `GET /api/portal/applications`: list authenticated candidate applications and matching scores.
+- `POST /api/portal/jobs/{id}/apply-auth`: apply to a public job with the authenticated candidate profile and latest CV.
 
 ## Database Migrations
 

@@ -5,7 +5,7 @@ import { getApiErrorMessage } from "../lib/errors";
 import { PortalApplicationStatusResponse, getPortalApplicationStatus } from "../services/portal";
 
 function formatLabel(value: string | null) {
-  return value ? value.replaceAll("_", " ") : "Application submitted";
+  return value ? value.replaceAll("_", " ") : "Candidature envoyée";
 }
 
 export function PortalStatusPage() {
@@ -23,7 +23,7 @@ export function PortalStatusPage() {
       const data = await getPortalApplicationStatus(email);
       setStatus(data);
     } catch (statusError) {
-      setError(getApiErrorMessage(statusError, "Unable to load application status."));
+      setError(getApiErrorMessage(statusError, "Impossible de charger le suivi de candidature."));
     } finally {
       setIsLoading(false);
     }
@@ -32,27 +32,27 @@ export function PortalStatusPage() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold uppercase text-[#1D6EEA]">Application tracking</p>
-        <h1 className="mt-2 text-3xl font-semibold text-[#0B1F3A]">Check your application status</h1>
+        <p className="text-sm font-semibold uppercase text-[#E8590C]">Suivi de candidature</p>
+        <h1 className="mt-2 text-3xl font-semibold text-[#0B1F3A]">Consulter le suivi de candidature</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Enter the email address used in your application form to see your submitted jobs and current stage.
+          Saisissez l'email utilisé dans votre candidature pour consulter les offres, l'étape actuelle et le score de matching.
         </p>
 
         <form className="mt-6 flex flex-col gap-3 sm:flex-row" onSubmit={handleSubmit}>
           <input
-            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C] focus:ring-2 focus:ring-[#E8590C]/20"
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="candidate@example.com"
+            placeholder="candidat@example.com"
             required
             type="email"
             value={email}
           />
           <button
-            className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#165AC0] disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="rounded-lg bg-[#E8590C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c94b08] disabled:cursor-not-allowed disabled:bg-slate-400"
             disabled={isLoading}
             type="submit"
           >
-            {isLoading ? "Checking..." : "Check status"}
+            {isLoading ? "Vérification..." : "Consulter le suivi"}
           </button>
         </form>
 
@@ -63,8 +63,8 @@ export function PortalStatusPage() {
         <section className="mt-6">
           {status.applications.length === 0 ? (
             <EmptyState
-              title="No applications found"
-              description="No application is linked to this email address yet. Check the spelling or apply to an open job."
+              title="Aucune candidature trouvée"
+              description="Aucune candidature n'est liée à cet email. Vérifiez l'adresse ou postulez à une offre ouverte."
             />
           ) : (
             <div className="space-y-4">
@@ -75,30 +75,30 @@ export function PortalStatusPage() {
                       <h2 className="text-lg font-semibold text-[#0B1F3A]">{application.job_title}</h2>
                       <p className="mt-1 text-sm text-slate-600">{application.company_name ?? "Talents Associate"}</p>
                     </div>
-                    <span className="rounded-full bg-[#1D6EEA]/10 px-3 py-1 text-xs font-semibold capitalize text-[#1D6EEA]">
+                    <span className="rounded-full bg-[#E8590C]/10 px-3 py-1 text-xs font-semibold capitalize text-[#E8590C]">
                       {formatLabel(application.application_status)}
                     </span>
                   </div>
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
                     <div className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-xs font-semibold uppercase text-slate-500">Stage</p>
+                      <p className="text-xs font-semibold uppercase text-slate-500">Étape</p>
                       <p className="mt-1 text-sm font-semibold capitalize text-[#0B1F3A]">{formatLabel(application.current_stage)}</p>
                     </div>
                     <div className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-xs font-semibold uppercase text-slate-500">Match</p>
+                      <p className="text-xs font-semibold uppercase text-slate-500">Score de matching</p>
                       <p className="mt-1 text-sm font-semibold text-[#0B1F3A]">
-                        {application.best_matching_score === null ? "Pending" : `${application.best_matching_score}%`}
+                        {application.best_matching_score === null ? "En attente" : `${application.best_matching_score}%`}
                       </p>
                     </div>
                     <div className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-xs font-semibold uppercase text-slate-500">Applied</p>
+                      <p className="text-xs font-semibold uppercase text-slate-500">Date</p>
                       <p className="mt-1 text-sm font-semibold text-[#0B1F3A]">
                         {new Date(application.applied_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   {application.recommendation ? (
-                    <p className="mt-3 text-sm capitalize text-slate-600">Recommendation: {formatLabel(application.recommendation)}</p>
+                    <p className="mt-3 text-sm capitalize text-slate-600">Recommandation : {formatLabel(application.recommendation)}</p>
                   ) : null}
                 </article>
               ))}

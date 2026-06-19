@@ -55,6 +55,20 @@ Public candidate portal:
 
 - Job list: `http://localhost:5173/portal`
 - Job details and CV application form: `http://localhost:5173/portal/jobs/{jobId}`
+- Candidate account creation: `http://localhost:5173/portal/register`
+- Candidate login/profile: `http://localhost:5173/portal/login`, then `http://localhost:5173/portal/profile`
+- Candidate applications: `http://localhost:5173/portal/applications`
+
+## Intégration avec le site Talents Associate
+
+Le portail candidat est conçu comme une extension légère du site actuel Talents Associate et du formulaire de recrutement existant.
+
+- Le site actuel peut rediriger vers `/portal/register` pour créer un compte candidat réutilisable.
+- Les pages carrières ou opportunités peuvent rediriger vers `/portal/jobs` pour afficher les offres disponibles.
+- Une URL `/portal/apply` reste prévue comme point d'entrée intégrable depuis le site existant, avec redirection vers les offres.
+- Le formulaire actuel `talentsag.ma/formulaire-de-recrutement` peut être remplacé progressivement ou relié à ce portail.
+- Après connexion, `/portal/profile` permet au candidat de compléter son profil, déposer ou remplacer son CV, puis postuler aux offres.
+- Le back-office recruteur reste séparé sous `/login`, `/dashboard`, `/candidates`, `/jobs`, `/matching`, `/interviews` et `/evaluations`.
 
 Build the frontend with:
 

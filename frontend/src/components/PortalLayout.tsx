@@ -1,21 +1,27 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 
+import { getStoredCandidateToken } from "../lib/portalAuthStorage";
+import { logoutCandidate } from "../services/portal";
+
 const portalLinks = [
-  { label: "Home", to: "/portal" },
-  { label: "Jobs", to: "/portal/jobs" },
-  { label: "Application status", to: "/portal/status" },
+  { label: "Accueil", to: "/portal" },
+  { label: "Offres disponibles", to: "/portal/jobs" },
+  { label: "Profil candidat", to: "/portal/profile" },
+  { label: "Mes candidatures", to: "/portal/applications" },
 ];
 
 export function PortalLayout() {
+  const isCandidateLoggedIn = Boolean(getStoredCandidateToken());
+
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-[#F6F8FB] text-slate-900">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link to="/portal" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0B1F3A] text-sm font-bold text-white">TA</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E8590C] text-sm font-bold text-white">TA</span>
             <span>
               <span className="block text-sm font-semibold text-[#0B1F3A]">Talents Associate</span>
-              <span className="block text-xs text-slate-500">Candidate careers</span>
+              <span className="block text-xs text-slate-500">Espace candidat</span>
             </span>
           </Link>
 
@@ -25,7 +31,7 @@ export function PortalLayout() {
                 className={({ isActive }) =>
                   [
                     "rounded-lg px-3 py-2 text-sm font-semibold transition",
-                    isActive ? "bg-[#1D6EEA]/10 text-[#1D6EEA]" : "text-slate-600 hover:bg-slate-100 hover:text-[#0B1F3A]",
+                    isActive ? "bg-[#E8590C]/10 text-[#E8590C]" : "text-slate-600 hover:bg-slate-100 hover:text-[#0B1F3A]",
                   ].join(" ")
                 }
                 end={item.to === "/portal"}
@@ -35,11 +41,32 @@ export function PortalLayout() {
                 {item.label}
               </NavLink>
             ))}
+            {isCandidateLoggedIn ? (
+              <button
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:border-[#E8590C] hover:text-[#E8590C]"
+                onClick={() => {
+                  logoutCandidate();
+                  window.location.href = "/portal/login";
+                }}
+                type="button"
+              >
+                Déconnexion
+              </button>
+            ) : (
+              <>
+                <Link className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-[#0B1F3A]" to="/portal/login">
+                  Connexion
+                </Link>
+                <Link className="rounded-lg bg-[#E8590C] px-3 py-2 text-sm font-semibold text-white hover:bg-[#c94b08]" to="/portal/register">
+                  Créer un compte
+                </Link>
+              </>
+            )}
             <Link
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:border-[#1D6EEA] hover:text-[#1D6EEA]"
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:border-[#0B1F3A] hover:text-[#0B1F3A]"
               to="/login"
             >
-              Recruiter login
+              Espace recruteur
             </Link>
           </nav>
         </div>

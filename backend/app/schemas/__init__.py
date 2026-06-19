@@ -8,6 +8,12 @@ from app.schemas.imports import LinkedInImportRead, LinkedInImportSummary, Outlo
 from app.schemas.job import JobOfferCreate, JobOfferRead, JobOfferUpdate
 from app.schemas.matching import MatchingOutput, MatchingResultRead
 from app.schemas.portal import (
+    CandidateApplicationRead,
+    CandidateLogin,
+    CandidateProfileRead,
+    CandidateProfileUpdate,
+    CandidateRegister,
+    CandidateTokenResponse,
     PortalApplicationResponse,
     PortalApplicationStatusItem,
     PortalApplicationStatusResponse,
@@ -19,8 +25,14 @@ from app.schemas.timeline import TimelineEventCreate, TimelineEventRead
 __all__ = [
     "CVFileRead",
     "CVUploadProcessedRead",
+    "CandidateApplicationRead",
     "CandidateCreate",
+    "CandidateLogin",
+    "CandidateProfileRead",
+    "CandidateProfileUpdate",
     "CandidateRead",
+    "CandidateRegister",
+    "CandidateTokenResponse",
     "CandidateUpdate",
     "DashboardActivity",
     "DashboardCount",

@@ -28,13 +28,36 @@ def create_access_token(user_id: UUID, email: str) -> str:
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
+def create_candidate_access_token(candidate_id: UUID, email: str) -> str:
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload = {
+        "sub": str(candidate_id),
+        "email": email,
+        "exp": expires_at,
+        "type": "candidate_access",
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
 def decode_access_token(token: str) -> dict:
+    payload = _decode_jwt(token)
+    if payload.get("type") != "access" or not payload.get("sub"):
+        raise ValueError("Invalid access token.")
+
+    return payload
+
+
+def decode_candidate_access_token(token: str) -> dict:
+    payload = _decode_jwt(token)
+    if payload.get("type") != "candidate_access" or not payload.get("sub"):
+        raise ValueError("Invalid candidate access token.")
+    return payload
+
+
+def _decode_jwt(token: str) -> dict:
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
     except JWTError as exc:
         raise ValueError("Invalid or expired access token.") from exc
-
-    if payload.get("type") != "access" or not payload.get("sub"):
-        raise ValueError("Invalid access token.")
 
     return payload

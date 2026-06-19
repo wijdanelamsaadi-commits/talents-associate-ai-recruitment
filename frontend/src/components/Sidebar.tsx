@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+﻿import { NavLink } from "react-router-dom";
 
 type NavigationItem = {
   label: string;
@@ -7,28 +7,28 @@ type NavigationItem = {
 };
 
 const navigation: NavigationItem[] = [
-  { label: "Dashboard", to: "/dashboard", icon: "D" },
-  { label: "Candidates", to: "/candidates", icon: "C" },
-  { label: "CV Upload", to: "/cv-upload", icon: "U" },
-  { label: "Imports", to: "/imports", icon: "L" },
-  { label: "Outlook Import", to: "/outlook-import", icon: "O" },
-  { label: "Job Offers", to: "/jobs", icon: "J" },
+  { label: "Tableau de bord", to: "/dashboard", icon: "T" },
+  { label: "Candidats", to: "/candidates", icon: "C" },
+  { label: "Upload CV", to: "/cv-upload", icon: "CV" },
+  { label: "Imports LinkedIn", to: "/imports", icon: "LI" },
+  { label: "Imports Outlook", to: "/outlook-import", icon: "O" },
+  { label: "Offres", to: "/jobs", icon: "O" },
   { label: "Matching", to: "/matching", icon: "M" },
-  { label: "Interviews", to: "/interviews", icon: "I" },
-  { label: "Evaluations", to: "/evaluations", icon: "E" },
+  { label: "Entretiens", to: "/interviews", icon: "E" },
+  { label: "Évaluations", to: "/evaluations", icon: "EV" },
 ];
 
 export function Sidebar() {
   return (
-    <aside className="fixed inset-x-0 top-0 z-30 border-b border-white/10 bg-[#0B1F3A] text-white lg:inset-y-0 lg:right-auto lg:w-72 lg:border-b-0">
+    <aside className="fixed inset-x-0 top-0 z-30 border-b border-white/10 bg-[#061A33] text-white shadow-xl shadow-slate-950/10 lg:inset-y-0 lg:right-auto lg:w-72 lg:border-b-0">
       <div className="flex h-16 items-center justify-between px-4 lg:h-auto lg:flex-col lg:items-stretch lg:gap-8 lg:px-6 lg:py-6">
         <NavLink to="/dashboard" className="flex min-w-0 items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#1D6EEA] text-sm font-bold">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#E8590C] text-sm font-bold shadow-sm">
             TA
           </span>
           <span className="hidden min-w-0 sm:block">
             <span className="block truncate text-sm font-semibold">Talents Associate</span>
-            <span className="block truncate text-xs text-slate-300">Recruitment AI</span>
+            <span className="block truncate text-xs text-slate-300">Espace recruteur</span>
           </span>
         </NavLink>
 
@@ -41,12 +41,12 @@ export function Sidebar() {
                 [
                   "flex h-10 shrink-0 items-center gap-3 rounded-lg px-3 text-sm font-medium transition",
                   isActive
-                    ? "bg-white text-[#0B1F3A]"
+                    ? "bg-white text-[#061A33] shadow-sm"
                     : "text-slate-300 hover:bg-white/10 hover:text-white",
                 ].join(" ")
               }
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-current/10 text-xs font-bold">
+              <span className="flex h-6 min-w-6 items-center justify-center rounded-md bg-[#E8590C]/15 px-1 text-[11px] font-bold text-[#F97316]">
                 {item.icon}
               </span>
               <span className="hidden lg:inline">{item.label}</span>
@@ -55,9 +55,9 @@ export function Sidebar() {
         </nav>
 
         <div className="hidden rounded-lg border border-white/10 bg-white/5 p-4 lg:block">
-          <p className="text-sm font-semibold">Recruitment workspace</p>
+          <p className="text-sm font-semibold">Espace recruteur</p>
           <p className="mt-1 text-xs leading-5 text-slate-300">
-            Centralize candidates, CV parsing, matching, and interview follow-up.
+            Centralisez les candidats, les CV, le matching IA et le suivi des entretiens.
           </p>
         </div>
       </div>

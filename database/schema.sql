@@ -30,6 +30,10 @@ CREATE TABLE candidates (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255),
+    password_hash TEXT,
+    account_status VARCHAR(30) NOT NULL DEFAULT 'active'
+        CHECK (account_status IN ('active', 'invited', 'suspended', 'deleted')),
+    last_login_at TIMESTAMPTZ,
     phone VARCHAR(50),
     location VARCHAR(255),
     linkedin_url TEXT,
@@ -277,6 +281,7 @@ CREATE INDEX idx_candidates_name ON candidates (last_name, first_name);
 CREATE INDEX idx_candidates_email ON candidates (email);
 CREATE INDEX idx_candidates_status ON candidates (status);
 CREATE INDEX idx_candidates_source ON candidates (source);
+CREATE INDEX idx_candidates_account_status ON candidates (account_status);
 CREATE INDEX idx_candidates_owner_user_id ON candidates (owner_user_id);
 
 CREATE INDEX idx_cv_files_candidate_id ON cv_files (candidate_id);

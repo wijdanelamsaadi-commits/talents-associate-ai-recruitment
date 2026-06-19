@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "./components/AppLayout";
+import { CandidateProtectedRoute } from "./components/CandidateProtectedRoute";
 import { PortalLayout } from "./components/PortalLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { CandidateDetailsPage } from "./pages/CandidateDetailsPage";
@@ -15,9 +16,13 @@ import { LoginPage } from "./pages/LoginPage";
 import { MatchingPage } from "./pages/MatchingPage";
 import { OutlookImportPage } from "./pages/OutlookImportPage";
 import { PortalApplyPage } from "./pages/PortalApplyPage";
+import { PortalApplicationsPage } from "./pages/PortalApplicationsPage";
 import { PortalHomePage } from "./pages/PortalHomePage";
 import { PortalJobDetailsPage } from "./pages/PortalJobDetailsPage";
 import { PortalJobsPage } from "./pages/PortalJobsPage";
+import { PortalLoginPage } from "./pages/PortalLoginPage";
+import { PortalProfilePage } from "./pages/PortalProfilePage";
+import { PortalRegisterPage } from "./pages/PortalRegisterPage";
 import { PortalStatusPage } from "./pages/PortalStatusPage";
 
 export default function App() {
@@ -25,10 +30,17 @@ export default function App() {
     <Routes>
       <Route element={<PortalLayout />}>
         <Route path="/portal" element={<PortalHomePage />} />
+        <Route path="/portal/register" element={<PortalRegisterPage />} />
+        <Route path="/portal/login" element={<PortalLoginPage />} />
         <Route path="/portal/jobs" element={<PortalJobsPage />} />
         <Route path="/portal/jobs/:jobId" element={<PortalJobDetailsPage />} />
+        <Route path="/portal/apply" element={<Navigate to="/portal/jobs" replace />} />
         <Route path="/portal/apply/:jobId" element={<PortalApplyPage />} />
         <Route path="/portal/status" element={<PortalStatusPage />} />
+        <Route element={<CandidateProtectedRoute />}>
+          <Route path="/portal/profile" element={<PortalProfilePage />} />
+          <Route path="/portal/applications" element={<PortalApplicationsPage />} />
+        </Route>
       </Route>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
