@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import CVFile, Candidate, ExtractedCVData
-from app.services.cv_parser import parse_cv_text
+from app.services.llm_cv_parser_service import parse_cv_text_configurable
 from app.services.matching_service import auto_match_candidate
 from app.services.text_extraction import TextExtractionError, extract_text_from_file
 from app.services.timeline_service import create_timeline_event
@@ -143,7 +143,7 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
     if not extracted_data.raw_text or not extracted_data.raw_text.strip():
         raise CVUploadError("Cannot parse CV because extracted text is empty.")
 
-    parsed_cv = parse_cv_text(extracted_data.raw_text)
+    parsed_cv = parse_cv_text_configurable(extracted_data.raw_text)
     extracted_data.ai_output = parsed_cv.data
     extracted_data.confidence_score = parsed_cv.confidence_score
     extracted_data.parsing_status = "parsed"
@@ -159,7 +159,11 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
         event_type="cv_parsed",
         title="CV parsed",
         description="Extracted CV text was converted into structured candidate data.",
-        metadata={"cv_file_id": str(cv_file_id), "confidence_score": float(parsed_cv.confidence_score)},
+        metadata={
+            "cv_file_id": str(cv_file_id),
+            "confidence_score": float(parsed_cv.confidence_score),
+            "parser_used": parsed_cv.data.get("parser_used"),
+        },
     )
 
     db.commit()

@@ -76,6 +76,23 @@ Build the frontend with:
 npm run build
 ```
 
+## Parsing CV avec LLM
+
+Le backend peut utiliser un LLM pour extraire les informations structurées des CV, tout en conservant le parser heuristique existant en fallback.
+
+Configuration dans `backend/.env` :
+
+```env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your_api_key
+LLM_MODEL=gpt-4o-mini
+LLM_ENABLED=true
+```
+
+Quand `LLM_ENABLED=false`, quand `OPENAI_API_KEY` est vide, ou si l'appel LLM échoue, le backend utilise automatiquement le parsing heuristique local.
+La sortie structurée contient notamment `prenom`, `nom`, `email`, `phone`, `linkedin_url`, `current_company`, `current_title`, `total_experience_years`, `detailed_experience`, `education`, `skills`, `languages`, `soft_skills`, `gender`, `parser_used` et `parser_confidence`.
+Le prompt interdit explicitement l'invention d'informations : les champs absents du CV doivent rester à `null` ou `[]`.
+
 ## Notes
 
 - Outlook CV attachments can be handled first with a VBA macro that saves attachments locally, then those CV files can be imported into the platform. Microsoft Graph integration can remain optional for a later version. See [docs/outlook-cv-extraction.md](docs/outlook-cv-extraction.md).

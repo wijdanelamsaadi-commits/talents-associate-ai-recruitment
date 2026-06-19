@@ -11,8 +11,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import CVFile, Candidate, ExtractedCVData, LinkedInCSVImport, OutlookCVImport
-from app.services.cv_parser import parse_cv_text
 from app.services.cv_service import MAX_CV_FILE_SIZE_BYTES, UPLOAD_DIRECTORY
+from app.services.llm_cv_parser_service import parse_cv_text_configurable
 from app.services.matching_service import auto_match_candidate
 from app.services.text_extraction import TextExtractionError, extract_text_from_file
 from app.services.timeline_service import create_timeline_event
@@ -275,7 +275,7 @@ def _process_outlook_cv_file(db: Session, filename: str, content: bytes, content
             stored_path.unlink(missing_ok=True)
             return {"file": filename, "status": "failed", "reason": "No text could be extracted from this CV."}
 
-        parsed_cv = parse_cv_text(raw_text)
+        parsed_cv = parse_cv_text_configurable(raw_text)
         parsed_data = parsed_cv.data
         candidate = _find_candidate_for_cv(db, parsed_data)
         status = "updated" if candidate is not None else "imported"
@@ -337,7 +337,12 @@ def _process_outlook_cv_file(db: Session, filename: str, content: bytes, content
             event_type="cv_parsed",
             title="CV parsed",
             description="Outlook CV attachment was extracted and parsed automatically.",
-            metadata={"source": "outlook_import", "cv_file_id": str(cv_file.id), "confidence_score": float(parsed_cv.confidence_score)},
+            metadata={
+                "source": "outlook_import",
+                "cv_file_id": str(cv_file.id),
+                "confidence_score": float(parsed_cv.confidence_score),
+                "parser_used": parsed_data.get("parser_used"),
+            },
         )
         db.commit()
 
