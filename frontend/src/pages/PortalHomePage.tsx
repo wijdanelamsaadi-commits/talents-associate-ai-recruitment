@@ -1,193 +1,253 @@
-import { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 
-const opportunities = [
-  "Sélectionnez le poste visé",
-  "Responsable Ressources Humaines",
-  "Talent Acquisition Specialist",
-  "Consultant RH",
-  "Chargé de recrutement",
-  "Candidature spontanée",
+type JourneyStep = {
+  number: string;
+  title: string;
+  text: string;
+  icon: ReactNode;
+};
+
+type Client = {
+  name: string;
+  slug: string;
+};
+
+const UserIcon = (
+  <svg fill="none" height="30" viewBox="0 0 24 24" width="30" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+  </svg>
+);
+
+const DocumentIcon = (
+  <svg fill="none" height="30" viewBox="0 0 24 24" width="30" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
+    <path d="M14 3v5h5M9 13h6M9 16.5h4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+  </svg>
+);
+
+const BellIcon = (
+  <svg fill="none" height="30" viewBox="0 0 24 24" width="30" xmlns="http://www.w3.org/2000/svg">
+    <path d="M6 9a6 6 0 0 1 12 0c0 4 1.2 5.5 2 6.5H4c.8-1 2-2.5 2-6.5Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
+    <path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+  </svg>
+);
+
+const journeySteps: JourneyStep[] = [
+  {
+    number: "01",
+    title: "Créez votre compte",
+    text: "Inscrivez-vous et complétez votre profil candidat en quelques minutes.",
+    icon: UserIcon,
+  },
+  {
+    number: "02",
+    title: "Postulez aux offres",
+    text: "Parcourez les opportunités disponibles et envoyez vos candidatures facilement.",
+    icon: DocumentIcon,
+  },
+  {
+    number: "03",
+    title: "Suivez vos candidatures",
+    text: "Consultez l'évolution de vos candidatures et recevez les notifications importantes.",
+    icon: BellIcon,
+  },
 ];
 
-const heroStats = [
-  ["100% sécurisé", "Vos données protégées", "🛡"],
-  ["Réponse rapide", "Sous 7 jours ouvrés", "⚡"],
-  ["+2,500 talents", "Nous ont déjà rejoints", "♚"],
+const clients: Client[] = [
+  { name: "Bank Of Africa", slug: "bank-of-africa" },
+  { name: "Crédit du Maroc", slug: "credit-du-maroc" },
+  { name: "Orange", slug: "orange" },
+  { name: "ONCF", slug: "oncf" },
+  { name: "RATP Dev", slug: "ratp-dev" },
+  { name: "Auto Nejma", slug: "auto-nejma" },
+  { name: "Teka", slug: "teka" },
+  { name: "Toyota", slug: "toyota" },
+  { name: "Société Générale", slug: "societe-generale" },
+  { name: "CAT Assurance", slug: "cat-assurance" },
+  { name: "Wafa Assurance", slug: "wafa-assurance" },
+  { name: "Allianz", slug: "allianz" },
+  { name: "AXA", slug: "axa" },
+  { name: "RMA", slug: "rma" },
+  { name: "Aïnsi Maroc Group", slug: "ainsi-maroc-group" },
+  { name: "Gestine Services", slug: "gestine-services" },
+  { name: "VCR Sodalmu", slug: "vcr-sodalmu" },
+  { name: "Bel", slug: "bel" },
+  { name: "Oliveri", slug: "oliveri" },
+  { name: "Ecomab", slug: "ecomab" },
+  { name: "Hakam Frères", slug: "hakam-freres" },
+  { name: "Auto Hall", slug: "auto-hall" },
+  { name: "AGMA", slug: "agma" },
 ];
 
-const reasons = [
-  ["Analyse IA avancée", "Votre CV est analysé par notre intelligence artificielle pour identifier vos compétences et votre potentiel.", "✣"],
-  ["Matching précis", "Recevez des recommandations d'offres qui correspondent le mieux à votre profil et à vos ambitions.", "◎"],
-  ["Suivi en temps réel", "Suivez l'avancement de vos candidatures en temps réel depuis votre espace personnel.", "♢"],
-  ["Confidentialité garantie", "Vos informations sont protégées et partagées uniquement avec les entreprises concernées.", "◆"],
-];
+function ClientLogo({ client }: { client: Client }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="flex h-28 items-center justify-center rounded-[16px] border border-slate-100 bg-white px-5 shadow-md shadow-slate-900/5">
+      {failed ? (
+        <span className="text-center text-sm font-bold text-[#061A33]">{client.name}</span>
+      ) : (
+        <img
+          alt={client.name}
+          className="max-h-14 max-w-full object-contain"
+          loading="lazy"
+          onError={() => setFailed(true)}
+          src={`/images/clients/${client.slug}.png`}
+        />
+      )}
+    </div>
+  );
+}
 
-export function PortalHomePage() {
-  const navigate = useNavigate();
+function ReferencesCarousel() {
+  const [perView, setPerView] = useState(5);
+  const [page, setPage] = useState(0);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    navigate("/portal/jobs");
-  };
+  useEffect(() => {
+    const computePerView = () => {
+      const width = window.innerWidth;
+      if (width < 640) return 2;
+      if (width < 1024) return 3;
+      return 5;
+    };
+    const handleResize = () => setPerView(computePerView());
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const pageCount = Math.max(1, Math.ceil(clients.length / perView));
+
+  useEffect(() => {
+    if (page > pageCount - 1) setPage(0);
+  }, [page, pageCount]);
+
+  useEffect(() => {
+    if (pageCount <= 1) return;
+    const timer = window.setInterval(() => {
+      setPage((current) => (current + 1) % pageCount);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [pageCount]);
+
+  const pages = Array.from({ length: pageCount }, (_, pageIndex) =>
+    clients.slice(pageIndex * perView, pageIndex * perView + perView),
+  );
 
   return (
+    <div>
+      <div className="overflow-hidden">
+        <div
+          className="flex transition-transform duration-700 ease-in-out"
+          style={{ transform: `translateX(-${page * 100}%)` }}
+        >
+          {pages.map((group, groupIndex) => (
+            <div
+              className="grid w-full shrink-0 grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5"
+              key={groupIndex}
+            >
+              {group.map((client) => (
+                <ClientLogo client={client} key={client.slug} />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-10 flex items-center justify-center gap-2.5">
+        {Array.from({ length: pageCount }, (_, dotIndex) => (
+          <button
+            aria-label={`Aller au groupe ${dotIndex + 1}`}
+            className={`h-2.5 rounded-full transition-all duration-300 ${
+              dotIndex === page ? "w-7 bg-[#ff5a1f]" : "w-2.5 bg-slate-300 hover:bg-slate-400"
+            }`}
+            key={dotIndex}
+            onClick={() => setPage(dotIndex)}
+            type="button"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function PortalHomePage() {
+  return (
     <main className="bg-white">
-      <section className="relative overflow-hidden bg-gradient-to-b from-white via-white to-[#fff6f1]">
-        <div className="mx-auto grid max-w-[1360px] items-center gap-12 px-6 pb-7 pt-10 lg:grid-cols-[0.95fr_1.05fr] lg:px-12 lg:pb-10 lg:pt-14">
-          <div className="relative z-10">
-            <span className="inline-flex items-center rounded-full bg-[#ff3d00]/10 px-4 py-2 text-sm font-semibold text-[#ff3d00]">
-              <span className="mr-2 text-base">★</span>
-              Votre carrière, notre mission
-            </span>
-            <h1 className="mt-6 max-w-[660px] text-4xl font-extrabold leading-[1.08] text-[#061A33] sm:text-5xl lg:text-[50px] xl:text-[56px]">
-              Trouvez l'opportunité
-              <span className="block text-[#ff3d00]">qui vous correspond</span>
-            </h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
-              Déposez votre CV, complétez votre profil et suivez vos candidatures depuis votre espace candidat.
+      {/* SECTION 1 — Hero premium (image + overlay uniquement) */}
+      <section
+        className="relative min-h-[70vh] overflow-hidden bg-[#061A33] bg-cover bg-center lg:min-h-[80vh]"
+        style={{ backgroundImage: "url('/images/portal-hero-corporate.jpg')" }}
+      >
+        <div className="absolute inset-0" style={{ backgroundColor: "rgba(6, 26, 51, 0.65)" }} />
+      </section>
+
+      {/* SECTION 2 — Qui sommes-nous */}
+      <section className="mx-auto max-w-[1360px] px-6 py-16 lg:px-12 lg:py-24">
+        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+          <div
+            aria-label="Entretien professionnel chez Talents Associate"
+            className="min-h-[280px] w-full rounded-[1.5rem] bg-slate-100 bg-cover bg-center shadow-2xl shadow-slate-900/15 lg:min-h-[360px]"
+            role="img"
+            style={{ backgroundImage: "url('/images/portal-about-interview.jpg')" }}
+          />
+          <div>
+            <h2 className="text-3xl font-extrabold text-[#061A33] sm:text-4xl">Qui sommes-nous ?</h2>
+            <span className="mt-5 block h-1 w-20 rounded-full bg-[#ff5a1f]" />
+            <p className="mt-7 text-lg leading-8 text-slate-600">
+              Talents Associate accompagne les candidats dans leur parcours professionnel en facilitant l'accès à des
+              opportunités adaptées à leurs compétences, leurs ambitions et leur profil.
             </p>
-            <div className="mt-8 flex flex-wrap gap-5">
-              <Link
-                className="inline-flex min-h-14 items-center justify-center rounded-lg bg-[#ff3d00] px-8 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#e63600]"
-                to="/portal/jobs"
-              >
-                Voir les offres
-              </Link>
-              <Link
-                className="inline-flex min-h-14 items-center justify-center rounded-lg border border-[#ff3d00] bg-white px-8 text-sm font-bold text-[#ff3d00] transition hover:bg-[#ff3d00]/5"
-                to="/portal/profile"
-              >
-                Déposer mon CV
-              </Link>
-            </div>
-
-            <div className="mt-10 grid max-w-2xl gap-4 sm:grid-cols-3">
-              {heroStats.map(([title, detail, icon], index) => (
-                <div className="flex items-center gap-3 sm:border-r sm:border-orange-100 sm:pr-4 last:border-r-0" key={title}>
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#ff3d00]/10 text-lg text-[#ff3d00]">
-                    {icon}
-                  </span>
-                  <span>
-                    <span className="block text-sm font-extrabold text-[#061A33]">{title}</span>
-                    <span className="mt-1 block text-xs text-slate-500">{detail}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative min-h-[360px] lg:min-h-[460px]">
-            <div className="absolute right-0 top-12 hidden h-[430px] w-[430px] rounded-full border-r-4 border-[#ff3d00] lg:block" />
-            <div className="absolute right-0 top-16 h-80 w-40 rounded-[2rem] bg-[#ff3d00]/15" />
-            <div className="absolute -left-4 top-24 hidden grid-cols-6 gap-3 lg:grid">
-              {Array.from({ length: 30 }).map((_, index) => (
-                <span className="h-1.5 w-1.5 rounded-full bg-[#ff3d00]" key={index} />
-              ))}
-            </div>
-            <div className="absolute bottom-0 right-0 h-28 w-64 rounded-tl-[4rem] bg-[#ff3d00]/15" />
-            <img
-              alt="Candidate professionnelle travaillant sur ordinateur"
-              className="relative z-10 h-[360px] w-full rounded-[1.5rem] object-cover shadow-2xl shadow-slate-900/15 lg:h-[460px]"
-              src="/portal-hero-woman.png"
-            />
           </div>
         </div>
       </section>
 
-      <section className="relative z-20 mx-auto -mt-2 max-w-[1180px] px-6 pb-8">
-        <form
-          className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-900/10 sm:p-8 lg:p-10"
-          onSubmit={handleSubmit}
-        >
-          <div className="mb-7">
-            <span className="inline-flex rounded-full bg-[#ff3d00]/10 px-4 py-2 text-sm font-semibold text-[#ff3d00]">
-              Nous recrutons
-            </span>
-            <h2 className="mt-4 text-3xl font-extrabold text-[#061A33]">Formulaire de recrutement</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-              Nous recherchons des talents qualifiés avec des opportunités professionnelles en CDI, CDD, intérim ou freelance.
-              Déposez votre candidature et saisissez de nouvelles opportunités adaptées à votre profil.
+      {/* SECTION 3 — Votre parcours candidat */}
+      <section className="bg-[#f7f9fc]">
+        <div className="mx-auto max-w-[1360px] px-6 py-16 lg:px-12 lg:py-24">
+          <div className="text-center">
+            <span className="mx-auto block h-1 w-12 rounded-full bg-[#ff5a1f]" />
+            <h2 className="mt-6 text-3xl font-extrabold text-[#061A33] sm:text-4xl lg:text-[44px]">
+              Votre parcours candidat
+            </h2>
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+              Une expérience simple et efficace pour vous accompagner à chaque étape de votre recherche d'emploi.
             </p>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <label className="block md:col-span-2">
-              <span className="text-sm font-bold text-[#061A33]">Opportunité *</span>
-              <select className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-600 outline-none transition focus:border-[#ff3d00] focus:ring-4 focus:ring-[#ff3d00]/10">
-                {opportunities.map((opportunity) => (
-                  <option key={opportunity}>{opportunity}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-bold text-[#061A33]">Nom *</span>
-              <input className="mt-2 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#ff3d00] focus:ring-4 focus:ring-[#ff3d00]/10" placeholder="Votre nom" required />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-bold text-[#061A33]">Prénom *</span>
-              <input className="mt-2 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#ff3d00] focus:ring-4 focus:ring-[#ff3d00]/10" placeholder="Votre prénom" required />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-bold text-[#061A33]">Email *</span>
-              <input className="mt-2 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#ff3d00] focus:ring-4 focus:ring-[#ff3d00]/10" placeholder="exemple@email.com" required type="email" />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-bold text-[#061A33]">Téléphone *</span>
-              <input className="mt-2 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#ff3d00] focus:ring-4 focus:ring-[#ff3d00]/10" placeholder="06 12 34 56 78" required />
-            </label>
-
-            <label className="block md:col-span-2">
-              <span className="text-sm font-bold text-[#061A33]">Ville *</span>
-              <input className="mt-2 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#ff3d00] focus:ring-4 focus:ring-[#ff3d00]/10" placeholder="Votre ville" required />
-            </label>
-
-            <label className="block md:col-span-2">
-              <span className="text-sm font-bold text-[#061A33]">Message de candidature</span>
-              <textarea className="mt-2 min-h-28 w-full rounded-lg border border-slate-200 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#ff3d00] focus:ring-4 focus:ring-[#ff3d00]/10" placeholder="Présentez-vous et expliquez vos motivations..." />
-            </label>
-
-            <label className="block md:col-span-2">
-              <span className="text-sm font-bold text-[#061A33]">CV *</span>
-              <span className="mt-2 flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#ff3d00] bg-[#ff3d00]/[0.03] px-6 py-7 text-center transition hover:bg-[#ff3d00]/[0.06]">
-                <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#ff3d00] text-xl font-bold text-white">⇧</span>
-                <span className="mt-4 text-sm font-bold text-[#061A33]">Glissez-déposez votre CV ou cliquez pour parcourir</span>
-                <span className="mt-2 text-sm text-slate-500">PDF, DOC, DOCX (max 10MB)</span>
-                <input accept=".pdf,.doc,.docx" className="sr-only" required type="file" />
-              </span>
-            </label>
-          </div>
-
-          <button
-            className="mt-6 flex h-12 w-full items-center justify-center rounded-lg bg-[#ff3d00] text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#e63600]"
-            type="submit"
-          >
-            Envoyer ma candidature
-          </button>
-          <p className="mt-4 text-center text-sm text-slate-500">Vos données sont sécurisées et confidentielles</p>
-        </form>
-      </section>
-
-      <section className="mx-auto max-w-[1360px] px-6 pb-10">
-        <div className="rounded-[1.5rem] bg-[#fff6f1] px-8 py-8 shadow-sm">
-          <h2 className="text-center text-2xl font-extrabold text-[#061A33]">Pourquoi candidater chez Talents Associate ?</h2>
-          <div className="mx-auto mt-3 h-0.5 w-14 bg-[#ff3d00]" />
-          <div className="mt-8 grid gap-6 md:grid-cols-4">
-            {reasons.map(([title, description, icon], index) => (
-              <article className="flex gap-4 md:border-r md:border-orange-200 md:pr-6 last:border-r-0" key={title}>
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#ff3d00]/10 text-2xl text-[#ff3d00]">
-                  {icon}
+          <div className="mt-14 grid gap-8 md:grid-cols-3">
+            {journeySteps.map((step) => (
+              <article
+                className="flex flex-col items-center rounded-[20px] bg-white px-8 py-10 text-center shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-orange-500/10"
+                key={step.number}
+              >
+                <span className="flex h-20 w-20 items-center justify-center rounded-full bg-[#ff5a1f]/10 text-[#ff5a1f]">
+                  {step.icon}
                 </span>
-                <div>
-                  <h3 className="text-sm font-extrabold text-[#061A33]">{title}</h3>
-                  <p className="mt-3 text-xs leading-6 text-slate-600">{description}</p>
-                </div>
+                <span className="mt-6 text-sm font-extrabold tracking-wider text-[#ff5a1f]">{step.number}</span>
+                <h3 className="mt-2 text-xl font-extrabold text-[#061A33]">{step.title}</h3>
+                <span className="mt-4 block h-0.5 w-10 bg-[#ff5a1f]/40" />
+                <p className="mt-5 text-sm leading-7 text-slate-600">{step.text}</p>
               </article>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 4 — Nos références */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-[1360px] px-6 py-16 lg:px-12 lg:py-24">
+          <div className="text-center">
+            <span className="mx-auto block h-1 w-12 rounded-full bg-[#ff5a1f]" />
+            <h2 className="mt-6 text-3xl font-extrabold text-[#061A33] sm:text-4xl lg:text-[44px]">Nos références</h2>
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+              Ils nous font confiance pour les accompagner dans leurs recrutements et leur développement.
+            </p>
+          </div>
+
+          <div className="mt-14">
+            <ReferencesCarousel />
           </div>
         </div>
       </section>

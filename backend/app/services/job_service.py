@@ -1,3 +1,5 @@
+import logging
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select
@@ -5,6 +7,21 @@ from sqlalchemy.orm import Session
 
 from app.models import JobOffer
 from app.schemas import JobOfferCreate, JobOfferUpdate
+from app.services.embedding_service import build_job_embedding_text, generate_embedding
+
+
+logger = logging.getLogger(__name__)
+EMBEDDING_TEXT_FIELDS = (
+    "title",
+    "company_name",
+    "department",
+    "description",
+    "requirements",
+    "required_skills",
+    "preferred_skills",
+    "required_experience_years",
+    "education_level",
+)
 
 
 def create_job_offer(db: Session, job_in: JobOfferCreate) -> JobOffer:
@@ -14,6 +31,7 @@ def create_job_offer(db: Session, job_in: JobOfferCreate) -> JobOffer:
         employment_type=_map_contract_to_employment_type(job_data.get("contract_type")),
         requirements=_format_requirements(job_data),
     )
+    _generate_job_embedding(job)
     db.add(job)
     db.commit()
     db.refresh(job)
@@ -45,6 +63,8 @@ def update_job_offer(db: Session, job: JobOffer, job_in: JobOfferUpdate) -> JobO
                 "education_level": job.education_level,
             }
         )
+    if any(field in update_data for field in EMBEDDING_TEXT_FIELDS):
+        _generate_job_embedding(job)
 
     db.commit()
     db.refresh(job)
@@ -81,3 +101,13 @@ def _format_requirements(job_data: dict) -> str:
     if job_data.get("education_level"):
         parts.append("Education: " + job_data["education_level"])
     return "\n".join(parts) if parts else ""
+
+
+def _generate_job_embedding(job: JobOffer) -> None:
+    try:
+        job.embedding = generate_embedding(build_job_embedding_text(job))
+        job.embedding_generated_at = datetime.now(timezone.utc)
+    except Exception as exc:
+        job.embedding = None
+        job.embedding_generated_at = None
+        logger.warning("Job embedding generation failed; continuing without embedding: %s", exc)

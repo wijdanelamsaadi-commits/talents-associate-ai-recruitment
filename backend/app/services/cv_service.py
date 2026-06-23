@@ -1,5 +1,7 @@
 import hashlib
+import logging
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
@@ -8,7 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models import CVFile, Candidate, ExtractedCVData
+from app.services.embedding_service import build_candidate_embedding_text, generate_embedding
 from app.services.llm_cv_parser_service import parse_cv_text_configurable
 from app.services.matching_service import auto_match_candidate
 from app.services.text_extraction import TextExtractionError, extract_text_from_file
@@ -23,6 +27,7 @@ SUPPORTED_CONTENT_TYPES = {
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
+logger = logging.getLogger(__name__)
 
 
 class CVUploadError(ValueError):
@@ -145,6 +150,12 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
 
     parsed_cv = parse_cv_text_configurable(extracted_data.raw_text)
     extracted_data.ai_output = parsed_cv.data
+    extracted_data.summary = _optional_string(parsed_cv.data.get("summary"))
+    extracted_data.total_years_experience = _optional_non_negative_number(
+        parsed_cv.data.get("total_experience_years") or parsed_cv.data.get("experience_totale")
+    )
+    extracted_data.highest_degree = _optional_string(parsed_cv.data.get("highest_degree"))
+    extracted_data.parser_model = _parser_model(parsed_cv.data)
     extracted_data.confidence_score = parsed_cv.confidence_score
     extracted_data.parsing_status = "parsed"
     extracted_data.status = "approved"
@@ -163,11 +174,13 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
             "cv_file_id": str(cv_file_id),
             "confidence_score": float(parsed_cv.confidence_score),
             "parser_used": parsed_cv.data.get("parser_used"),
+            "parser_model": extracted_data.parser_model,
         },
     )
 
     db.commit()
     db.refresh(extracted_data)
+    _generate_candidate_embedding(db, extracted_data)
     update_candidate_profile_from_parsed_cv(db, extracted_data)
     return extracted_data
 
@@ -184,6 +197,10 @@ def update_candidate_profile_from_parsed_cv(db: Session, extracted_data: Extract
         ("last_name", "last_name"),
         ("email", "email"),
         ("phone", "phone"),
+        ("linkedin_url", "linkedin_url"),
+        ("current_title", "current_title"),
+        ("current_company", "current_company"),
+        ("gender", "gender"),
     ):
         parsed_value = str(parsed_data.get(parsed_field) or "").strip()
         if parsed_value and not getattr(candidate, candidate_field):
@@ -245,3 +262,37 @@ def _save_upload_file(upload_file: UploadFile, stored_path: Path) -> tuple[int, 
             buffer.write(chunk)
 
     return file_size, sha256.hexdigest()
+
+
+def _parser_model(parsed_data: dict) -> str:
+    if parsed_data.get("parser_used") == "llm":
+        model = settings.LLM_MODEL or "gpt-4o-mini"
+        return f"openai:{model}"
+    return "heuristic-v1"
+
+
+def _generate_candidate_embedding(db: Session, extracted_data: ExtractedCVData) -> None:
+    try:
+        embedding_text = build_candidate_embedding_text(extracted_data)
+        extracted_data.embedding = generate_embedding(embedding_text)
+        extracted_data.embedding_generated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(extracted_data)
+    except Exception as exc:
+        db.rollback()
+        logger.warning("Candidate embedding generation failed; continuing without embedding: %s", exc)
+
+
+def _optional_string(value: object) -> str | None:
+    clean_value = str(value or "").strip()
+    return clean_value or None
+
+
+def _optional_non_negative_number(value: object) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number >= 0 else None

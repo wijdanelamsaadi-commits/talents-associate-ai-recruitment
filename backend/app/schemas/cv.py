@@ -23,6 +23,7 @@ class CVFileRead(BaseModel):
 class CVUploadProcessedRead(CVFileRead):
     processing_status: str
     confidence_score: float | None
+    parser_model: str | None
     structured_json: dict | None
     matching_result_ids: list[UUID]
 
@@ -33,6 +34,7 @@ class ExtractedCVTextRead(BaseModel):
     raw_text: str
     parsing_status: str
     confidence_score: float | None
+    parser_model: str | None
     ai_output: dict | None
 
     model_config = ConfigDict(from_attributes=True)
@@ -42,6 +44,7 @@ class ParsedCVRead(BaseModel):
     cv_file_id: UUID
     parsing_status: str
     confidence_score: float | None
+    parser_model: str | None
     structured_json: dict | None
 
     model_config = ConfigDict(from_attributes=True)

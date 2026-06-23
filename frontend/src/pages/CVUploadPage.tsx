@@ -20,6 +20,16 @@ function formatBytes(bytes: number | null) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getParserResultLabel(parserModel: string | null | undefined) {
+  if (parserModel?.startsWith("openai:")) {
+    return `AI parser result (${parserModel})`;
+  }
+  if (parserModel === "heuristic-v1") {
+    return "Heuristic parser result";
+  }
+  return parserModel ? `Parser result (${parserModel})` : "Parser result";
+}
+
 function renderListValue(value: unknown[] | undefined) {
   if (!value || value.length === 0) {
     return <span className="text-slate-400">None detected</span>;
@@ -132,6 +142,7 @@ export function CVUploadPage() {
         cv_file_id: uploaded.id,
         parsing_status: uploaded.processing_status,
         confidence_score: uploaded.confidence_score,
+        parser_model: uploaded.parser_model,
         structured_json: uploaded.structured_json,
       });
       setMatchingCount(uploaded.matching_result_ids.length);
@@ -168,6 +179,7 @@ export function CVUploadPage() {
           cv_file_id: data.cv_file_id,
           parsing_status: data.parsing_status,
           confidence_score: data.confidence_score,
+          parser_model: data.parser_model,
           structured_json: data.ai_output,
         });
       }
@@ -220,6 +232,7 @@ export function CVUploadPage() {
   };
 
   const selectedParsedJson = parsedCV?.structured_json;
+  const parserResultLabel = getParserResultLabel(parsedCV?.parser_model);
   const processingSteps: Array<{ key: ProcessingStage; label: string }> = [
     { key: "uploading", label: "Uploading" },
     { key: "parsing", label: "Parsing" },
@@ -438,7 +451,7 @@ export function CVUploadPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-base font-semibold text-[#0B1F3A]">Structured parsed JSON</h3>
-              <p className="mt-1 text-sm text-slate-600">Heuristic parser result saved by the backend.</p>
+              <p className="mt-1 text-sm text-slate-600">{parserResultLabel} saved by the backend.</p>
             </div>
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
               Confidence: {parsedCV.confidence_score ?? "N/A"}

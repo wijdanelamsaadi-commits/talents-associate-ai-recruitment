@@ -5,13 +5,14 @@ from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_candidate
+from app.api.dependencies import require_candidate
 from app.core.config import settings
 from app.core.database import get_db
 from app.models import Candidate
 from app.schemas import (
     CandidateApplicationRead,
     CandidateLogin,
+    CandidateNotificationRead,
     CandidateProfileRead,
     CandidateProfileUpdate,
     CandidateRegister,
@@ -21,6 +22,7 @@ from app.schemas import (
     PortalCandidateData,
     PublicJobRead,
 )
+from app.services import notification_service
 from app.services.cv_service import CVUploadError
 from app.services.portal_service import (
     CandidateAuthError,
@@ -66,7 +68,7 @@ def login_candidate_account(payload: CandidateLogin, db: Session = Depends(get_d
 
 @router.get("/me", response_model=CandidateProfileRead)
 def read_candidate_me(
-    candidate: Candidate = Depends(get_current_candidate),
+    candidate: Candidate = Depends(require_candidate),
     db: Session = Depends(get_db),
 ) -> CandidateProfileRead:
     return get_candidate_profile(db, candidate)
@@ -74,7 +76,7 @@ def read_candidate_me(
 
 @router.get("/profile", response_model=CandidateProfileRead)
 def read_candidate_profile(
-    candidate: Candidate = Depends(get_current_candidate),
+    candidate: Candidate = Depends(require_candidate),
     db: Session = Depends(get_db),
 ) -> CandidateProfileRead:
     return get_candidate_profile(db, candidate)
@@ -83,7 +85,7 @@ def read_candidate_profile(
 @router.put("/profile", response_model=CandidateProfileRead)
 def update_candidate_portal_profile(
     payload: CandidateProfileUpdate,
-    candidate: Candidate = Depends(get_current_candidate),
+    candidate: Candidate = Depends(require_candidate),
     db: Session = Depends(get_db),
 ) -> CandidateProfileRead:
     return update_candidate_profile(db, candidate, payload)
@@ -92,7 +94,7 @@ def update_candidate_portal_profile(
 @router.put("/profile/cv", response_model=CandidateProfileRead)
 def replace_candidate_portal_cv(
     file: UploadFile = File(...),
-    candidate: Candidate = Depends(get_current_candidate),
+    candidate: Candidate = Depends(require_candidate),
     db: Session = Depends(get_db),
 ) -> CandidateProfileRead:
     try:
@@ -106,16 +108,40 @@ def replace_candidate_portal_cv(
 
 @router.get("/applications", response_model=list[CandidateApplicationRead])
 def read_candidate_applications(
-    candidate: Candidate = Depends(get_current_candidate),
+    candidate: Candidate = Depends(require_candidate),
     db: Session = Depends(get_db),
 ) -> list[CandidateApplicationRead]:
     return list_authenticated_applications(db, candidate)
 
 
+@router.get("/notifications", response_model=list[CandidateNotificationRead])
+def read_candidate_notifications(
+    candidate: Candidate = Depends(require_candidate),
+    db: Session = Depends(get_db),
+) -> list[CandidateNotificationRead]:
+    return notification_service.list_candidate_notifications(db, candidate.id)
+
+
+@router.patch("/notifications/{notification_id}/read", response_model=CandidateNotificationRead)
+def mark_candidate_notification_read(
+    notification_id: UUID,
+    candidate: Candidate = Depends(require_candidate),
+    db: Session = Depends(get_db),
+) -> CandidateNotificationRead:
+    notification = notification_service.mark_candidate_notification_read(
+        db,
+        notification_id=notification_id,
+        candidate_id=candidate.id,
+    )
+    if notification is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found.")
+    return notification
+
+
 @router.post("/jobs/{job_id}/apply-auth", response_model=PortalApplicationResponse, status_code=status.HTTP_201_CREATED)
 def apply_logged_candidate_to_job(
     job_id: UUID,
-    candidate: Candidate = Depends(get_current_candidate),
+    candidate: Candidate = Depends(require_candidate),
     db: Session = Depends(get_db),
 ) -> PortalApplicationResponse:
     try:

@@ -1,10 +1,10 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func as sa_func, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import Candidate
+from app.models import Application, Candidate
 from app.schemas import CandidateCreate, CandidateUpdate
 from app.services.timeline_service import create_timeline_event
 
@@ -44,8 +44,47 @@ def create_candidate(db: Session, candidate_in: CandidateCreate) -> Candidate:
     return candidate
 
 
-def list_candidates(db: Session, skip: int = 0, limit: int = 100) -> list[Candidate]:
-    statement = select(Candidate).order_by(Candidate.created_at.desc()).offset(skip).limit(limit)
+CandidateFilter = str
+
+
+def _apply_candidate_filter(statement, candidate_filter: CandidateFilter = "all"):
+    if candidate_filter == "active":
+        return statement.where(Candidate.status == "active")
+    if candidate_filter == "rejected":
+        return statement.where(Candidate.status == "rejected")
+    if candidate_filter == "archived":
+        return statement.where(Candidate.status == "archived")
+    if candidate_filter == "talent_pool":
+        return statement.where(Candidate.is_talent_pool.is_(True))
+    return statement
+
+
+def count_candidates(db: Session, candidate_filter: CandidateFilter = "all") -> int:
+    statement = _apply_candidate_filter(select(sa_func.count()).select_from(Candidate), candidate_filter)
+    return db.scalar(statement) or 0
+
+
+def list_candidates(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    after_id: UUID | None = None,
+    candidate_filter: CandidateFilter = "all",
+) -> list[Candidate]:
+    base_statement = _apply_candidate_filter(select(Candidate), candidate_filter)
+    if after_id is not None:
+        cursor_row = db.get(Candidate, after_id)
+        if cursor_row is None:
+            statement = base_statement.order_by(Candidate.created_at.desc(), Candidate.id.desc()).limit(limit)
+        else:
+            statement = (
+                base_statement
+                .where(tuple_(Candidate.created_at, Candidate.id) < (cursor_row.created_at, cursor_row.id))
+                .order_by(Candidate.created_at.desc(), Candidate.id.desc())
+                .limit(limit)
+            )
+    else:
+        statement = base_statement.order_by(Candidate.created_at.desc(), Candidate.id.desc()).offset(skip).limit(limit)
     return list(db.scalars(statement).all())
 
 
@@ -81,5 +120,77 @@ def update_candidate(db: Session, candidate: Candidate, candidate_in: CandidateU
 
 
 def delete_candidate(db: Session, candidate: Candidate) -> None:
-    db.delete(candidate)
+    archive_candidate(db, candidate)
+
+
+def archive_candidate(db: Session, candidate: Candidate) -> Candidate:
+    now = db.execute(select(sa_func.now())).scalar_one()
+    candidate.status = "archived"
+    candidate.archived_at = now
+    candidate.last_decision_at = now
+    create_timeline_event(
+        db,
+        candidate_id=candidate.id,
+        event_type="candidate_archived",
+        title="Candidate archived",
+        description="Candidate was archived without deleting CV, applications, parsing, or history.",
+        metadata={"status": "archived", "soft_delete": True},
+    )
     db.commit()
+    db.refresh(candidate)
+    return candidate
+
+
+def reject_candidate(db: Session, candidate: Candidate, application_id: UUID | None = None) -> Candidate:
+    now = db.execute(select(sa_func.now())).scalar_one()
+    candidate.status = "rejected"
+    candidate.is_talent_pool = True
+    candidate.rejected_at = now
+    candidate.last_decision_at = now
+
+    if application_id is not None:
+        application = db.get(Application, application_id)
+        if application is not None and application.candidate_id == candidate.id:
+            application.status = "rejected"
+            application.current_stage = "rejected"
+    else:
+        latest_application = db.scalar(
+            select(Application)
+            .where(Application.candidate_id == candidate.id)
+            .order_by(Application.applied_at.desc(), Application.created_at.desc())
+        )
+        if latest_application is not None:
+            latest_application.status = "rejected"
+            latest_application.current_stage = "rejected"
+
+    create_timeline_event(
+        db,
+        candidate_id=candidate.id,
+        event_type="candidate_rejected",
+        title="Candidate rejected and kept in talent pool",
+        description="Candidate was rejected for an application and retained in the talent pool.",
+        metadata={"status": "rejected", "is_talent_pool": True, "application_id": str(application_id) if application_id else None},
+    )
+    db.commit()
+    db.refresh(candidate)
+    return candidate
+
+
+def reactivate_candidate(db: Session, candidate: Candidate, keep_in_talent_pool: bool = False) -> Candidate:
+    now = db.execute(select(sa_func.now())).scalar_one()
+    previous_status = candidate.status
+    candidate.status = "active"
+    candidate.is_talent_pool = keep_in_talent_pool
+    candidate.reactivated_at = now
+    candidate.last_decision_at = now
+    create_timeline_event(
+        db,
+        candidate_id=candidate.id,
+        event_type="candidate_reactivated",
+        title="Candidate reactivated",
+        description="Candidate was reactivated from archived or talent pool status.",
+        metadata={"previous_status": previous_status, "is_talent_pool": keep_in_talent_pool},
+    )
+    db.commit()
+    db.refresh(candidate)
+    return candidate

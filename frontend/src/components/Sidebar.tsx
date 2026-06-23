@@ -1,4 +1,6 @@
-﻿import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+
+import { useAuth } from "../contexts/AuthContext";
 
 type NavigationItem = {
   label: string;
@@ -18,7 +20,16 @@ const navigation: NavigationItem[] = [
   { label: "Évaluations", to: "/evaluations", icon: "EV" },
 ];
 
+const adminNavigation: NavigationItem[] = [
+  { label: "Admin", to: "/admin", icon: "AD" },
+  { label: "Utilisateurs", to: "/admin/users", icon: "U" },
+  { label: "Paramètres", to: "/admin/settings", icon: "P" },
+];
+
 export function Sidebar() {
+  const { user } = useAuth();
+  const visibleNavigation = user?.role === "admin" ? [...navigation, ...adminNavigation] : navigation;
+
   return (
     <aside className="fixed inset-x-0 top-0 z-30 border-b border-white/10 bg-[#061A33] text-white shadow-xl shadow-slate-950/10 lg:inset-y-0 lg:right-auto lg:w-72 lg:border-b-0">
       <div className="flex h-16 items-center justify-between px-4 lg:h-auto lg:flex-col lg:items-stretch lg:gap-8 lg:px-6 lg:py-6">
@@ -33,7 +44,7 @@ export function Sidebar() {
         </NavLink>
 
         <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:gap-2 lg:overflow-visible">
-          {navigation.map((item) => (
+          {visibleNavigation.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -55,7 +66,7 @@ export function Sidebar() {
         </nav>
 
         <div className="hidden rounded-lg border border-white/10 bg-white/5 p-4 lg:block">
-          <p className="text-sm font-semibold">Espace recruteur</p>
+          <p className="text-sm font-semibold">{user?.role === "admin" ? "Espace administrateur" : "Espace recruteur"}</p>
           <p className="mt-1 text-xs leading-5 text-slate-300">
             Centralisez les candidats, les CV, le matching IA et le suivi des entretiens.
           </p>

@@ -43,6 +43,24 @@ def get_current_user(
     return user
 
 
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator privileges are required.",
+        )
+    return current_user
+
+
+def require_recruiter_or_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in {"admin", "recruiter", "hiring_manager"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Recruiter or administrator privileges are required.",
+        )
+    return current_user
+
+
 def get_current_candidate(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
@@ -73,3 +91,7 @@ def get_current_candidate(
         )
 
     return candidate
+
+
+def require_candidate(current_candidate: Candidate = Depends(get_current_candidate)) -> Candidate:
+    return current_candidate

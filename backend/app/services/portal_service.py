@@ -186,7 +186,7 @@ def apply_authenticated_candidate(db: Session, candidate: Candidate, job_id: UUI
     db.commit()
     db.refresh(application)
 
-    extracted_data, matching_results = parse_and_auto_match_cv(
+    parse_and_auto_match_cv(
         db,
         cv_file_id=latest_cv.id,
         selected_job_id=job.id,
@@ -196,9 +196,6 @@ def apply_authenticated_candidate(db: Session, candidate: Candidate, job_id: UUI
         candidate_id=candidate.id,
         application_id=application.id,
         cv_file_id=latest_cv.id,
-        parsing_status=extracted_data.parsing_status,
-        confidence_score=float(extracted_data.confidence_score) if extracted_data.confidence_score is not None else None,
-        matching_result_ids=[result.id for result in matching_results],
         message="Application submitted from your candidate portal.",
     )
 
@@ -212,8 +209,6 @@ def list_authenticated_applications(db: Session, candidate: Candidate) -> list[C
     )
     applications = []
     for application, job in db.execute(statement).all():
-        matches = _get_application_matches(db, application.id)
-        best_match = matches[0] if matches else None
         applications.append(
             CandidateApplicationRead(
                 application_id=application.id,
@@ -224,9 +219,6 @@ def list_authenticated_applications(db: Session, candidate: Candidate) -> list[C
                 current_stage=application.current_stage,
                 applied_at=application.applied_at,
                 cv_file_id=application.cv_file_id,
-                best_matching_score=_score_percent(best_match.score) if best_match else None,
-                recommendation=best_match.recommendation if best_match else None,
-                matching_result_ids=[match.id for match in matches],
             )
         )
     return applications
@@ -256,7 +248,6 @@ def get_application_status_by_email(db: Session, email: str) -> PortalApplicatio
     )
     applications = []
     for application, job in db.execute(statement).all():
-        best_match = _get_best_application_match(db, application.id)
         applications.append(
             PortalApplicationStatusItem(
                 application_id=application.id,
@@ -267,8 +258,6 @@ def get_application_status_by_email(db: Session, email: str) -> PortalApplicatio
                 current_stage=application.current_stage,
                 applied_at=application.applied_at,
                 cv_file_id=application.cv_file_id,
-                best_matching_score=_score_percent(best_match.score) if best_match else None,
-                recommendation=best_match.recommendation if best_match else None,
             )
         )
 
@@ -306,7 +295,7 @@ def submit_application(
     db.commit()
     db.refresh(application)
 
-    extracted_data, matching_results = parse_and_auto_match_cv(
+    parse_and_auto_match_cv(
         db,
         cv_file_id=cv_file.id,
         selected_job_id=job.id,
@@ -317,10 +306,7 @@ def submit_application(
         candidate_id=candidate.id,
         application_id=application.id,
         cv_file_id=cv_file.id,
-        parsing_status=extracted_data.parsing_status,
-        confidence_score=float(extracted_data.confidence_score) if extracted_data.confidence_score is not None else None,
-        matching_result_ids=[result.id for result in matching_results],
-        message="Application submitted. CV extracted, parsed, and matched against the selected job.",
+        message="Application submitted.",
     )
 
 

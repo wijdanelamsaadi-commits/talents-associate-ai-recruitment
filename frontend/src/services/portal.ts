@@ -83,9 +83,6 @@ export type PortalApplicationResponse = {
   candidate_id: string;
   application_id: string;
   cv_file_id: string;
-  parsing_status: string;
-  confidence_score: number | null;
-  matching_result_ids: string[];
   message: string;
 };
 
@@ -98,15 +95,24 @@ export type PortalApplicationStatusItem = {
   current_stage: string | null;
   applied_at: string;
   cv_file_id: string | null;
-  best_matching_score: number | null;
-  recommendation: string | null;
-  matching_result_ids?: string[];
 };
 
 export type PortalApplicationStatusResponse = {
   email: string;
   candidate_id: string | null;
   applications: PortalApplicationStatusItem[];
+};
+
+export type CandidateNotification = {
+  id: string;
+  application_id: string | null;
+  interview_id: string | null;
+  type: "interview_invitation" | "accepted" | "rejected";
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+  read_at: string | null;
 };
 
 export async function getPublicJobs(): Promise<JobOffer[]> {
@@ -161,6 +167,16 @@ export async function submitAuthenticatedApplication(jobId: string): Promise<Por
 export async function getCandidateApplications(): Promise<PortalApplicationStatusItem[]> {
   const response = await portalApiClient.get<PortalApplicationStatusItem[]>("/api/portal/applications");
   return Array.isArray(response.data) ? response.data : [];
+}
+
+export async function getCandidateNotifications(): Promise<CandidateNotification[]> {
+  const response = await portalApiClient.get<CandidateNotification[]>("/api/portal/notifications");
+  return Array.isArray(response.data) ? response.data : [];
+}
+
+export async function markCandidateNotificationRead(notificationId: string): Promise<CandidateNotification> {
+  const response = await portalApiClient.patch<CandidateNotification>(`/api/portal/notifications/${notificationId}/read`);
+  return response.data;
 }
 
 export function logoutCandidate() {

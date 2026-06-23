@@ -12,6 +12,9 @@ const pageTitles: Record<string, string> = {
   "/matching": "Matching IA",
   "/interviews": "Entretiens",
   "/evaluations": "Évaluations",
+  "/admin": "Administration",
+  "/admin/users": "Utilisateurs",
+  "/admin/settings": "Paramètres système",
 };
 
 export function Header() {
@@ -29,7 +32,9 @@ export function Header() {
     <header className="sticky top-16 z-20 border-b border-slate-200 bg-white/95 backdrop-blur lg:top-0">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#E8590C]">Espace recruteur</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#E8590C]">
+            {pathname.startsWith("/admin") ? "Espace administrateur" : "Espace recruteur"}
+          </p>
           <h1 className="truncate text-xl font-semibold text-[#0B1F3A]">{title}</h1>
         </div>
         <div className="flex items-center gap-3">

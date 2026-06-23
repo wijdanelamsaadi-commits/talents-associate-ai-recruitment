@@ -62,15 +62,30 @@ class User(TimestampMixin, Base):
     created_job_offers: Mapped[list[JobOffer]] = relationship(back_populates="created_by")
 
 
+class SystemSetting(TimestampMixin, Base):
+    __tablename__ = "system_settings"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    key: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
+    value: Mapped[dict | str | int | bool | None] = mapped_column(JSONB)
+    description: Mapped[str | None] = mapped_column(Text)
+
+
 class Candidate(TimestampMixin, Base):
     __tablename__ = "candidates"
     __table_args__ = (
+        Index("idx_candidates_created_at_desc", "created_at", "id", postgresql_using="btree"),
         CheckConstraint(
             "source IN ('manual', 'cv_upload', 'linkedin_csv', 'candidate_portal', 'outlook_import', 'referral', 'other')",
             name="ck_candidates_source",
         ),
         CheckConstraint(
-            "status IN ('new', 'active', 'shortlisted', 'interviewing', 'offered', 'hired', 'rejected', 'archived')",
+            "status IN ('new', 'active', 'shortlisted', 'interviewing', 'offered', 'hired', 'rejected', 'archived', 'talent_pool')",
             name="ck_candidates_status",
         ),
     )
@@ -92,8 +107,15 @@ class Candidate(TimestampMixin, Base):
     linkedin_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     portfolio_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     current_title: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    current_company: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(1), nullable=True)
     source: Mapped[str] = mapped_column(String(50), default="manual", index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="new", index=True, nullable=False)
+    is_talent_pool: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_decision_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     consent_given: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     owner_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
 
@@ -206,6 +228,8 @@ class ExtractedCVData(TimestampMixin, Base):
     highest_degree: Mapped[str | None] = mapped_column(String(150))
     language_codes: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     parser_model: Mapped[str | None] = mapped_column(String(100))
+    embedding: Mapped[list[float] | None] = mapped_column(JSONB)
+    embedding_generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     confidence_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
     parsing_status: Mapped[str] = mapped_column(String(30), default="extracted", nullable=False)
     status: Mapped[str] = mapped_column(String(30), default="parsed", index=True, nullable=False)
@@ -361,6 +385,8 @@ class JobOffer(TimestampMixin, Base):
     preferred_skills: Mapped[list[str] | None] = mapped_column(JSON)
     required_experience_years: Mapped[int | None] = mapped_column(Integer)
     education_level: Mapped[str | None] = mapped_column(String(120))
+    embedding: Mapped[list[float] | None] = mapped_column(JSONB)
+    embedding_generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(30), default="draft", index=True, nullable=False)
     opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -437,7 +463,7 @@ class AIMatchingResult(TimestampMixin, Base):
     matched_skills: Mapped[dict | list | None] = mapped_column(JSON)
     missing_skills: Mapped[dict | list | None] = mapped_column(JSON)
     detailed_scores: Mapped[dict | None] = mapped_column(JSON)
-    recommendation: Mapped[str | None] = mapped_column(String(40), index=True)
+    recommendation: Mapped[str | None] = mapped_column(String(150), index=True)
     embedding_version: Mapped[str | None] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(30), default="generated", index=True, nullable=False)
     reviewed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
@@ -445,6 +471,30 @@ class AIMatchingResult(TimestampMixin, Base):
 
     application: Mapped[Application | None] = relationship(back_populates="matching_results")
     job_offer: Mapped[JobOffer] = relationship(back_populates="matching_results")
+    candidate: Mapped[Candidate] = relationship()
+
+    @property
+    def candidate_name(self) -> str | None:
+        if self.candidate:
+            return f"{self.candidate.first_name} {self.candidate.last_name}"
+        return None
+
+    @property
+    def job_title(self) -> str | None:
+        if self.job_offer:
+            return self.job_offer.title
+        return None
+
+    @property
+    def semantic_score(self) -> int | None:
+        if not self.detailed_scores:
+            return None
+        value = self.detailed_scores.get("semantic_score")
+        return int(value) if value is not None else None
+
+    @property
+    def used_semantic_embedding(self) -> bool:
+        return bool(self.embedding_version)
 
 
 class Interview(TimestampMixin, Base):
@@ -528,6 +578,53 @@ class Evaluation(TimestampMixin, Base):
     application: Mapped[Application] = relationship(back_populates="evaluations")
 
 
+class CandidateNotification(TimestampMixin, Base):
+    __tablename__ = "candidate_notifications"
+    __table_args__ = (
+        CheckConstraint(
+            "type IN ('interview_invitation', 'accepted', 'rejected')",
+            name="ck_candidate_notifications_type",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    candidate_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidates.id", ondelete="CASCADE"), index=True)
+    application_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("applications.id", ondelete="CASCADE"), index=True)
+    interview_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("interviews.id", ondelete="SET NULL"), index=True)
+    type: Mapped[str] = mapped_column(String(40), index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(180), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EmailLog(TimestampMixin, Base):
+    __tablename__ = "email_logs"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending', 'sent', 'failed', 'skipped')", name="ck_email_logs_status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    candidate_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("candidates.id", ondelete="SET NULL"), index=True)
+    application_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("applications.id", ondelete="SET NULL"), index=True)
+    to_email: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True, nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class CandidateTimelineEvent(TimestampMixin, Base):
     __tablename__ = "candidate_timeline_events"
     __table_args__ = (
@@ -535,7 +632,8 @@ class CandidateTimelineEvent(TimestampMixin, Base):
             "event_type IN ('candidate_created', 'candidate_updated', 'note', 'email', 'call', 'status_change', "
             "'cv_uploaded', 'cv_parsed', 'interview_scheduled', 'evaluation_added', 'ai_match_generated', "
             "'candidate_application_submitted', 'linkedin_csv_imported', 'outlook_imported', 'manual_cv_uploaded', "
-            "'portal_update')",
+            "'portal_update', 'candidate_archived', 'candidate_reactivated', 'candidate_rejected', "
+            "'application_accepted', 'application_rejected', 'application_reactivated')",
             name="ck_candidate_timeline_events_type",
         ),
     )

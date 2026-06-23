@@ -1,17 +1,20 @@
 import csv
 import hashlib
+import logging
 import uuid
 import zipfile
+from datetime import datetime, timezone
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Any
 
 from fastapi import UploadFile
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import CVFile, Candidate, ExtractedCVData, LinkedInCSVImport, OutlookCVImport
 from app.services.cv_service import MAX_CV_FILE_SIZE_BYTES, UPLOAD_DIRECTORY
+from app.services.embedding_service import build_candidate_embedding_text, generate_embedding
 from app.services.llm_cv_parser_service import parse_cv_text_configurable
 from app.services.matching_service import auto_match_candidate
 from app.services.text_extraction import TextExtractionError, extract_text_from_file
@@ -27,9 +30,11 @@ LINKEDIN_COLUMNS = ("profile url", "profile link", "linkedin url", "linkedin_url
 FIRST_NAME_COLUMNS = ("first name", "firstname", "first_name", "given name")
 LAST_NAME_COLUMNS = ("last name", "lastname", "last_name", "surname", "family name")
 TITLE_COLUMNS = ("position", "title", "job title", "current position", "headline", "occupation")
+COMPANY_COLUMNS = ("company", "current company", "organization", "organisation", "employer")
 LOCATION_COLUMNS = ("location", "city", "address")
 PHONE_COLUMNS = ("phone", "phone number", "mobile")
 OUTLOOK_SUPPORTED_EXTENSIONS = {".pdf", ".docx"}
+logger = logging.getLogger(__name__)
 
 
 async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInCSVImport:
@@ -41,7 +46,7 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
     if not content:
         raise ImportError("Uploaded CSV file is empty.")
 
-    reader = csv.DictReader(StringIO(_decode_csv(content)))
+    reader = _build_csv_reader(content)
     if not reader.fieldnames:
         raise ImportError("CSV file has no header row.")
 
@@ -56,13 +61,25 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
         linkedin_url = _get_first(normalized_row, LINKEDIN_COLUMNS)
         first_name = _get_first(normalized_row, FIRST_NAME_COLUMNS)
         last_name = _get_first(normalized_row, LAST_NAME_COLUMNS)
+        current_company = _get_first(normalized_row, COMPANY_COLUMNS)
 
-        if not email and not linkedin_url:
+        if not email and not linkedin_url and not (first_name and last_name and current_company):
             skipped += 1
-            rows_report.append({"row": row_number, "status": "skipped", "reason": "Missing email and LinkedIn URL."})
+            rows_report.append({
+                "row": row_number,
+                "status": "skipped",
+                "reason": "Missing email, LinkedIn URL, and name/company match keys.",
+            })
             continue
 
-        candidate = _find_candidate(db, email=email, linkedin_url=linkedin_url)
+        candidate = _find_linkedin_csv_candidate(
+            db,
+            email=email,
+            linkedin_url=linkedin_url,
+            first_name=first_name,
+            last_name=last_name,
+            current_company=current_company,
+        )
         if candidate is None and (not first_name or not last_name):
             skipped += 1
             rows_report.append({"row": row_number, "status": "skipped", "reason": "Missing candidate name for new record."})
@@ -77,6 +94,7 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
                 phone=_get_first(normalized_row, PHONE_COLUMNS) or None,
                 location=_get_first(normalized_row, LOCATION_COLUMNS) or None,
                 current_title=_get_first(normalized_row, TITLE_COLUMNS) or None,
+                current_company=current_company or None,
                 source="linkedin_csv",
                 status="active",
             )
@@ -95,7 +113,6 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
             continue
 
         changed_fields = _update_candidate_from_row(candidate, normalized_row)
-        candidate.source = "linkedin_csv"
         if changed_fields:
             create_timeline_event(
                 db,
@@ -239,15 +256,49 @@ def _decode_csv(content: bytes) -> str:
     raise ImportError("CSV encoding is not supported.")
 
 
-def _find_candidate(db: Session, email: str, linkedin_url: str) -> Candidate | None:
-    conditions = []
+def _build_csv_reader(content: bytes) -> csv.DictReader:
+    text = _decode_csv(content)
+    return csv.DictReader(StringIO(text), delimiter=_detect_csv_delimiter(text))
+
+
+def _detect_csv_delimiter(text: str) -> str:
+    sample = text[:8192]
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+        return dialect.delimiter
+    except csv.Error:
+        header = sample.splitlines()[0] if sample else ""
+        return ";" if header.count(";") > header.count(",") else ","
+
+
+def _find_linkedin_csv_candidate(
+    db: Session,
+    *,
+    email: str,
+    linkedin_url: str,
+    first_name: str,
+    last_name: str,
+    current_company: str,
+) -> Candidate | None:
     if email:
-        conditions.append(Candidate.email == email)
+        candidate = db.scalar(select(Candidate).where(Candidate.email == email))
+        if candidate is not None:
+            return candidate
     if linkedin_url:
-        conditions.append(Candidate.linkedin_url == linkedin_url)
-    if not conditions:
-        return None
-    return db.scalar(select(Candidate).where(or_(*conditions)))
+        candidate = db.scalar(select(Candidate).where(Candidate.linkedin_url == linkedin_url))
+        if candidate is not None:
+            return candidate
+    if first_name and last_name and current_company:
+        candidate = db.scalar(
+            select(Candidate).where(
+                func.lower(Candidate.first_name) == first_name.lower(),
+                func.lower(Candidate.last_name) == last_name.lower(),
+                func.lower(Candidate.current_company) == current_company.lower(),
+            )
+        )
+        if candidate is not None:
+            return candidate
+    return None
 
 
 def _find_candidate_for_cv(db: Session, parsed_data: dict[str, Any]) -> Candidate | None:
@@ -286,10 +337,14 @@ def _process_outlook_cv_file(db: Session, filename: str, content: bytes, content
             candidate = Candidate(
                 first_name=first_name,
                 last_name=last_name,
-                email=str(parsed_data.get("email") or "").strip().lower() or None,
-                phone=str(parsed_data.get("phone") or "").strip() or None,
-                source="outlook_import",
-                status="active",
+            email=str(parsed_data.get("email") or "").strip().lower() or None,
+            phone=str(parsed_data.get("phone") or "").strip() or None,
+            linkedin_url=str(parsed_data.get("linkedin_url") or "").strip() or None,
+            current_title=str(parsed_data.get("current_title") or "").strip() or None,
+            current_company=str(parsed_data.get("current_company") or "").strip() or None,
+            gender=str(parsed_data.get("gender") or "").strip() or None,
+            source="outlook_import",
+            status="active",
             )
             db.add(candidate)
             db.flush()
@@ -317,11 +372,17 @@ def _process_outlook_cv_file(db: Session, filename: str, content: bytes, content
             raw_text=raw_text,
             parsed_json=parsed_data,
             ai_output=parsed_data,
+            summary=_optional_string(parsed_data.get("summary")),
+            total_years_experience=_optional_non_negative_number(parsed_data.get("total_experience_years") or parsed_data.get("experience_totale")),
+            highest_degree=_optional_string(parsed_data.get("highest_degree")),
+            parser_model=_parser_model(parsed_data),
             confidence_score=parsed_cv.confidence_score,
             parsing_status="parsed",
             status="approved",
         )
         db.add(extracted_data)
+        db.flush()
+        _generate_candidate_embedding(db, extracted_data)
 
         create_timeline_event(
             db,
@@ -342,6 +403,7 @@ def _process_outlook_cv_file(db: Session, filename: str, content: bytes, content
                 "cv_file_id": str(cv_file.id),
                 "confidence_score": float(parsed_cv.confidence_score),
                 "parser_used": parsed_data.get("parser_used"),
+                "parser_model": extracted_data.parser_model,
             },
         )
         db.commit()
@@ -399,7 +461,7 @@ def _extract_zip_cv_files(filename: str, content: bytes) -> list[dict[str, bytes
 
 
 def _update_candidate_from_parsed_cv(candidate: Candidate, parsed_data: dict[str, Any]) -> None:
-    for field in ("first_name", "last_name", "email", "phone"):
+    for field in ("first_name", "last_name", "email", "phone", "linkedin_url", "current_title", "current_company", "gender"):
         value = str(parsed_data.get(field) or "").strip()
         if field == "email":
             value = value.lower()
@@ -422,10 +484,11 @@ def _update_candidate_from_row(candidate: Candidate, row: dict[str, str]) -> lis
         "phone": _get_first(row, PHONE_COLUMNS),
         "location": _get_first(row, LOCATION_COLUMNS),
         "current_title": _get_first(row, TITLE_COLUMNS),
+        "current_company": _get_first(row, COMPANY_COLUMNS),
     }
     changed_fields = []
     for field, value in mapping.items():
-        if value and getattr(candidate, field) != value:
+        if value and not getattr(candidate, field):
             setattr(candidate, field, value)
             changed_fields.append(field)
     return changed_fields
@@ -440,3 +503,35 @@ def _get_first(row: dict[str, str], keys: tuple[str, ...]) -> str:
 
 def _normalize_key(key: str) -> str:
     return key.strip().lower().replace("\ufeff", "")
+
+
+def _parser_model(parsed_data: dict) -> str:
+    if parsed_data.get("parser_used") == "llm":
+        from app.core.config import settings
+
+        return f"openai:{settings.LLM_MODEL or 'gpt-4o-mini'}"
+    return "heuristic-v1"
+
+
+def _generate_candidate_embedding(db: Session, extracted_data: ExtractedCVData) -> None:
+    try:
+        embedding_text = build_candidate_embedding_text(extracted_data)
+        extracted_data.embedding = generate_embedding(embedding_text)
+        extracted_data.embedding_generated_at = datetime.now(timezone.utc)
+    except Exception as exc:
+        logger.warning("Candidate embedding generation failed during Outlook import; continuing without embedding: %s", exc)
+
+
+def _optional_string(value: object) -> str | None:
+    clean_value = str(value or "").strip()
+    return clean_value or None
+
+
+def _optional_non_negative_number(value: object) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number >= 0 else None

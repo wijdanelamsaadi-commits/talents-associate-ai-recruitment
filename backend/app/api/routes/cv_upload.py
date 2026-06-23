@@ -37,6 +37,7 @@ def upload_cv(
             updated_at=cv_file.updated_at,
             processing_status="completed",
             confidence_score=float(extracted_text.confidence_score) if extracted_text.confidence_score is not None else None,
+            parser_model=extracted_text.parser_model,
             structured_json=extracted_text.ai_output,
             matching_result_ids=[result.id for result in matching_results],
         )
@@ -96,6 +97,7 @@ def parse_cv(cv_file_id: UUID, db: Session = Depends(get_db)) -> ParsedCVRead:
         cv_file_id=extracted_text.cv_file_id,
         parsing_status=extracted_text.parsing_status,
         confidence_score=float(extracted_text.confidence_score) if extracted_text.confidence_score is not None else None,
+        parser_model=extracted_text.parser_model,
         structured_json=extracted_text.ai_output,
     )
 
@@ -110,5 +112,6 @@ def get_parsed_cv(cv_file_id: UUID, db: Session = Depends(get_db)) -> ParsedCVRe
         cv_file_id=extracted_text.cv_file_id,
         parsing_status=extracted_text.parsing_status,
         confidence_score=float(extracted_text.confidence_score) if extracted_text.confidence_score is not None else None,
+        parser_model=extracted_text.parser_model,
         structured_json=extracted_text.ai_output,
     )

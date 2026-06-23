@@ -338,10 +338,12 @@ export function MatchingPage() {
                 {results.map((result) => {
                   const candidate = findCandidate(candidates, result.candidate_id);
                   const job = findJob(jobs, result.job_offer_id);
+                  const displayCandidateName = result.candidate_name ?? candidateName(candidate);
+                  const displayJobTitle = result.job_title ?? job?.title ?? result.job_offer_id;
                   return (
                     <tr key={result.id} className="hover:bg-slate-50">
-                      <td className="whitespace-nowrap px-5 py-4 text-slate-700">{candidateName(candidate)}</td>
-                      <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job?.title ?? result.job_offer_id}</td>
+                      <td className="whitespace-nowrap px-5 py-4 text-slate-700">{displayCandidateName}</td>
+                      <td className="whitespace-nowrap px-5 py-4 text-slate-700">{displayJobTitle}</td>
                       <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{result.score}%</td>
                       <td className="whitespace-nowrap px-5 py-4 capitalize text-slate-700">
                         {formatRecommendation(result.recommendation)}

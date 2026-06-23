@@ -6,7 +6,9 @@ import { logoutCandidate } from "../services/portal";
 const portalLinks = [
   { label: "Accueil", to: "/portal" },
   { label: "Offres disponibles", to: "/portal/jobs" },
+  { label: "Candidature spontanée", to: "/portal/spontaneous-application" },
   { label: "Mes candidatures", to: "/portal/applications" },
+  { label: "Notifications", to: "/portal/notifications" },
 ];
 
 function navClass({ isActive }: { isActive: boolean }) {
@@ -39,12 +41,12 @@ export function PortalLayout() {
                 {item.label}
               </NavLink>
             ))}
-            <a className="px-2 py-2 text-sm font-bold text-[#061A33] transition hover:text-[#ff3d00]" href="/portal#about">
+            <NavLink className={navClass} to="/portal/about">
               À propos
-            </a>
-            <a className="px-2 py-2 text-sm font-bold text-[#061A33] transition hover:text-[#ff3d00]" href="/portal#contact">
+            </NavLink>
+            <NavLink className={navClass} to="/portal/contact">
               Contact
-            </a>
+            </NavLink>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -109,8 +111,9 @@ export function PortalLayout() {
               <Link to="/portal">Accueil</Link>
               <Link to="/portal/jobs">Offres disponibles</Link>
               <Link to="/portal/applications">Mes candidatures</Link>
-              <a href="/portal#about">À propos</a>
-              <a href="/portal#contact">Contact</a>
+              <Link to="/portal/notifications">Notifications</Link>
+              <Link to="/portal/about">À propos</Link>
+              <Link to="/portal/contact">Contact</Link>
             </div>
           </div>
 

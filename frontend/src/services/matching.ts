@@ -13,6 +13,8 @@ export type MatchingResult = {
   status: string;
   created_at: string;
   updated_at: string;
+  candidate_name?: string | null;
+  job_title?: string | null;
 };
 
 export async function runMatching(candidateId: string, jobId: string): Promise<MatchingResult> {

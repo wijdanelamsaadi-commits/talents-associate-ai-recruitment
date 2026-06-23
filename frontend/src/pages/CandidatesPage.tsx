@@ -5,7 +5,16 @@ import { EmptyState } from "../components/EmptyState";
 import { SourceBadge, formatSource } from "../components/SourceBadge";
 import { StatCard } from "../components/StatCard";
 import { getApiErrorMessage } from "../lib/errors";
-import { Candidate, createCandidate, deleteCandidate, getCandidates, updateCandidate } from "../services/candidates";
+import {
+  Candidate,
+  archiveCandidate,
+  createCandidate,
+  getCandidatesPaginated,
+  reactivateCandidate,
+  updateCandidate,
+} from "../services/candidates";
+
+const PAGE_SIZE = 50;
 
 type CandidateFormState = {
   first_name: string;
@@ -28,10 +37,54 @@ const initialFormState: CandidateFormState = {
 };
 
 const sourceOptions = ["manual", "cv_upload", "linkedin_csv", "candidate_portal", "outlook_import", "referral", "other"];
-const statusOptions = ["new", "active", "shortlisted", "interviewing", "offered", "hired", "rejected", "archived"];
+const statusOptions = ["new", "active", "shortlisted", "interviewing", "offered", "hired", "rejected", "archived", "talent_pool"];
+const candidateFilterOptions = [
+  { label: "Tous", value: "all" },
+  { label: "Actifs", value: "active" },
+  { label: "Refusés", value: "rejected" },
+  { label: "Archivés", value: "archived" },
+  { label: "Vivier candidats", value: "talent_pool" },
+] as const;
+
+type CandidateFilter = (typeof candidateFilterOptions)[number]["value"];
 
 function formatStatus(status: string) {
-  return status.replaceAll("_", " ");
+  const labels: Record<string, string> = {
+    new: "nouveau",
+    active: "actif",
+    shortlisted: "présélectionné",
+    interviewing: "entretien",
+    offered: "offre envoyée",
+    hired: "recruté",
+    rejected: "refusé",
+    archived: "archivé",
+    talent_pool: "vivier candidats",
+  };
+  return labels[status] ?? status.replaceAll("_", " ");
+}
+
+function formatCurrentPosition(candidate: Candidate) {
+  const title = candidate.current_title?.trim();
+  const company = candidate.current_company?.trim();
+  if (title && company) {
+    return `${title} at ${company}`;
+  }
+  return title || company || "-";
+}
+
+function LinkedInLink({ url }: { url: string }) {
+  return (
+    <a
+      aria-label="Open LinkedIn profile"
+      className="inline-flex text-[#1D6EEA] hover:text-[#165AC0]"
+      href={url}
+      rel="noreferrer"
+      target="_blank"
+      title="Open LinkedIn profile"
+    >
+      ↗
+    </a>
+  );
 }
 
 function toFormState(candidate: Candidate): CandidateFormState {
@@ -48,6 +101,10 @@ function toFormState(candidate: Candidate): CandidateFormState {
 
 export function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalCandidates, setTotalCandidates] = useState(0);
+  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -57,13 +114,23 @@ export function CandidatesPage() {
   const [formState, setFormState] = useState<CandidateFormState>(initialFormState);
   const [formError, setFormError] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [candidateFilter, setCandidateFilter] = useState<CandidateFilter>("all");
 
-  const loadCandidates = async () => {
+  const totalPages = Math.max(1, Math.ceil(totalCandidates / PAGE_SIZE));
+
+  const loadCandidates = async (pageNumber = page, cursor: string | null = page === 1 ? null : cursorHistory[page - 2] ?? null) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getCandidates();
-      setCandidates(data);
+      const response = await getCandidatesPaginated({
+        skip: 0,
+        limit: PAGE_SIZE,
+        after_id: pageNumber === 1 ? null : cursor,
+        filter: candidateFilter,
+      });
+      setCandidates(response.items);
+      setTotalCandidates(response.total);
+      setNextCursor(response.next_cursor);
     } catch (loadError) {
       setError(getApiErrorMessage(loadError, "Unable to load candidates. Check that the backend is running on localhost:8001."));
     } finally {
@@ -72,18 +139,37 @@ export function CandidatesPage() {
   };
 
   useEffect(() => {
-    void loadCandidates();
-  }, []);
+    const cursor = page === 1 ? null : cursorHistory[page - 2] ?? null;
+    void loadCandidates(page, cursor);
+  }, [page, candidateFilter]);
 
   const stats = useMemo(() => {
     const activeCount = candidates.filter((candidate) => candidate.status === "active").length;
     const interviewingCount = candidates.filter((candidate) => candidate.status === "interviewing").length;
     return {
-      total: candidates.length,
+      total: totalCandidates,
       active: activeCount,
       interviewing: interviewingCount,
     };
-  }, [candidates]);
+  }, [candidates, totalCandidates]);
+
+  const goToNextPage = () => {
+    if (page >= totalPages || !nextCursor) {
+      return;
+    }
+    setCursorHistory((current) => {
+      const updated = [...current];
+      updated[page - 1] = nextCursor;
+      return updated;
+    });
+    setPage((current) => current + 1);
+  };
+
+  const goToPreviousPage = () => {
+    if (page > 1) {
+      setPage((current) => current - 1);
+    }
+  };
 
   const filteredCandidates = useMemo(() => {
     if (sourceFilter === "all") {
@@ -134,7 +220,7 @@ export function CandidatesPage() {
       setFormState(initialFormState);
       setEditingCandidate(null);
       setIsModalOpen(false);
-      await loadCandidates();
+      await loadCandidates(page, page === 1 ? null : cursorHistory[page - 2] ?? null);
     } catch (submitError) {
       setFormError(getApiErrorMessage(submitError, "Candidate could not be saved."));
     } finally {
@@ -142,20 +228,38 @@ export function CandidatesPage() {
     }
   };
 
-  const handleDelete = async (candidate: Candidate) => {
-    const shouldDelete = window.confirm(`Delete candidate "${candidate.first_name} ${candidate.last_name}"?`);
-    if (!shouldDelete) {
+  const resetPagination = () => {
+    setCursorHistory([]);
+    setNextCursor(null);
+    setPage(1);
+  };
+
+  const handleArchive = async (candidate: Candidate) => {
+    const shouldArchive = window.confirm(`Archiver le candidat "${candidate.first_name} ${candidate.last_name}" ?`);
+    if (!shouldArchive) {
       return;
     }
 
     setError(null);
     setMessage(null);
     try {
-      await deleteCandidate(candidate.id);
-      setMessage("Candidate deleted.");
-      await loadCandidates();
-    } catch (deleteError) {
-      setError(getApiErrorMessage(deleteError, "Candidate could not be deleted."));
+      await archiveCandidate(candidate.id);
+      setMessage("Candidat archivé. Son CV, son parsing IA, ses candidatures et son historique sont conservés.");
+      await loadCandidates(page, page === 1 ? null : cursorHistory[page - 2] ?? null);
+    } catch (archiveError) {
+      setError(getApiErrorMessage(archiveError, "Le candidat n'a pas pu être archivé."));
+    }
+  };
+
+  const handleReactivate = async (candidate: Candidate) => {
+    setError(null);
+    setMessage(null);
+    try {
+      await reactivateCandidate(candidate.id);
+      setMessage("Candidat réactivé.");
+      await loadCandidates(page, page === 1 ? null : cursorHistory[page - 2] ?? null);
+    } catch (reactivateError) {
+      setError(getApiErrorMessage(reactivateError, "Le candidat n'a pas pu être réactivé."));
     }
   };
 
@@ -170,7 +274,7 @@ export function CandidatesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-[#0B1F3A]">Candidate database</h2>
-          <p className="mt-1 text-sm text-slate-600">Create, update, delete, and review candidate records.</p>
+          <p className="mt-1 text-sm text-slate-600">Créer, mettre à jour, archiver et réactiver les profils candidats.</p>
         </div>
         <button
           className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#165AC0]"
@@ -181,15 +285,40 @@ export function CandidatesPage() {
         </button>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <label className="block max-w-xs">
-          <span className="text-sm font-medium text-slate-700">Filter by source</span>
+      <section className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-end">
+        <div>
+          <span className="text-sm font-medium text-slate-700">Filtrer les candidats</span>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {candidateFilterOptions.map((option) => (
+              <button
+                className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                  candidateFilter === option.value
+                    ? "border-[#FF3D00] bg-[#FF3D00] text-white"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-[#FF3D00]/60 hover:text-[#FF3D00]"
+                }`}
+                key={option.value}
+                onClick={() => {
+                  setCandidateFilter(option.value);
+                  resetPagination();
+                }}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="block w-full lg:w-64">
+          <span className="text-sm font-medium text-slate-700">Source</span>
           <select
             className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm capitalize outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
-            onChange={(event) => setSourceFilter(event.target.value)}
+            onChange={(event) => {
+              setSourceFilter(event.target.value);
+              setPage(1);
+            }}
             value={sourceFilter}
           >
-            <option value="all">All sources</option>
+            <option value="all">Toutes les sources</option>
             {sourceOptions.map((source) => (
               <option key={source} value={source}>
                 {formatSource(source)}
@@ -230,8 +359,11 @@ export function CandidatesPage() {
                   <th className="px-5 py-3 font-semibold">Email</th>
                   <th className="px-5 py-3 font-semibold">Phone</th>
                   <th className="px-5 py-3 font-semibold">City</th>
+                  <th className="px-5 py-3 font-semibold">LinkedIn</th>
+                  <th className="px-5 py-3 font-semibold">Current position</th>
                   <th className="px-5 py-3 font-semibold">Source</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold">Statut</th>
+                  <th className="px-5 py-3 font-semibold">Vivier</th>
                   <th className="px-5 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -246,6 +378,10 @@ export function CandidatesPage() {
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{candidate.email ?? "-"}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{candidate.phone ?? "-"}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{candidate.location ?? "-"}</td>
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-700">
+                      {candidate.linkedin_url ? <LinkedInLink url={candidate.linkedin_url} /> : "-"}
+                    </td>
+                    <td className="px-5 py-4 text-slate-700">{formatCurrentPosition(candidate)}</td>
                     <td className="whitespace-nowrap px-5 py-4">
                       <SourceBadge source={candidate.source} />
                     </td>
@@ -253,6 +389,13 @@ export function CandidatesPage() {
                       <span className="rounded-full bg-[#1D6EEA]/10 px-3 py-1 text-xs font-semibold capitalize text-[#1D6EEA]">
                         {formatStatus(candidate.status)}
                       </span>
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4">
+                      {candidate.is_talent_pool ? (
+                        <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-[#FF3D00]">Oui</span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-5 py-4">
                       <div className="flex gap-2">
@@ -264,18 +407,50 @@ export function CandidatesPage() {
                           Edit
                         </button>
                         <button
-                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
-                          onClick={() => void handleDelete(candidate)}
+                          className="rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50"
+                          onClick={() => void handleArchive(candidate)}
                           type="button"
                         >
-                          Delete
+                          Archiver
                         </button>
+                        {candidate.status === "archived" || candidate.status === "rejected" || candidate.is_talent_pool ? (
+                          <button
+                            className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                            onClick={() => void handleReactivate(candidate)}
+                            type="button"
+                          >
+                            Réactiver
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">
+            <p className="text-sm text-slate-600">
+              Page {page} of {totalPages} - {totalCandidates} candidate(s)
+            </p>
+            <div className="flex gap-2">
+              <button
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={page <= 1 || isLoading}
+                onClick={goToPreviousPage}
+                type="button"
+              >
+                Previous
+              </button>
+              <button
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={page >= totalPages || isLoading || !nextCursor}
+                onClick={goToNextPage}
+                type="button"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </section>
       ) : null}

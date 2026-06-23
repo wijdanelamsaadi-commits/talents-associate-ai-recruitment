@@ -59,9 +59,6 @@ class PortalApplicationResponse(BaseModel):
     candidate_id: UUID
     application_id: UUID
     cv_file_id: UUID
-    parsing_status: str
-    confidence_score: float | None
-    matching_result_ids: list[UUID]
     message: str
 
 
@@ -74,8 +71,6 @@ class PortalApplicationStatusItem(BaseModel):
     current_stage: str | None
     applied_at: datetime
     cv_file_id: UUID | None
-    best_matching_score: float | None
-    recommendation: str | None
 
 
 class PortalApplicationStatusResponse(BaseModel):
@@ -85,7 +80,7 @@ class PortalApplicationStatusResponse(BaseModel):
 
 
 class CandidateApplicationRead(PortalApplicationStatusItem):
-    matching_result_ids: list[UUID] = []
+    pass
 
 
 class PortalCandidateData(BaseModel):
@@ -117,3 +112,17 @@ class PublicJobRead(BaseModel):
     @classmethod
     def default_empty_skill_lists(cls, value: list[str] | None) -> list[str]:
         return value or []
+
+
+class CandidateNotificationRead(BaseModel):
+    id: UUID
+    application_id: UUID | None = None
+    interview_id: UUID | None = None
+    type: str
+    title: str
+    message: str
+    is_read: bool
+    created_at: datetime
+    read_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)

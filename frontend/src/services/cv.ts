@@ -19,6 +19,7 @@ export type CVFile = {
 export type CVUploadProcessed = CVFile & {
   processing_status: string;
   confidence_score: number | null;
+  parser_model: string | null;
   structured_json: ParsedCVJson | null;
   matching_result_ids: string[];
 };
@@ -29,6 +30,7 @@ export type ExtractedCVText = {
   raw_text: string;
   parsing_status: string;
   confidence_score: number | null;
+  parser_model: string | null;
   ai_output: ParsedCVJson | null;
 };
 
@@ -48,6 +50,7 @@ export type ParsedCV = {
   cv_file_id: string;
   parsing_status: string;
   confidence_score: number | null;
+  parser_model: string | null;
   structured_json: ParsedCVJson | null;
 };
 

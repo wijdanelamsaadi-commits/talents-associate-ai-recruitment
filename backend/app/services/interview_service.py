@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models import Application, Candidate, Interview, JobOffer
 from app.schemas import InterviewCreate, InterviewUpdate
 from app.services.timeline_service import create_timeline_event
+from app.services.notification_service import notify_interview_invitation
 
 
 class InterviewError(ValueError):
@@ -44,6 +45,10 @@ def create_interview(db: Session, interview_in: InterviewCreate) -> Interview:
             "scheduled_start_at": interview.scheduled_start_at.isoformat(),
         },
     )
+    candidate = db.get(Candidate, interview.candidate_id)
+    job = db.get(JobOffer, application.job_offer_id)
+    if candidate is not None:
+        notify_interview_invitation(db, candidate=candidate, application=application, interview=interview, job=job)
     db.commit()
     db.refresh(interview)
     return interview

@@ -10,6 +10,8 @@ class MatchingOutput(BaseModel):
     experience_score: int = Field(ge=0, le=100)
     education_score: int = Field(ge=0, le=100)
     language_score: int = Field(ge=0, le=100)
+    semantic_score: int = Field(ge=0, le=100)
+    used_semantic_embedding: bool = False
     matched_skills: list[str]
     missing_skills: list[str]
     explanation: str
@@ -29,6 +31,10 @@ class MatchingResultRead(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    candidate_name: str | None = None
+    job_title: str | None = None
+    semantic_score: int | None = Field(default=None, ge=0, le=100)
+    used_semantic_embedding: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

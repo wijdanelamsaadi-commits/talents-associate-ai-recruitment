@@ -91,7 +91,7 @@ export function PortalApplyPage() {
         <p className="text-sm font-semibold uppercase text-[#E8590C]">Formulaire candidat</p>
         <h1 className="mt-2 text-2xl font-semibold text-[#0B1F3A]">{job?.title ?? "Postuler à cette offre"}</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Déposez votre CV : la plateforme extrait le texte, prépare votre profil, calcule le score de matching et crée le suivi de candidature.
+          Déposez votre CV : la plateforme prépare votre profil et crée le suivi de candidature.
         </p>
         {isLoading ? <p className="mt-4 text-sm text-slate-500">Chargement de l'offre...</p> : null}
         {job ? (
@@ -140,7 +140,7 @@ export function PortalApplyPage() {
             <div className="grid gap-2 sm:grid-cols-3">
               {[
                 ["uploading", "Upload"],
-                ["processing", "Parsing et matching"],
+                ["processing", "Traitement"],
                 ["completed", "Terminé"],
               ].map(([key, label]) => (
                 <div
@@ -161,8 +161,7 @@ export function PortalApplyPage() {
           {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
           {success ? (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-              {success.message} Résultats de matching : {success.matching_result_ids.length}. Score de matching :{" "}
-              {success.confidence_score ?? "N/A"}.
+              {success.message}
             </div>
           ) : null}
 

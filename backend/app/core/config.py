@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
     LLM_MODEL: str = ""
     LLM_ENABLED: bool = False
+    EMBEDDING_MODEL_NAME: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_FROM_EMAIL: str | None = None
+    SMTP_FROM_NAME: str = "Talents Associate"
+    EMAIL_ENABLED: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",

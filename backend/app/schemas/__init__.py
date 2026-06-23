@@ -9,6 +9,7 @@ from app.schemas.job import JobOfferCreate, JobOfferRead, JobOfferUpdate
 from app.schemas.matching import MatchingOutput, MatchingResultRead
 from app.schemas.portal import (
     CandidateApplicationRead,
+    CandidateNotificationRead,
     CandidateLogin,
     CandidateProfileRead,
     CandidateProfileUpdate,
@@ -28,6 +29,7 @@ __all__ = [
     "CandidateApplicationRead",
     "CandidateCreate",
     "CandidateLogin",
+    "CandidateNotificationRead",
     "CandidateProfileRead",
     "CandidateProfileUpdate",
     "CandidateRead",

@@ -35,7 +35,7 @@ export function PortalStatusPage() {
         <p className="text-sm font-semibold uppercase text-[#E8590C]">Suivi de candidature</p>
         <h1 className="mt-2 text-3xl font-semibold text-[#0B1F3A]">Consulter le suivi de candidature</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Saisissez l'email utilisé dans votre candidature pour consulter les offres, l'étape actuelle et le score de matching.
+          Saisissez l'email utilisé dans votre candidature pour consulter vos offres et l'étape actuelle.
         </p>
 
         <form className="mt-6 flex flex-col gap-3 sm:flex-row" onSubmit={handleSubmit}>
@@ -79,16 +79,10 @@ export function PortalStatusPage() {
                       {formatLabel(application.application_status)}
                     </span>
                   </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div className="rounded-lg bg-slate-50 p-3">
                       <p className="text-xs font-semibold uppercase text-slate-500">Étape</p>
                       <p className="mt-1 text-sm font-semibold capitalize text-[#0B1F3A]">{formatLabel(application.current_stage)}</p>
-                    </div>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-xs font-semibold uppercase text-slate-500">Score de matching</p>
-                      <p className="mt-1 text-sm font-semibold text-[#0B1F3A]">
-                        {application.best_matching_score === null ? "En attente" : `${application.best_matching_score}%`}
-                      </p>
                     </div>
                     <div className="rounded-lg bg-slate-50 p-3">
                       <p className="text-xs font-semibold uppercase text-slate-500">Date</p>
@@ -97,9 +91,6 @@ export function PortalStatusPage() {
                       </p>
                     </div>
                   </div>
-                  {application.recommendation ? (
-                    <p className="mt-3 text-sm capitalize text-slate-600">Recommandation : {formatLabel(application.recommendation)}</p>
-                  ) : null}
                 </article>
               ))}
             </div>
