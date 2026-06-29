@@ -466,3 +466,107 @@ def _recommendation(score: int) -> str:
 
 def _clamp(value: float, minimum: float, maximum: float) -> float:
     return max(minimum, min(value, maximum))
+
+
+def search_candidates_vivier(
+    db: Session,
+    poste: str | None = None,
+    secteur: str | None = None,
+    experience_level: str | None = None,
+    education_level: str | None = None,
+    contract_type: str | None = None,
+    technical_skills: str | None = None,
+    soft_skills: str | None = None,
+    langues: str | None = None,
+) -> list[tuple[Candidate, float, bool, UUID | None]]:
+    # 1. Query candidates not archived
+    statement = select(Candidate).where(Candidate.status != "archived")
+    candidates = list(db.scalars(statement).all())
+
+    # 2. Build virtual job offer if any criteria are provided
+    req_skills = []
+    if technical_skills:
+        req_skills.extend([s.strip() for s in technical_skills.split(";") if s.strip()])
+    if soft_skills:
+        req_skills.extend([s.strip() for s in soft_skills.split(";") if s.strip()])
+
+    req_exp_years = None
+    if experience_level == "0–1 an":
+        req_exp_years = 1
+    elif experience_level == "2–5 ans":
+        req_exp_years = 2
+    elif experience_level == "5–10 ans":
+        req_exp_years = 5
+    elif experience_level == "10 ans et plus":
+        req_exp_years = 10
+
+    virtual_job = JobOffer(
+        title=poste or "",
+        required_skills=req_skills,
+        required_experience_years=req_exp_years,
+        education_level=education_level,
+        contract_type=contract_type,
+        description=langues or "",
+    )
+
+    results = []
+
+    for candidate in candidates:
+        cv = _get_latest_parsed_cv(db, candidate.id)
+        has_cv = cv is not None and cv.ai_output is not None
+
+        # Hard filter for Secteur if provided
+        if secteur:
+            secteur_matched = False
+            # Check candidate model sector
+            if candidate.sector and _strip_accents(candidate.sector.lower()) == _strip_accents(secteur.lower()):
+                secteur_matched = True
+            # Check CV parsed sector
+            elif has_cv:
+                cv_sector = cv.ai_output.get("sector") or cv.ai_output.get("secteur") or ""
+                if cv_sector and _strip_accents(str(cv_sector).lower()) == _strip_accents(secteur.lower()):
+                    secteur_matched = True
+            if not secteur_matched:
+                continue
+
+        # Score candidate
+        if has_cv:
+            match_output = calculate_match(cv.ai_output, virtual_job, cv.embedding)
+            score = float(match_output.score)
+            cv_file_id = cv.cv_file_id
+        else:
+            # Lightweight match: poste + secteur + entreprise
+            title_score = 0
+            if poste:
+                title_score = _title_keyword_score(candidate.current_title or "", poste, req_skills)
+            elif candidate.current_title:
+                title_score = 100
+
+            sector_score = 100
+            if secteur and candidate.sector:
+                sector_score = (
+                    100
+                    if _strip_accents(candidate.sector.lower()) == _strip_accents(secteur.lower())
+                    else 0
+                )
+
+            company_score = 100 if candidate.current_company else 0
+
+            if not poste and not secteur:
+                score = 100.0
+            else:
+                score = float(round((title_score * 0.50) + (sector_score * 0.30) + (company_score * 0.20)))
+            cv_file_id = None
+
+        results.append((candidate, score, has_cv, cv_file_id))
+
+    # Sort results: highest score first, then by Candidate.created_at desc
+    results.sort(
+        key=lambda x: (
+            x[1],
+            x[0].created_at.timestamp() if x[0].created_at else 0.0
+        ),
+        reverse=True
+    )
+    return results
+

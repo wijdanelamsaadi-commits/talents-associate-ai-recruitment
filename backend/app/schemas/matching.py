@@ -2,6 +2,8 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from app.schemas.candidate import CandidateRead
+
 
 
 class MatchingOutput(BaseModel):
@@ -43,3 +45,11 @@ class MatchingResultRead(BaseModel):
     def convert_fraction_score_to_percent(cls, value: float) -> float:
         score = float(value)
         return round(score * 100, 2) if score <= 1 else round(score, 2)
+
+
+class VivierSearchResult(BaseModel):
+    candidate: CandidateRead
+    score: float
+    has_cv: bool
+    cv_file_id: UUID | None = None
+

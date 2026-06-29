@@ -1,57 +1,58 @@
 import { apiClient } from "../lib/api";
 
-export type DashboardCount = {
-  name: string;
+export type DashboardJobOption = {
+  id: string;
+  title: string;
+  company_name: string | null;
+  location: string | null;
+  status: string;
+  opened_at: string | null;
+};
+
+export type PipelineStageCount = {
+  stage: string;
+  label: string;
   count: number;
 };
 
-export type DashboardActivity = {
-  id: string;
-  candidate_id: string;
-  event_type: string;
+export type JobPipeline = {
+  job_id: string;
   title: string;
-  description: string | null;
-  metadata: Record<string, unknown> | null;
-  created_at: string;
+  company_name: string | null;
+  location: string | null;
+  status: string;
+  opened_at: string | null;
+  stages: PipelineStageCount[];
 };
 
-export type DashboardStats = {
-  total_candidates: number;
-  candidate_counts: DashboardCount[];
-  total_jobs: number;
-  open_jobs: number;
-  job_counts: DashboardCount[];
-  total_interviews: number;
-  upcoming_interviews: number;
-  interview_counts: DashboardCount[];
-  total_evaluations: number;
-  total_outlook_imports: number;
-  total_outlook_imported: number;
-  average_matching_score: number | null;
-  matching_score_buckets: DashboardCount[];
-  recent_activities: DashboardActivity[];
+export type DashboardPipelineFilters = {
+  job_id?: string;
+  job_status?: "all" | "en_cours" | "cloture" | "annule";
+  client?: string;
+  location?: string;
+  opened_from?: string;
+  opened_to?: string;
 };
 
-function toArray<T>(value: T[] | { items?: T[] } | unknown): T[] {
-  if (Array.isArray(value)) {
-    return value;
-  }
-  if (value && typeof value === "object" && Array.isArray((value as { items?: T[] }).items)) {
-    return (value as { items: T[] }).items;
-  }
-  return [];
-}
-
-export async function getDashboardStats(): Promise<DashboardStats> {
-  const response = await apiClient.get<DashboardStats>("/api/dashboard/stats");
-  const data = response.data;
-
-  return {
-    ...data,
-    candidate_counts: toArray<DashboardCount>(data.candidate_counts),
-    job_counts: toArray<DashboardCount>(data.job_counts),
-    interview_counts: toArray<DashboardCount>(data.interview_counts),
-    matching_score_buckets: toArray<DashboardCount>(data.matching_score_buckets),
-    recent_activities: toArray<DashboardActivity>(data.recent_activities),
+export type DashboardPipeline = {
+  filter_options: {
+    jobs: DashboardJobOption[];
+    clients: string[];
+    locations: string[];
   };
+  pipelines: JobPipeline[];
+};
+
+export async function getDashboardPipeline(filters: DashboardPipelineFilters = {}): Promise<DashboardPipeline> {
+  const response = await apiClient.get<DashboardPipeline>("/api/dashboard/pipeline", {
+    params: {
+      ...(filters.job_id ? { job_id: filters.job_id } : {}),
+      ...(filters.job_status && filters.job_status !== "all" ? { job_status: filters.job_status } : {}),
+      ...(filters.client ? { client: filters.client } : {}),
+      ...(filters.location ? { location: filters.location } : {}),
+      ...(filters.opened_from ? { opened_from: filters.opened_from } : {}),
+      ...(filters.opened_to ? { opened_to: filters.opened_to } : {}),
+    },
+  });
+  return response.data;
 }

@@ -42,14 +42,24 @@ def build_candidate_embedding_text(extracted_data: ExtractedCVData) -> str:
 
 
 def build_job_embedding_text(job: JobOffer) -> str:
+    language_labels = []
+    if job.languages:
+        language_labels = [
+            f"{entry.get('language', '')} ({entry.get('level', '')})"
+            for entry in job.languages
+            if isinstance(entry, dict) and entry.get("language")
+        ]
     parts = [
         job.title,
         job.company_name,
         job.department,
+        job.sector,
         job.description,
         job.requirements,
         _join_items(job.required_skills),
         _join_items(job.preferred_skills),
+        _join_items(job.soft_skills),
+        _join_items(language_labels),
         f"{job.required_experience_years} years experience" if job.required_experience_years is not None else "",
         job.education_level,
     ]

@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { SourceBadge } from "../components/SourceBadge";
 import { StatCard } from "../components/StatCard";
+import { getCvDownloadUrl } from "../lib/cv";
 import { getApiErrorMessage } from "../lib/errors";
 import {
   CandidateHistory,
@@ -128,7 +129,15 @@ export function CandidateDetailsPage() {
         <h2 className="mt-2 text-2xl font-semibold text-[#0B1F3A]">{fullName}</h2>
         <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
           <p>
-            <span className="block font-semibold text-slate-500">Email</span>
+            <span className="block font-semibold text-slate-500">Nom</span>
+            {candidate.last_name}
+          </p>
+          <p>
+            <span className="block font-semibold text-slate-500">Prénom</span>
+            {candidate.first_name}
+          </p>
+          <p>
+            <span className="block font-semibold text-slate-500">Email (identifiant unique)</span>
             {candidate.email ?? "-"}
           </p>
           <p>
@@ -140,12 +149,49 @@ export function CandidateDetailsPage() {
             {candidate.location ?? "-"}
           </p>
           <p>
+            <span className="block font-semibold text-slate-500">Poste actuel</span>
+            {candidate.current_title ?? "-"}
+          </p>
+          <p>
+            <span className="block font-semibold text-slate-500">Secteur</span>
+            {candidate.sector ?? "-"}
+          </p>
+          <p>
             <span className="block font-semibold text-slate-500">Source</span>
             <span className="mt-1 inline-block">
               <SourceBadge source={candidate.source} />
             </span>
           </p>
+          {candidate.source === "linkedin_csv" && candidate.linkedin_url ? (
+            <p>
+              <span className="block font-semibold text-slate-500">Profil LinkedIn</span>
+              <a
+                href={candidate.linkedin_url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1.5 text-[#1D6EEA] hover:text-[#165AC0] font-semibold underline"
+              >
+                Voir le profil LinkedIn ↗
+              </a>
+            </p>
+          ) : null}
         </div>
+        {history.cv_files.length > 0 ? (
+          <div className="mt-5 flex flex-wrap gap-3">
+            {history.cv_files.slice(0, 1).map((cv) => (
+              <a
+                key={cv.id}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#165AC0]"
+                download
+                href={getCvDownloadUrl(cv.id)}
+                rel="noreferrer"
+                target="_blank"
+              >
+                ⬇ Télécharger le CV
+              </a>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="grid gap-4 md:grid-cols-5">
@@ -272,11 +318,22 @@ export function CandidateDetailsPage() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {history.cv_files.map((cv) => (
-                <li className="px-5 py-4 text-sm" key={cv.id}>
-                  <p className="font-semibold text-[#0B1F3A]">{cv.original_filename}</p>
-                  <p className="mt-1 text-slate-600">
-                    Parsing {formatLabel(cv.parsing_status)} - modèle {cv.parser_model ?? "-"} - {formatDate(cv.uploaded_at)}
-                  </p>
+                <li className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 text-sm" key={cv.id}>
+                  <div>
+                    <p className="font-semibold text-[#0B1F3A]">{cv.original_filename}</p>
+                    <p className="mt-1 text-slate-600">
+                      Parsing {formatLabel(cv.parsing_status)} - modèle {cv.parser_model ?? "-"} - {formatDate(cv.uploaded_at)}
+                    </p>
+                  </div>
+                  <a
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    download
+                    href={getCvDownloadUrl(cv.id)}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Télécharger
+                  </a>
                 </li>
               ))}
             </ul>

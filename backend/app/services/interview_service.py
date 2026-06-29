@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Application, Candidate, Interview, JobOffer
 from app.schemas import InterviewCreate, InterviewUpdate
+from app.services.pipeline_service import apply_pipeline_stage
 from app.services.timeline_service import create_timeline_event
 from app.services.notification_service import notify_interview_invitation
 
@@ -28,21 +29,26 @@ def create_interview(db: Session, interview_in: InterviewCreate) -> Interview:
         location=interview_in.location,
         notes=interview_in.notes,
     )
-    application.status = "interviewing"
-    application.current_stage = interview_in.interview_type
 
     db.add(interview)
     db.flush()
+    apply_pipeline_stage(
+        db,
+        interview_in.candidate_id,
+        interview_in.status,
+        job_offer_id=interview_in.job_offer_id,
+    )
     create_timeline_event(
         db,
         candidate_id=interview.candidate_id,
         event_type="interview_scheduled",
-        title="Interview scheduled",
-        description=f"{interview.interview_type.title()} interview scheduled.",
+        title="Entretien planifié",
+        description=f"Entretien {interview.interview_type.replace('_', ' ')} planifié.",
         metadata={
             "interview_id": str(interview.id),
             "job_offer_id": str(interview_in.job_offer_id),
             "scheduled_start_at": interview.scheduled_start_at.isoformat(),
+            "pipeline_stage": interview_in.status,
         },
     )
     candidate = db.get(Candidate, interview.candidate_id)
@@ -72,6 +78,7 @@ def update_interview(db: Session, interview: Interview, interview_in: InterviewU
 
     candidate_id = data.pop("candidate_id", None)
     job_offer_id = data.pop("job_offer_id", None)
+    previous_status = interview.status
 
     if candidate_id is not None or job_offer_id is not None:
         current_application = db.get(Application, interview.application_id)
@@ -80,20 +87,13 @@ def update_interview(db: Session, interview: Interview, interview_in: InterviewU
         application = _get_or_create_application(db, next_candidate_id, next_job_offer_id)
         interview.application_id = application.id
         interview.candidate_id = next_candidate_id
-        application.status = "interviewing"
 
     for field, value in data.items():
         setattr(interview, field, value)
 
-    application = db.get(Application, interview.application_id)
-    if application is not None:
-        application.current_stage = interview.interview_type
-        if interview.status == "completed":
-            application.status = "interviewing"
-        elif interview.status in {"cancelled", "no_show"}:
-            application.status = "screening"
-        else:
-            application.status = "interviewing"
+    resolved_job_offer_id = job_offer_id or get_interview_job_offer_id(db, interview)
+    if interview.status != previous_status or "status" in data:
+        apply_pipeline_stage(db, interview.candidate_id, interview.status, job_offer_id=resolved_job_offer_id)
 
     db.commit()
     db.refresh(interview)
@@ -102,10 +102,8 @@ def update_interview(db: Session, interview: Interview, interview_in: InterviewU
 
 def update_interview_status(db: Session, interview: Interview, status: str) -> Interview:
     interview.status = status
-    application = db.get(Application, interview.application_id)
-    if application is not None:
-        application.status = "screening" if status in {"cancelled", "no_show"} else "interviewing"
-
+    job_offer_id = get_interview_job_offer_id(db, interview)
+    apply_pipeline_stage(db, interview.candidate_id, status, job_offer_id=job_offer_id)
     db.commit()
     db.refresh(interview)
     return interview
@@ -142,7 +140,7 @@ def _get_or_create_application(db: Session, candidate_id: UUID, job_offer_id: UU
         job_offer_id=job_offer_id,
         source="recruiter",
         status="interviewing",
-        current_stage="screening",
+        current_stage="entretien_cabinet",
     )
     db.add(application)
     db.flush()

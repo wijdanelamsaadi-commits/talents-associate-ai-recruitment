@@ -4,9 +4,9 @@ import { Link } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { getApiErrorMessage } from "../lib/errors";
 import { Candidate, getCandidates } from "../services/candidates";
-import { CVFile, ExtractedCVText, ParsedCV, deleteCVFile, getCVFiles, getCVText, parseCV, uploadCV } from "../services/cv";
+import { CVFile, ExtractedCVText, ParsedCV, deleteCVFile, getCVFiles, getCVText, parseCV, uploadBatchCVs, uploadCV } from "../services/cv";
 
-const allowedExtensions = [".pdf", ".doc", ".docx"];
+const allowedExtensions = [".pdf", ".doc", ".docx", ".zip"];
 const maxFileSizeBytes = 5 * 1024 * 1024;
 type ProcessingStage = "idle" | "uploading" | "parsing" | "matching" | "completed";
 
@@ -96,9 +96,9 @@ export function CVUploadPage() {
     }
     const lowerName = file.name.toLowerCase();
     if (!allowedExtensions.some((extension) => lowerName.endsWith(extension))) {
-      return "Unsupported file format. Please upload PDF, DOC, or DOCX.";
+      return "Unsupported file format. Please upload PDF, DOC, DOCX, or ZIP.";
     }
-    if (file.size > maxFileSizeBytes) {
+    if (!lowerName.endsWith(".zip") && file.size > maxFileSizeBytes) {
       return "File is larger than 5MB. The backend will reject oversized CV files.";
     }
     return null;
@@ -112,10 +112,11 @@ export function CVUploadPage() {
     setParsedCV(null);
     setMatchingCount(null);
 
-    if (!selectedCandidateId) {
-      setError("Select a candidate before uploading a CV.");
+    if (!selectedFile) {
+      setError("Please select a file to upload.");
       return;
     }
+    const isZip = selectedFile.name.toLowerCase().endsWith(".zip");
 
     const fileError = validateFile(selectedFile);
     if (fileError) {
@@ -127,35 +128,48 @@ export function CVUploadPage() {
     setProcessingStage("uploading");
     setUploadProgress(0);
     try {
-      const uploaded = await uploadCV(selectedCandidateId, selectedFile as File, (progressEvent) => {
-        if (progressEvent.total) {
-          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(progress);
-          if (progress >= 100) {
-            setProcessingStage("parsing");
+      if (isZip) {
+        const result = await uploadBatchCVs(selectedFile as File, (progressEvent) => {
+          if (progressEvent.total) {
+            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(progress);
           }
-        }
-      });
-      setProcessingStage("matching");
-      setSelectedCVId(uploaded.id);
-      setParsedCV({
-        cv_file_id: uploaded.id,
-        parsing_status: uploaded.processing_status,
-        confidence_score: uploaded.confidence_score,
-        parser_model: uploaded.parser_model,
-        structured_json: uploaded.structured_json,
-      });
-      setMatchingCount(uploaded.matching_result_ids.length);
-      setMessage(
-        `Uploaded ${uploaded.original_filename}. Text extraction, CV parsing, profile update, and automatic matching completed.`,
-      );
-      setSelectedFile(null);
-      await loadPageData();
-      await handleViewText(uploaded.id);
-      setProcessingStage("completed");
-      setMessage(
-        `Uploaded ${uploaded.original_filename}. Text extraction, CV parsing, profile update, and ${uploaded.matching_result_ids.length} matching result(s) completed.`,
-      );
+        });
+        setProcessingStage("completed");
+        setMessage(`Batch upload completed. ${result.success_count} success, ${result.error_count} error(s). Total processed: ${result.total}.`);
+        setSelectedFile(null);
+        await loadPageData();
+      } else {
+        const uploaded = await uploadCV(undefined, selectedFile as File, (progressEvent) => {
+          if (progressEvent.total) {
+            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(progress);
+            if (progress >= 100) {
+              setProcessingStage("parsing");
+            }
+          }
+        });
+        setProcessingStage("matching");
+        setSelectedCVId(uploaded.id);
+        setParsedCV({
+          cv_file_id: uploaded.id,
+          parsing_status: uploaded.processing_status,
+          confidence_score: uploaded.confidence_score,
+          parser_model: uploaded.parser_model,
+          structured_json: uploaded.structured_json,
+        });
+        setMatchingCount(uploaded.matching_result_ids.length);
+        setMessage(
+          `Uploaded ${uploaded.original_filename}. Text extraction, CV parsing, profile update, and automatic matching completed.`,
+        );
+        setSelectedFile(null);
+        await loadPageData();
+        await handleViewText(uploaded.id);
+        setProcessingStage("completed");
+        setMessage(
+          `Uploaded ${uploaded.original_filename}. Text extraction, CV parsing, profile update, and ${uploaded.matching_result_ids.length} matching result(s) completed.`,
+        );
+      }
     } catch (uploadError) {
       setProcessingStage("idle");
       setError(getApiErrorMessage(uploadError, "CV upload failed. Check the file format, file size, and candidate."));
@@ -248,8 +262,7 @@ export function CVUploadPage() {
           <div>
             <h2 className="text-lg font-semibold text-[#0B1F3A]">Upload candidate CV</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Select a candidate and upload a PDF or DOCX file. The platform extracts text, parses the CV, updates the profile,
-              and runs matching automatically.
+              Upload a PDF/DOCX file, or a ZIP file containing multiple CVs. The platform automatically creates or updates candidate profiles based on the parsed data, extracts text, and runs matching automatically.
             </p>
           </div>
           <Link className="text-sm font-semibold text-[#1D6EEA] hover:text-[#165AC0]" to="/candidates">
@@ -257,37 +270,16 @@ export function CVUploadPage() {
           </Link>
         </div>
 
-        <form className="mt-6 grid gap-5 lg:grid-cols-[1fr_1fr_auto]" onSubmit={handleUpload}>
+        <form className="mt-6 grid gap-5 lg:grid-cols-[1fr_auto] items-end" onSubmit={handleUpload}>
           <label className="block">
-            <span className="text-sm font-medium text-slate-700">Candidate</span>
-            <select
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
-              disabled={isLoadingPage || candidates.length === 0}
-              onChange={(event) => setSelectedCandidateId(event.target.value)}
-              required
-              value={selectedCandidateId}
-            >
-              {candidates.length === 0 ? <option value="">No candidates available</option> : null}
-              {candidates.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.first_name} {candidate.last_name}
-                </option>
-              ))}
-            </select>
-            {selectedCandidate ? (
-              <span className="mt-1 block text-xs text-slate-500">{selectedCandidate.email ?? "No email"}</span>
-            ) : null}
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">CV file</span>
+            <span className="text-sm font-medium text-slate-700">CV file (or ZIP batch)</span>
             <input
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".pdf,.doc,.docx,.zip,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/zip"
               className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#1D6EEA] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
               onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
               type="file"
             />
-            <span className="mt-1 block text-xs text-slate-500">PDF, DOC, or DOCX. Maximum 5MB.</span>
+            <span className="mt-1 block text-xs text-slate-500">PDF, DOC, DOCX, or ZIP. Maximum 5MB per CV.</span>
           </label>
 
           <div className="flex items-end">

@@ -11,13 +11,11 @@ type NavigationItem = {
 const navigation: NavigationItem[] = [
   { label: "Tableau de bord", to: "/dashboard", icon: "T" },
   { label: "Candidats", to: "/candidates", icon: "C" },
-  { label: "Upload CV", to: "/cv-upload", icon: "CV" },
-  { label: "Imports LinkedIn", to: "/imports", icon: "LI" },
-  { label: "Imports Outlook", to: "/outlook-import", icon: "O" },
-  { label: "Offres", to: "/jobs", icon: "O" },
-  { label: "Matching", to: "/matching", icon: "M" },
-  { label: "Entretiens", to: "/interviews", icon: "E" },
-  { label: "Évaluations", to: "/evaluations", icon: "EV" },
+  { label: "Import de CV", to: "/cv-upload", icon: "CV" },
+  { label: "Import LinkedIn", to: "/imports", icon: "LI" },
+  { label: "Offres d'emploi", to: "/jobs", icon: "O" },
+  { label: "Moteur de matching", to: "/matching", icon: "M" },
+  { label: "Entretiens & Évaluations", to: "/interviews", icon: "E" },
 ];
 
 const adminNavigation: NavigationItem[] = [

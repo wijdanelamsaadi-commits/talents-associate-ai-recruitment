@@ -48,3 +48,17 @@ class ParsedCVRead(BaseModel):
     structured_json: dict | None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CVBatchResultItem(BaseModel):
+    filename: str
+    status: str
+    candidate_id: UUID | None = None
+    error_message: str | None = None
+
+
+class CVBatchUploadSummary(BaseModel):
+    total: int
+    success_count: int
+    error_count: int
+    results: list[CVBatchResultItem]

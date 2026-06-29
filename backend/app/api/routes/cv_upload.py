@@ -1,11 +1,23 @@
+import io
+import os
+import zipfile
+from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas import CVFileRead, CVUploadProcessedRead, ExtractedCVTextRead, ParsedCVRead
+from app.schemas import (
+    CVBatchResultItem,
+    CVBatchUploadSummary,
+    CVFileRead,
+    CVUploadProcessedRead,
+    ExtractedCVTextRead,
+    ParsedCVRead,
+)
 from app.services import cv_service
 from app.services.cv_service import CVUploadError
 from app.services.text_extraction import TextExtractionError
@@ -16,8 +28,8 @@ router = APIRouter(prefix="/cv", tags=["cv"])
 
 @router.post("/upload", response_model=CVUploadProcessedRead, status_code=status.HTTP_201_CREATED)
 def upload_cv(
-    candidate_id: UUID = Form(...),
     file: UploadFile = File(...),
+    candidate_id: UUID | None = Form(default=None),
     db: Session = Depends(get_db),
 ) -> CVUploadProcessedRead:
     try:
@@ -50,6 +62,82 @@ def upload_cv(
             status_code=status.HTTP_409_CONFLICT,
             detail="A database record for this CV could not be created.",
         ) from exc
+
+
+@router.post("/upload-batch", response_model=CVBatchUploadSummary, status_code=status.HTTP_201_CREATED)
+def upload_cv_batch(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> CVBatchUploadSummary:
+    if not file.filename.lower().endswith(".zip"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Batch upload only supports .zip files.",
+        )
+
+    results = []
+    success_count = 0
+    error_count = 0
+
+    try:
+        file_bytes = file.file.read()
+        with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+            for filename in z.namelist():
+                if filename.endswith("/") or filename.startswith("__MACOSX/") or "/." in filename:
+                    continue
+                ext = Path(filename).suffix.lower()
+                if ext not in {".pdf", ".doc", ".docx"}:
+                    continue
+
+                extracted_file_bytes = z.read(filename)
+                
+                try:
+                    # Create a mock UploadFile
+                    mock_upload_file = UploadFile(
+                        file=io.BytesIO(extracted_file_bytes),
+                        size=len(extracted_file_bytes),
+                        filename=Path(filename).name,
+                        headers=None,
+                    )
+                    
+                    cv_file = cv_service.upload_cv(db, candidate_id=None, upload_file=mock_upload_file)
+                    cv_service.parse_and_auto_match_cv(db, cv_file_id=cv_file.id)
+                    
+                    success_count += 1
+                    results.append(
+                        CVBatchResultItem(
+                            filename=Path(filename).name,
+                            status="success",
+                            candidate_id=cv_file.candidate_id,
+                        )
+                    )
+                except Exception as e:
+                    error_count += 1
+                    results.append(
+                        CVBatchResultItem(
+                            filename=Path(filename).name,
+                            status="error",
+                            candidate_id=None,
+                            error_message=str(e),
+                        )
+                    )
+    except zipfile.BadZipFile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid zip file.",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while processing the zip file: {e}",
+        )
+
+    return CVBatchUploadSummary(
+        total=success_count + error_count,
+        success_count=success_count,
+        error_count=error_count,
+        results=results,
+    )
 
 
 @router.get("/files", response_model=list[CVFileRead])
@@ -115,3 +203,21 @@ def get_parsed_cv(cv_file_id: UUID, db: Session = Depends(get_db)) -> ParsedCVRe
         parser_model=extracted_text.parser_model,
         structured_json=extracted_text.ai_output,
     )
+
+
+@router.get("/{cv_file_id}/download")
+def download_cv_file(cv_file_id: UUID, db: Session = Depends(get_db)) -> FileResponse:
+    cv_file = cv_service.get_cv_file(db, cv_file_id)
+    if cv_file is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="CV file not found.")
+
+    file_path = cv_file.storage_path
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File on disk not found.")
+
+    return FileResponse(
+        path=file_path,
+        filename=cv_file.original_filename,
+        media_type=cv_file.mime_type or "application/octet-stream",
+    )
+

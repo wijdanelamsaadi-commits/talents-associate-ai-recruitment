@@ -6,15 +6,12 @@ export type Evaluation = {
   application_id: string;
   candidate_id: string;
   evaluator_name: string;
+  rating: number;
   technical_score: number;
   soft_skills_score: number;
   motivation_score: number;
-  communication_score: number;
-  culture_fit_score: number;
   global_score: number;
   recommendation: string;
-  strengths: string | null;
-  weaknesses: string | null;
   comments: string | null;
   submitted_at: string | null;
   created_at: string;
@@ -24,15 +21,12 @@ export type Evaluation = {
 export type EvaluationPayload = {
   interview_id: string;
   candidate_id?: string | null;
-  evaluator_name: string;
+  evaluator_name?: string;
+  rating: number;
   technical_score: number;
   soft_skills_score: number;
   motivation_score: number;
-  communication_score: number;
-  culture_fit_score: number;
   recommendation: string;
-  strengths?: string | null;
-  weaknesses?: string | null;
   comments?: string | null;
 };
 

@@ -1,0 +1,43 @@
+<USER_REQUEST>
+The project supervisor provided detailed feedback. Implement these changes in priority order:
+PRIORITY 1 — Candidate database (vivier) + Matching engine
+1. Candidate page fixes:
+
+Remove "Create Candidate" button — candidates only enter via CV upload, LinkedIn import, or manual profiling
+Remove "Archived" filter tab, keep only "Vivier des candidats" (rename from "All")
+Remove "Vivier" from sidebar menu, rename menu items to French
+Candidate card required fields: Nom, Prénom, Email (unique identifier), Téléphone, Ville, Poste actuel, Secteur, Source
+CV must be downloadable (not displayed inline in profile)
+Email is the unique identifier — not phone
+
+2. Matching engine filters — add dropdowns:
+
+Poste (intitulé) — free text + dropdown from job list
+Secteur d'activité — dropdown (74 sectors listed below)
+Niveau d'expérience: "0–1 an", "2–5 ans", "5–10 ans", "10 ans et plus"
+Niveau d'études: "Inférieur Bac", "Bac", "Bac+2", "Bac+3", "Bac+5", "Ingénieur", "Master", "Doctorat"
+Type de contrat: CDI, CDD, Intérim, Stage, Freelance, Alternance
+Compétences techniques (semicolon separated)
+Compétences comportementales (semicolon separated)
+Langues
+
+Matching logic:
+
+If candidate has CV → match on skills + experience + education + title
+If candidate has no CV → match on poste + secteur + entreprise only
+Result = clickable candidate list with profile access and downloadable CV
+
+Sectors list (for dropdown):
+
+Agriculture, Agroalimentaire, Automobile, Aéronautique, Banque, Assurance, Finance, Comptabilité, Audit & Conseil, BTP, Immobilier, Architecture, Industrie, Production, Énergie, Mines, Pétrole & Gaz, Eau & Environnement, Transport, Logistique, Supply Chain, Maritime, Ferroviaire, Télécommunications, Informatique, Technologies de l'information, Cybersécurité, Intelligence Artificielle, E-commerce, Marketing, Communication, Publicité, Médias, Imprimerie, Distribution, Commerce, Import/Export, Luxe, Textile, Santé, Pharmaceutique, Cosmétique, Biotechnologies, Éducation, Formation, Collectivités Territoriales, ONG/Associations, Hôtellerie, Restauration, Centres d'appels/BPO, Événementiel, Services aux entreprises, Sécurité, Nettoyage industriel, Facility Management, Juridique, Administration RH, Recrutement, Achats, Qualité, Maintenance, Artisanat, Électronique, Électromécanique, Chimie, Plasturgie, Bois & Papier, Métallurgie, Bureaux d'études, Digital, Start-up, Holding, Multi-secteurs, Autre
+After implementation:
+
+Run pytest backend/tests
+Show me the updated candidates page and matching engine UI
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-26T22:11:49+02:00.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Claude Sonnet 4.6 (Thinking). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>

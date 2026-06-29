@@ -47,20 +47,46 @@ def create_candidate(db: Session, candidate_in: CandidateCreate) -> Candidate:
 CandidateFilter = str
 
 
-def _apply_candidate_filter(statement, candidate_filter: CandidateFilter = "all"):
+def _apply_candidate_filter(
+    statement,
+    candidate_filter: CandidateFilter = "all",
+    job_offer_id: UUID | None = None,
+    pipeline_stage: str | None = None,
+):
     if candidate_filter == "active":
-        return statement.where(Candidate.status == "active")
-    if candidate_filter == "rejected":
-        return statement.where(Candidate.status == "rejected")
-    if candidate_filter == "archived":
-        return statement.where(Candidate.status == "archived")
-    if candidate_filter == "talent_pool":
-        return statement.where(Candidate.is_talent_pool.is_(True))
+        statement = statement.where(Candidate.status == "active")
+    elif candidate_filter == "rejected":
+        statement = statement.where(Candidate.status == "rejected")
+    elif candidate_filter == "archived":
+        statement = statement.where(Candidate.status == "archived")
+    elif candidate_filter == "talent_pool":
+        statement = statement.where(Candidate.is_talent_pool.is_(True))
+
+    if job_offer_id is not None:
+        statement = statement.where(
+            Candidate.id.in_(
+                select(Application.candidate_id).where(Application.job_offer_id == job_offer_id)
+            )
+        )
+
+    if pipeline_stage and pipeline_stage != "recu":
+        statement = statement.where(Candidate.status == pipeline_stage)
+
     return statement
 
 
-def count_candidates(db: Session, candidate_filter: CandidateFilter = "all") -> int:
-    statement = _apply_candidate_filter(select(sa_func.count()).select_from(Candidate), candidate_filter)
+def count_candidates(
+    db: Session,
+    candidate_filter: CandidateFilter = "all",
+    job_offer_id: UUID | None = None,
+    pipeline_stage: str | None = None,
+) -> int:
+    statement = _apply_candidate_filter(
+        select(sa_func.count()).select_from(Candidate),
+        candidate_filter,
+        job_offer_id=job_offer_id,
+        pipeline_stage=pipeline_stage,
+    )
     return db.scalar(statement) or 0
 
 
@@ -70,8 +96,15 @@ def list_candidates(
     limit: int = 100,
     after_id: UUID | None = None,
     candidate_filter: CandidateFilter = "all",
+    job_offer_id: UUID | None = None,
+    pipeline_stage: str | None = None,
 ) -> list[Candidate]:
-    base_statement = _apply_candidate_filter(select(Candidate), candidate_filter)
+    base_statement = _apply_candidate_filter(
+        select(Candidate),
+        candidate_filter,
+        job_offer_id=job_offer_id,
+        pipeline_stage=pipeline_stage,
+    )
     if after_id is not None:
         cursor_row = db.get(Candidate, after_id)
         if cursor_row is None:

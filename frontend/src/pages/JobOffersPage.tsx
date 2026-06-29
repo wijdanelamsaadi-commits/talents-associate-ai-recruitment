@@ -1,6 +1,20 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { EmptyState } from "../components/EmptyState";
+import {
+  CONTRACT_TYPES,
+  EDUCATION_LEVELS,
+  EXPERIENCE_LEVELS,
+  SECTORS,
+} from "../constants/sectors";
+import {
+  EXPERIENCE_LEVEL_TO_YEARS,
+  JOB_POSITIONS,
+  JobLanguage,
+  LANGUAGE_LEVELS,
+  LANGUAGE_OPTIONS,
+  yearsToExperienceLevel,
+} from "../constants/jobOffers";
 import { getApiErrorMessage } from "../lib/errors";
 import { JobOffer, JobOfferPayload, createJobOffer, deleteJobOffer, getJobOffers, updateJobOffer } from "../services/jobs";
 
@@ -8,43 +22,49 @@ type JobFormState = {
   title: string;
   company_name: string;
   location: string;
+  sector: string;
   contract_type: string;
   required_skills: string;
-  preferred_skills: string;
-  required_experience_years: string;
+  soft_skills: string;
+  experience_level: string;
   education_level: string;
   description: string;
   status: string;
+  languages: JobLanguage[];
 };
 
 const initialFormState: JobFormState = {
   title: "",
   company_name: "",
   location: "",
+  sector: "",
   contract_type: "",
   required_skills: "",
-  preferred_skills: "",
-  required_experience_years: "",
+  soft_skills: "",
+  experience_level: "",
   education_level: "",
   description: "",
   status: "open",
+  languages: [{ language: "Français", level: "Courant" }],
 };
 
-const statusOptions = ["draft", "open", "paused", "closed", "archived"];
+const statusOptions = [
+  { value: "draft", label: "Brouillon" },
+  { value: "open", label: "En cours" },
+  { value: "paused", label: "En pause" },
+  { value: "closed", label: "Clôturé" },
+  { value: "archived", label: "Annulé" },
+];
 
-function formatLabel(value: string) {
-  return value.replaceAll("_", " ");
-}
-
-function splitSkills(value: string) {
+function splitSemicolonList(value: string) {
   return value
-    .split(",")
-    .map((skill) => skill.trim())
+    .split(";")
+    .map((item) => item.trim())
     .filter(Boolean);
 }
 
-function joinSkills(value: string[]) {
-  return value.join(", ");
+function joinSemicolonList(value: string[]) {
+  return value.join("; ");
 }
 
 function toFormState(job: JobOffer): JobFormState {
@@ -52,13 +72,15 @@ function toFormState(job: JobOffer): JobFormState {
     title: job.title,
     company_name: job.company_name ?? "",
     location: job.location ?? "",
+    sector: job.sector ?? "",
     contract_type: job.contract_type ?? "",
-    required_skills: joinSkills(job.required_skills),
-    preferred_skills: joinSkills(job.preferred_skills),
-    required_experience_years: job.required_experience_years?.toString() ?? "",
+    required_skills: joinSemicolonList(job.required_skills),
+    soft_skills: joinSemicolonList(job.soft_skills),
+    experience_level: yearsToExperienceLevel(job.required_experience_years),
     education_level: job.education_level ?? "",
     description: job.description,
     status: job.status,
+    languages: job.languages.length > 0 ? job.languages : [{ language: "Français", level: "Courant" }],
   };
 }
 
@@ -67,10 +89,14 @@ function toPayload(formState: JobFormState): JobOfferPayload {
     title: formState.title.trim(),
     company_name: formState.company_name.trim() || null,
     location: formState.location.trim() || null,
+    sector: formState.sector.trim() || null,
     contract_type: formState.contract_type.trim() || null,
-    required_skills: splitSkills(formState.required_skills),
-    preferred_skills: splitSkills(formState.preferred_skills),
-    required_experience_years: formState.required_experience_years ? Number(formState.required_experience_years) : null,
+    required_skills: splitSemicolonList(formState.required_skills),
+    soft_skills: splitSemicolonList(formState.soft_skills),
+    languages: formState.languages.filter((entry) => entry.language && entry.level),
+    required_experience_years: formState.experience_level
+      ? EXPERIENCE_LEVEL_TO_YEARS[formState.experience_level] ?? null
+      : null,
     education_level: formState.education_level.trim() || null,
     description: formState.description.trim(),
     status: formState.status,
@@ -94,7 +120,7 @@ export function JobOffersPage() {
       const data = await getJobOffers();
       setJobs(data);
     } catch (loadError) {
-      setError(getApiErrorMessage(loadError, "Unable to load job offers. Check that the backend is running on localhost:8001."));
+      setError(getApiErrorMessage(loadError, "Impossible de charger les offres d'emploi."));
     } finally {
       setIsLoading(false);
     }
@@ -120,6 +146,29 @@ export function JobOffersPage() {
     setIsModalOpen(true);
   };
 
+  const updateLanguage = (index: number, field: keyof JobLanguage, value: string) => {
+    setFormState((current) => ({
+      ...current,
+      languages: current.languages.map((entry, entryIndex) =>
+        entryIndex === index ? { ...entry, [field]: value } : entry,
+      ),
+    }));
+  };
+
+  const addLanguage = () => {
+    setFormState((current) => ({
+      ...current,
+      languages: [...current.languages, { language: "Français", level: "Intermédiaire" }],
+    }));
+  };
+
+  const removeLanguage = (index: number) => {
+    setFormState((current) => ({
+      ...current,
+      languages: current.languages.filter((_, entryIndex) => entryIndex !== index),
+    }));
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
@@ -130,24 +179,24 @@ export function JobOffersPage() {
       const payload = toPayload(formState);
       if (editingJob) {
         await updateJobOffer(editingJob.id, payload);
-        setMessage("Job offer updated successfully.");
+        setMessage("Offre d'emploi mise à jour.");
       } else {
         await createJobOffer(payload);
-        setMessage("Job offer created successfully.");
+        setMessage("Offre d'emploi créée.");
       }
       setIsModalOpen(false);
       setEditingJob(null);
       setFormState(initialFormState);
       await loadJobs();
     } catch (submitError) {
-      setError(getApiErrorMessage(submitError, "Job offer could not be saved. Verify required fields."));
+      setError(getApiErrorMessage(submitError, "L'offre d'emploi n'a pas pu être enregistrée."));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (job: JobOffer) => {
-    const shouldDelete = window.confirm(`Delete job offer "${job.title}"?`);
+    const shouldDelete = window.confirm(`Supprimer l'offre « ${job.title} » ?`);
     if (!shouldDelete) {
       return;
     }
@@ -156,10 +205,10 @@ export function JobOffersPage() {
     setMessage(null);
     try {
       await deleteJobOffer(job.id);
-      setMessage("Job offer deleted.");
+      setMessage("Offre d'emploi supprimée.");
       await loadJobs();
     } catch (deleteError) {
-      setError(getApiErrorMessage(deleteError, "Job offer could not be deleted."));
+      setError(getApiErrorMessage(deleteError, "L'offre d'emploi n'a pas pu être supprimée."));
     }
   };
 
@@ -167,15 +216,15 @@ export function JobOffersPage() {
     <div className="space-y-6">
       <section className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[#0B1F3A]">Job offers</h2>
-          <p className="mt-1 text-sm text-slate-600">Manage roles used by the matching engine.</p>
+          <h2 className="text-lg font-semibold text-[#0B1F3A]">Offres d&apos;emploi</h2>
+          <p className="mt-1 text-sm text-slate-600">Gérez les postes utilisés par le moteur de matching.</p>
         </div>
         <button
           className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#165AC0]"
           onClick={openCreateModal}
           type="button"
         >
-          New job offer
+          Nouvelle offre
         </button>
       </section>
 
@@ -184,15 +233,15 @@ export function JobOffersPage() {
 
       {isLoading ? (
         <section className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">
-          Loading job offers...
+          Chargement des offres d&apos;emploi...
         </section>
       ) : null}
 
       {!isLoading && jobs.length === 0 ? (
         <EmptyState
-          title="No job offers yet"
-          description="Create the first job offer to start matching parsed candidate CVs."
-          actionLabel="Create job offer"
+          title="Aucune offre d'emploi"
+          description="Créez la première offre pour lancer le matching des CV."
+          actionLabel="Créer une offre"
           onAction={openCreateModal}
         />
       ) : null}
@@ -200,17 +249,18 @@ export function JobOffersPage() {
       {!isLoading && jobs.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Active job offers</h3>
+            <h3 className="text-base font-semibold text-[#0B1F3A]">Offres actives</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-5 py-3 font-semibold">Title</th>
-                  <th className="px-5 py-3 font-semibold">Company</th>
-                  <th className="px-5 py-3 font-semibold">Location</th>
-                  <th className="px-5 py-3 font-semibold">Required skills</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold">Poste</th>
+                  <th className="px-5 py-3 font-semibold">Client</th>
+                  <th className="px-5 py-3 font-semibold">Secteur</th>
+                  <th className="px-5 py-3 font-semibold">Localisation</th>
+                  <th className="px-5 py-3 font-semibold">Contrat</th>
+                  <th className="px-5 py-3 font-semibold">Statut</th>
                   <th className="px-5 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -218,12 +268,13 @@ export function JobOffersPage() {
                 {jobs.map((job) => (
                   <tr key={job.id} className="hover:bg-slate-50">
                     <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{job.title}</td>
-                    <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job.company_name ?? "-"}</td>
-                    <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job.location ?? "-"}</td>
-                    <td className="max-w-sm px-5 py-4 text-slate-700">{job.required_skills.join(", ") || "-"}</td>
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job.company_name ?? "—"}</td>
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job.sector ?? "—"}</td>
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job.location ?? "—"}</td>
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job.contract_type ?? "—"}</td>
                     <td className="whitespace-nowrap px-5 py-4">
-                      <span className="rounded-full bg-[#1D6EEA]/10 px-3 py-1 text-xs font-semibold capitalize text-[#1D6EEA]">
-                        {formatLabel(job.status)}
+                      <span className="rounded-full bg-[#1D6EEA]/10 px-3 py-1 text-xs font-semibold text-[#1D6EEA]">
+                        {statusOptions.find((option) => option.value === job.status)?.label ?? job.status}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-5 py-4">
@@ -233,14 +284,14 @@ export function JobOffersPage() {
                           onClick={() => openEditModal(job)}
                           type="button"
                         >
-                          Edit
+                          Modifier
                         </button>
                         <button
                           className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
                           onClick={() => void handleDelete(job)}
                           type="button"
                         >
-                          Delete
+                          Supprimer
                         </button>
                       </div>
                     </td>
@@ -254,102 +305,199 @@ export function JobOffersPage() {
 
       {isModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#0B1F3A]/40 px-4 py-6">
-          <section className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+          <section className="w-full max-w-4xl rounded-lg bg-white shadow-xl">
             <div className="border-b border-slate-200 px-6 py-4">
               <h3 className="text-lg font-semibold text-[#0B1F3A]">
-                {editingJob ? "Edit job offer" : "Create job offer"}
+                {editingJob ? "Modifier l'offre d'emploi" : "Créer une offre d'emploi"}
               </h3>
-              <p className="mt-1 text-sm text-slate-600">Skills can be entered as comma-separated values.</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Séparez les compétences par des points-virgules (;).
+              </p>
             </div>
             <form className="space-y-5 p-6" onSubmit={handleSubmit}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Title</span>
-                  <input
+                  <span className="text-sm font-medium text-slate-700">Poste</span>
+                  <select
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, title: event.target.value }))}
                     required
                     value={formState.title}
-                  />
+                  >
+                    <option value="">Sélectionner un poste</option>
+                    {JOB_POSITIONS.map((position) => (
+                      <option key={position} value={position}>
+                        {position}
+                      </option>
+                    ))}
+                  </select>
                 </label>
+
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Company</span>
+                  <span className="text-sm font-medium text-slate-700">Client</span>
                   <input
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, company_name: event.target.value }))}
                     value={formState.company_name}
                   />
                 </label>
+
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Location</span>
+                  <span className="text-sm font-medium text-slate-700">Secteur d&apos;activité</span>
+                  <select
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    onChange={(event) => setFormState((current) => ({ ...current, sector: event.target.value }))}
+                    value={formState.sector}
+                  >
+                    <option value="">Sélectionner un secteur</option>
+                    {SECTORS.map((sector) => (
+                      <option key={sector} value={sector}>
+                        {sector}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-700">Localisation</span>
                   <input
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, location: event.target.value }))}
                     value={formState.location}
                   />
                 </label>
+
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Contract type</span>
-                  <input
+                  <span className="text-sm font-medium text-slate-700">Type de contrat</span>
+                  <select
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, contract_type: event.target.value }))}
-                    placeholder="Full-time, internship, freelance"
                     value={formState.contract_type}
-                  />
+                  >
+                    <option value="">Sélectionner un type</option>
+                    {CONTRACT_TYPES.map((contractType) => (
+                      <option key={contractType} value={contractType}>
+                        {contractType}
+                      </option>
+                    ))}
+                  </select>
                 </label>
+
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Required skills</span>
-                  <input
+                  <span className="text-sm font-medium text-slate-700">Niveau d&apos;expérience</span>
+                  <select
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
-                    onChange={(event) => setFormState((current) => ({ ...current, required_skills: event.target.value }))}
-                    placeholder="React, TypeScript, FastAPI"
-                    value={formState.required_skills}
-                  />
+                    onChange={(event) => setFormState((current) => ({ ...current, experience_level: event.target.value }))}
+                    value={formState.experience_level}
+                  >
+                    <option value="">Sélectionner un niveau</option>
+                    {EXPERIENCE_LEVELS.map((level) => (
+                      <option key={level} value={level}>
+                        {level}
+                      </option>
+                    ))}
+                  </select>
                 </label>
+
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Preferred skills</span>
-                  <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
-                    onChange={(event) => setFormState((current) => ({ ...current, preferred_skills: event.target.value }))}
-                    placeholder="PostgreSQL, Tailwind"
-                    value={formState.preferred_skills}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Experience years</span>
-                  <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
-                    min="0"
-                    onChange={(event) =>
-                      setFormState((current) => ({ ...current, required_experience_years: event.target.value }))
-                    }
-                    type="number"
-                    value={formState.required_experience_years}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Education level</span>
-                  <input
+                  <span className="text-sm font-medium text-slate-700">Niveau d&apos;études</span>
+                  <select
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, education_level: event.target.value }))}
                     value={formState.education_level}
-                  />
+                  >
+                    <option value="">Sélectionner un niveau</option>
+                    {EDUCATION_LEVELS.map((level) => (
+                      <option key={level} value={level}>
+                        {level}
+                      </option>
+                    ))}
+                  </select>
                 </label>
+
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Status</span>
+                  <span className="text-sm font-medium text-slate-700">Statut</span>
                   <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm capitalize outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, status: event.target.value }))}
                     value={formState.status}
                   >
                     {statusOptions.map((status) => (
-                      <option key={status} value={status}>
-                        {formatLabel(status)}
+                      <option key={status.value} value={status.value}>
+                        {status.label}
                       </option>
                     ))}
                   </select>
                 </label>
               </div>
+
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">Compétences techniques</span>
+                <input
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                  onChange={(event) => setFormState((current) => ({ ...current, required_skills: event.target.value }))}
+                  placeholder="React; TypeScript; FastAPI"
+                  value={formState.required_skills}
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">Compétences comportementales</span>
+                <input
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                  onChange={(event) => setFormState((current) => ({ ...current, soft_skills: event.target.value }))}
+                  placeholder="Communication; Esprit d'équipe; Autonomie"
+                  value={formState.soft_skills}
+                />
+              </label>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-700">Langues</span>
+                  <button
+                    className="text-sm font-semibold text-[#1D6EEA] hover:text-[#165AC0]"
+                    onClick={addLanguage}
+                    type="button"
+                  >
+                    Ajouter une langue
+                  </button>
+                </div>
+                {formState.languages.map((entry, index) => (
+                  <div key={`${entry.language}-${index}`} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                    <select
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                      onChange={(event) => updateLanguage(index, "language", event.target.value)}
+                      value={entry.language}
+                    >
+                      {LANGUAGE_OPTIONS.map((language) => (
+                        <option key={language} value={language}>
+                          {language}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                      onChange={(event) => updateLanguage(index, "level", event.target.value)}
+                      value={entry.level}
+                    >
+                      {LANGUAGE_LEVELS.map((level) => (
+                        <option key={level} value={level}>
+                          {level}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                      disabled={formState.languages.length === 1}
+                      onClick={() => removeLanguage(index)}
+                      type="button"
+                    >
+                      Retirer
+                    </button>
+                  </div>
+                ))}
+              </div>
+
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">Description</span>
                 <textarea
@@ -366,14 +514,14 @@ export function JobOffersPage() {
                   onClick={() => setIsModalOpen(false)}
                   type="button"
                 >
-                  Cancel
+                  Annuler
                 </button>
                 <button
                   className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#165AC0] disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={isSubmitting}
                   type="submit"
                 >
-                  {isSubmitting ? "Saving..." : "Save job offer"}
+                  {isSubmitting ? "Enregistrement..." : "Enregistrer"}
                 </button>
               </div>
             </form>

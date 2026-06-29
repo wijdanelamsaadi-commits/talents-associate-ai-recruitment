@@ -12,7 +12,6 @@ import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { AdminSettingsPage } from "./pages/AdminSettingsPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { EvaluationsPage } from "./pages/EvaluationsPage";
 import { InterviewsPage } from "./pages/InterviewsPage";
 import { ImportsPage } from "./pages/ImportsPage";
 import { JobOffersPage } from "./pages/JobOffersPage";
@@ -67,7 +66,7 @@ export default function App() {
           <Route path="/jobs" element={<JobOffersPage />} />
           <Route path="/matching" element={<MatchingPage />} />
           <Route path="/interviews" element={<InterviewsPage />} />
-          <Route path="/evaluations" element={<EvaluationsPage />} />
+          <Route path="/evaluations" element={<Navigate to="/interviews?tab=evaluations" replace />} />
           <Route element={<AdminProtectedRoute />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />

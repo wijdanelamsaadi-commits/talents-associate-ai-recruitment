@@ -11,6 +11,7 @@ export type Candidate = {
   portfolio_url: string | null;
   current_title: string | null;
   current_company: string | null;
+  sector: string | null;
   gender: "M" | "F" | null;
   source: string;
   status: string;
@@ -146,6 +147,7 @@ export type CandidateCreatePayload = {
   portfolio_url?: string | null;
   current_title?: string | null;
   current_company?: string | null;
+  sector?: string | null;
   gender?: "M" | "F" | null;
   source: string;
   status?: string;
@@ -158,6 +160,8 @@ export async function getCandidatesPaginated(params?: {
   limit?: number;
   after_id?: string | null;
   filter?: "all" | "active" | "rejected" | "archived" | "talent_pool";
+  job_offer_id?: string;
+  pipeline_stage?: string;
 }): Promise<PaginatedCandidatesResponse> {
   const response = await apiClient.get<PaginatedCandidatesResponse>("/api/candidates", {
     params: {
@@ -165,6 +169,8 @@ export async function getCandidatesPaginated(params?: {
       limit: params?.limit ?? 100,
       filter: params?.filter ?? "all",
       ...(params?.after_id ? { after_id: params.after_id } : {}),
+      ...(params?.job_offer_id ? { job_offer_id: params.job_offer_id } : {}),
+      ...(params?.pipeline_stage ? { pipeline_stage: params.pipeline_stage } : {}),
     },
   });
   return response.data;
@@ -223,5 +229,28 @@ export async function rejectApplication(applicationId: string): Promise<Applicat
 
 export async function reactivateApplication(applicationId: string): Promise<ApplicationDecisionResponse> {
   const response = await apiClient.patch<ApplicationDecisionResponse>(`/api/applications/${applicationId}/reactivate`);
+  return response.data;
+}
+
+export type VivierSearchResult = {
+  candidate: Candidate;
+  score: number;
+  has_cv: boolean;
+  cv_file_id: string | null;
+};
+
+export type VivierSearchParams = {
+  poste?: string;
+  secteur?: string;
+  experience_level?: string;
+  education_level?: string;
+  contract_type?: string;
+  technical_skills?: string;
+  soft_skills?: string;
+  langues?: string;
+};
+
+export async function searchCandidatesVivier(params: VivierSearchParams): Promise<VivierSearchResult[]> {
+  const response = await apiClient.get<VivierSearchResult[]>("/api/matching/search", { params });
   return response.data;
 }

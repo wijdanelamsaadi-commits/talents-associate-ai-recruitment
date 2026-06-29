@@ -15,10 +15,13 @@ EMBEDDING_TEXT_FIELDS = (
     "title",
     "company_name",
     "department",
+    "sector",
     "description",
     "requirements",
     "required_skills",
     "preferred_skills",
+    "soft_skills",
+    "languages",
     "required_experience_years",
     "education_level",
 )
@@ -54,13 +57,27 @@ def update_job_offer(db: Session, job: JobOffer, job_in: JobOfferUpdate) -> JobO
 
     if "contract_type" in update_data:
         job.employment_type = _map_contract_to_employment_type(job.contract_type)
-    if any(field in update_data for field in ("required_skills", "preferred_skills", "required_experience_years", "education_level")):
+    if any(
+        field in update_data
+        for field in (
+            "required_skills",
+            "preferred_skills",
+            "soft_skills",
+            "languages",
+            "required_experience_years",
+            "education_level",
+            "sector",
+        )
+    ):
         job.requirements = _format_requirements(
             {
                 "required_skills": job.required_skills or [],
                 "preferred_skills": job.preferred_skills or [],
+                "soft_skills": job.soft_skills or [],
+                "languages": job.languages or [],
                 "required_experience_years": job.required_experience_years,
                 "education_level": job.education_level,
+                "sector": job.sector,
             }
         )
     if any(field in update_data for field in EMBEDDING_TEXT_FIELDS):
@@ -86,16 +103,35 @@ def _map_contract_to_employment_type(contract_type: str | None) -> str:
         "contract": "contract",
         "internship": "internship",
         "temporary": "temporary",
+        "cdi": "full_time",
+        "cdd": "contract",
+        "intérim": "temporary",
+        "interim": "temporary",
+        "stage": "internship",
+        "freelance": "contract",
+        "alternance": "internship",
     }
     return mapping.get(normalized, "full_time")
 
 
 def _format_requirements(job_data: dict) -> str:
     parts = []
+    if job_data.get("sector"):
+        parts.append("Sector: " + job_data["sector"])
     if job_data.get("required_skills"):
         parts.append("Required skills: " + ", ".join(job_data["required_skills"]))
     if job_data.get("preferred_skills"):
         parts.append("Preferred skills: " + ", ".join(job_data["preferred_skills"]))
+    if job_data.get("soft_skills"):
+        parts.append("Soft skills: " + ", ".join(job_data["soft_skills"]))
+    if job_data.get("languages"):
+        language_labels = [
+            f"{entry.get('language', '')} ({entry.get('level', '')})"
+            for entry in job_data["languages"]
+            if entry.get("language")
+        ]
+        if language_labels:
+            parts.append("Languages: " + ", ".join(language_labels))
     if job_data.get("required_experience_years") is not None:
         parts.append(f"Experience: {job_data['required_experience_years']} years")
     if job_data.get("education_level"):

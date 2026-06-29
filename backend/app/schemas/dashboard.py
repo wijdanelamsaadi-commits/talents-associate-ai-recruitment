@@ -4,6 +4,17 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
+PIPELINE_STAGES: tuple[tuple[str, str], ...] = (
+    ("recu", "Candidatures reçues"),
+    ("non_selectionne", "Non sélectionnées"),
+    ("preselectionne", "Présélectionnées"),
+    ("entretien_cabinet", "Entretien cabinet"),
+    ("entretien_client", "Entretien client"),
+    ("profil_valide", "Profil validé"),
+    ("refus_candidat", "Refus candidat"),
+)
+
+
 class DashboardCount(BaseModel):
     name: str
     count: int
@@ -34,3 +45,33 @@ class DashboardStatsRead(BaseModel):
     average_matching_score: float | None
     matching_score_buckets: list[DashboardCount]
     recent_activities: list[DashboardActivity]
+
+
+class DashboardJobOption(BaseModel):
+    id: UUID
+    title: str
+    company_name: str | None
+    location: str | None
+    status: str
+    opened_at: datetime | None
+
+
+class PipelineStageCount(BaseModel):
+    stage: str
+    label: str
+    count: int
+
+
+class JobPipelineRead(BaseModel):
+    job_id: UUID
+    title: str
+    company_name: str | None
+    location: str | None
+    status: str
+    opened_at: datetime | None
+    stages: list[PipelineStageCount]
+
+
+class DashboardPipelineRead(BaseModel):
+    filter_options: dict[str, list[str] | list[DashboardJobOption]]
+    pipelines: list[JobPipelineRead]

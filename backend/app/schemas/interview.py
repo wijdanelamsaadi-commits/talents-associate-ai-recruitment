@@ -4,11 +4,17 @@ from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 
 
+INTERVIEW_TYPE_PATTERN = "^(entretien_cabinet|entretien_client)$"
+PIPELINE_STATUS_PATTERN = (
+    "^(preselectionne|non_selectionne|entretien_cabinet|entretien_client|profil_valide|refus_candidat)$"
+)
+
+
 class InterviewBase(BaseModel):
     candidate_id: UUID
     job_offer_id: UUID
-    interview_type: str = Field(default="screening", pattern="^(screening|technical|hr|manager|final)$")
-    status: str = Field(default="scheduled", pattern="^(scheduled|completed|cancelled|rescheduled|no_show)$")
+    interview_type: str = Field(default="entretien_cabinet", pattern=INTERVIEW_TYPE_PATTERN)
+    status: str = Field(default="entretien_cabinet", pattern=PIPELINE_STATUS_PATTERN)
     scheduled_start_at: datetime
     scheduled_end_at: datetime | None = None
     meeting_url: str | None = None
@@ -31,8 +37,8 @@ class InterviewCreate(InterviewBase):
 class InterviewUpdate(BaseModel):
     candidate_id: UUID | None = None
     job_offer_id: UUID | None = None
-    interview_type: str | None = Field(default=None, pattern="^(screening|technical|hr|manager|final)$")
-    status: str | None = Field(default=None, pattern="^(scheduled|completed|cancelled|rescheduled|no_show)$")
+    interview_type: str | None = Field(default=None, pattern=INTERVIEW_TYPE_PATTERN)
+    status: str | None = Field(default=None, pattern=PIPELINE_STATUS_PATTERN)
     scheduled_start_at: datetime | None = None
     scheduled_end_at: datetime | None = None
     meeting_url: str | None = None
@@ -43,7 +49,7 @@ class InterviewUpdate(BaseModel):
 
 
 class InterviewStatusUpdate(BaseModel):
-    status: str = Field(pattern="^(scheduled|completed|cancelled|rescheduled|no_show)$")
+    status: str = Field(pattern=PIPELINE_STATUS_PATTERN)
 
 
 class InterviewRead(InterviewBase):

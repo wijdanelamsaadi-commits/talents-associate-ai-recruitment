@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas import MatchingResultRead
+from app.schemas import MatchingResultRead, VivierSearchResult
 from app.services import matching_service
 from app.services.matching_service import MatchingError
 
@@ -40,3 +40,38 @@ def delete_matching_result(matching_result_id: UUID, db: Session = Depends(get_d
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Matching result not found.")
 
     matching_service.delete_matching_result(db, matching_result)
+
+
+@router.get("/search", response_model=list[VivierSearchResult])
+def search_candidates_vivier(
+    poste: str | None = Query(default=None),
+    secteur: str | None = Query(default=None),
+    experience_level: str | None = Query(default=None),
+    education_level: str | None = Query(default=None),
+    contract_type: str | None = Query(default=None),
+    technical_skills: str | None = Query(default=None),
+    soft_skills: str | None = Query(default=None),
+    langues: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> list[VivierSearchResult]:
+    results = matching_service.search_candidates_vivier(
+        db,
+        poste=poste,
+        secteur=secteur,
+        experience_level=experience_level,
+        education_level=education_level,
+        contract_type=contract_type,
+        technical_skills=technical_skills,
+        soft_skills=soft_skills,
+        langues=langues,
+    )
+    return [
+        VivierSearchResult(
+            candidate=candidate,
+            score=score,
+            has_cv=has_cv,
+            cv_file_id=cv_file_id,
+        )
+        for candidate, score, has_cv, cv_file_id in results
+    ]
+

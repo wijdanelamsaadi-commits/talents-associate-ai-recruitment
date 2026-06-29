@@ -36,17 +36,11 @@ class CVUploadError(ValueError):
 
 def upload_cv(
     db: Session,
-    candidate_id: UUID,
+    candidate_id: UUID | None,
     upload_file: UploadFile,
     uploaded_by: str = "recruiter",
     application_id: UUID | None = None,
 ) -> CVFile:
-    candidate = db.get(Candidate, candidate_id)
-    if candidate is None:
-        raise CVUploadError("Candidate not found.")
-    if uploaded_by == "recruiter":
-        candidate.source = "cv_upload"
-
     original_filename = upload_file.filename or ""
     extension = Path(original_filename).suffix.lower()
     if extension not in SUPPORTED_EXTENSIONS:
@@ -72,6 +66,54 @@ def upload_cv(
         if not raw_text:
             raise CVUploadError("No text could be extracted from this CV.")
 
+        parsed_cv = None
+        parsed_data = None
+
+        if candidate_id is None:
+            parsed_cv = parse_cv_text_configurable(raw_text)
+            parsed_data = parsed_cv.data or {}
+            email = parsed_data.get("email")
+
+            candidate = None
+            if email:
+                candidate = db.scalar(select(Candidate).where(Candidate.email == email))
+
+            if candidate is None:
+                first_name = parsed_data.get("first_name")
+                last_name = parsed_data.get("last_name")
+                if not first_name or not last_name:
+                    base_name = Path(original_filename).stem
+                    name_parts = base_name.replace("_", " ").replace("-", " ").split()
+                    if len(name_parts) >= 2:
+                        first_name = name_parts[0]
+                        last_name = " ".join(name_parts[1:])
+                    else:
+                        first_name = base_name or "Unknown"
+                        last_name = "Candidate"
+                
+                from app.schemas.candidate import CandidateCreate
+                from app.services import candidate_service
+                candidate_in = CandidateCreate(
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email,
+                    source="cv_upload",
+                )
+                candidate = candidate_service.create_candidate(db, candidate_in)
+            else:
+                if uploaded_by == "recruiter":
+                    candidate.source = "cv_upload"
+            
+            candidate_id = candidate.id
+            is_new_parsed = True
+        else:
+            candidate = db.get(Candidate, candidate_id)
+            if candidate is None:
+                raise CVUploadError("Candidate not found.")
+            if uploaded_by == "recruiter":
+                candidate.source = "cv_upload"
+            is_new_parsed = False
+
         cv_file = CVFile(
             candidate_id=candidate_id,
             original_filename=original_filename,
@@ -79,7 +121,7 @@ def upload_cv(
             mime_type=upload_file.content_type,
             file_size_bytes=file_size,
             checksum_sha256=checksum,
-            parsing_status="processing",
+            parsing_status="parsed" if is_new_parsed else "processing",
         )
         db.add(cv_file)
         db.flush()
@@ -89,12 +131,18 @@ def upload_cv(
             candidate_id=candidate_id,
             raw_text=raw_text,
             parsed_json=None,
-            ai_output=None,
-            confidence_score=None,
-            parsing_status="extracted",
-            status="parsed",
+            ai_output=parsed_data if is_new_parsed else None,
+            confidence_score=parsed_cv.confidence_score if is_new_parsed else None,
+            parser_model=_parser_model(parsed_data) if is_new_parsed else None,
+            parsing_status="parsed" if is_new_parsed else "extracted",
+            status="approved" if is_new_parsed else "parsed",
         )
         db.add(extracted_data)
+
+        if is_new_parsed:
+            _generate_candidate_embedding(db, extracted_data)
+            update_candidate_profile_from_parsed_cv(db, extracted_data)
+
         create_timeline_event(
             db,
             candidate_id=candidate_id,
@@ -114,6 +162,22 @@ def upload_cv(
                 "application_id": str(application_id) if application_id else None,
             },
         )
+
+        if is_new_parsed:
+            create_timeline_event(
+                db,
+                candidate_id=candidate_id,
+                event_type="cv_parsed",
+                title="CV parsed",
+                description="Extracted CV text was converted into structured candidate data.",
+                metadata={
+                    "cv_file_id": str(cv_file.id),
+                    "confidence_score": float(parsed_cv.confidence_score) if parsed_cv.confidence_score is not None else None,
+                    "parser_used": parsed_data.get("parser_used", "llm"),
+                    "parser_model": extracted_data.parser_model,
+                },
+            )
+
         db.commit()
         db.refresh(cv_file)
         return cv_file
@@ -200,9 +264,12 @@ def update_candidate_profile_from_parsed_cv(db: Session, extracted_data: Extract
         ("linkedin_url", "linkedin_url"),
         ("current_title", "current_title"),
         ("current_company", "current_company"),
+        ("sector", "sector"),
         ("gender", "gender"),
     ):
         parsed_value = str(parsed_data.get(parsed_field) or "").strip()
+        if parsed_field == "sector" and not parsed_value:
+            parsed_value = str(parsed_data.get("secteur") or "").strip()
         if parsed_value and not getattr(candidate, candidate_field):
             updates[candidate_field] = parsed_value
 

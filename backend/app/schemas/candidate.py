@@ -6,7 +6,10 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl
 
 
-CandidateStatusPattern = "^(new|active|shortlisted|interviewing|offered|hired|rejected|archived|talent_pool)$"
+CandidateStatusPattern = (
+    "^(new|active|shortlisted|interviewing|offered|hired|rejected|archived|talent_pool|"
+    "preselectionne|non_selectionne|entretien_cabinet|entretien_client|profil_valide|refus_candidat)$"
+)
 
 
 class CandidateBase(BaseModel):
@@ -19,6 +22,7 @@ class CandidateBase(BaseModel):
     portfolio_url: str | None = None
     current_title: str | None = Field(default=None, max_length=150)
     current_company: str | None = Field(default=None, max_length=150)
+    sector: str | None = Field(default=None, max_length=150)
     gender: str | None = Field(default=None, pattern="^(M|F)$")
     source: str = Field(default="manual", pattern="^(manual|cv_upload|linkedin_csv|candidate_portal|outlook_import|referral|other)$")
     status: str = Field(
@@ -48,6 +52,7 @@ class CandidateUpdate(BaseModel):
     portfolio_url: str | None = None
     current_title: str | None = Field(default=None, max_length=150)
     current_company: str | None = Field(default=None, max_length=150)
+    sector: str | None = Field(default=None, max_length=150)
     gender: str | None = Field(default=None, pattern="^(M|F)$")
     source: str | None = Field(
         default=None,

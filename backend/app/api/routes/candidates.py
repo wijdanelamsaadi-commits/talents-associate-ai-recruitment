@@ -51,14 +51,32 @@ def list_candidates(
     after_id: UUID | None = Query(default=None, description="Cursor: ID of the last candidate on the previous page"),
     last_id: UUID | None = Query(default=None, description="Cursor alias for after_id"),
     filter: str = Query(default="all", pattern="^(all|active|rejected|archived|talent_pool)$"),
+    job_offer_id: UUID | None = Query(default=None),
+    pipeline_stage: str | None = Query(
+        default=None,
+        pattern="^(recu|preselectionne|non_selectionne|entretien_cabinet|entretien_client|profil_valide|refus_candidat)$",
+    ),
     db: Session = Depends(get_db),
 ) -> PaginatedCandidatesResponse:
     cursor_id = last_id or after_id
-    candidates = candidate_service.list_candidates(db, skip=skip, limit=limit, after_id=cursor_id, candidate_filter=filter)
+    candidates = candidate_service.list_candidates(
+        db,
+        skip=skip,
+        limit=limit,
+        after_id=cursor_id,
+        candidate_filter=filter,
+        job_offer_id=job_offer_id,
+        pipeline_stage=pipeline_stage,
+    )
     next_cursor = str(candidates[-1].id) if candidates and len(candidates) == limit else None
     return PaginatedCandidatesResponse(
         items=[CandidateRead.model_validate(candidate) for candidate in candidates],
-        total=candidate_service.count_candidates(db, candidate_filter=filter),
+        total=candidate_service.count_candidates(
+            db,
+            candidate_filter=filter,
+            job_offer_id=job_offer_id,
+            pipeline_stage=pipeline_stage,
+        ),
         next_cursor=next_cursor,
     )
 

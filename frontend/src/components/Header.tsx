@@ -1,4 +1,4 @@
-﻿import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../contexts/AuthContext";
 
@@ -7,11 +7,10 @@ const pageTitles: Record<string, string> = {
   "/candidates": "Candidats",
   "/cv-upload": "Upload CV",
   "/imports": "Imports LinkedIn",
-  "/outlook-import": "Imports Outlook",
   "/jobs": "Offres d'emploi",
   "/matching": "Matching IA",
-  "/interviews": "Entretiens",
-  "/evaluations": "Évaluations",
+  "/interviews": "Entretiens & Évaluations",
+  "/evaluations": "Entretiens & Évaluations",
   "/admin": "Administration",
   "/admin/users": "Utilisateurs",
   "/admin/settings": "Paramètres système",
