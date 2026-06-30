@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
+import { ListSearch } from "../components/ListSearch";
 import { StarRating } from "../components/StarRating";
 import { StarRatingInput } from "../components/StarRatingInput";
 import { StatCard } from "../components/StatCard";
@@ -158,8 +159,61 @@ export function InterviewsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [interviewSearchQuery, setInterviewSearchQuery] = useState("");
+  const [evaluationSearchQuery, setEvaluationSearchQuery] = useState("");
 
   const interviewsArray = Array.isArray(interviews) ? interviews : [];
+
+  const filteredInterviews = useMemo(() => {
+    const normalizedQuery = interviewSearchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return interviewsArray;
+    }
+    return interviewsArray.filter((interview) => {
+      const candidate = candidates.find((item) => item.id === interview.candidate_id);
+      const job = jobs.find((item) => item.id === interview.job_offer_id);
+      return [
+        candidateName(candidate),
+        candidate?.email,
+        job?.title,
+        job?.company_name,
+        pipelineStageLabel(interview.interview_type),
+        pipelineStageLabel(interview.status),
+        formatDateTime(interview.scheduled_start_at),
+        interview.notes,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
+  }, [candidates, interviewSearchQuery, interviewsArray, jobs]);
+
+  const filteredEvaluations = useMemo(() => {
+    const normalizedQuery = evaluationSearchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return evaluations;
+    }
+    return evaluations.filter((evaluation) => {
+      const interview = interviews.find((item) => item.id === evaluation.interview_id);
+      const candidate = candidates.find((item) => item.id === evaluation.candidate_id);
+      const job = interview ? jobs.find((item) => item.id === interview.job_offer_id) : undefined;
+      return [
+        candidateName(candidate),
+        candidate?.email,
+        job?.title,
+        job?.company_name,
+        evaluation.rating,
+        pipelineStageLabel(evaluation.recommendation),
+        evaluation.comments,
+        interview ? formatDateTime(interview.scheduled_start_at) : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
+  }, [candidates, evaluationSearchQuery, evaluations, interviews, jobs]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -432,6 +486,14 @@ export function InterviewsPage() {
           ) : null}
 
           {interviewsArray.length > 0 ? (
+            <ListSearch
+              value={interviewSearchQuery}
+              onChange={setInterviewSearchQuery}
+              placeholder="Rechercher par candidat, email, poste, type, statut ou date..."
+            />
+          ) : null}
+
+          {interviewsArray.length > 0 ? (
             <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -446,7 +508,7 @@ export function InterviewsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {interviewsArray.map((interview) => {
+                    {filteredInterviews.map((interview) => {
                       const candidate = candidates.find((item) => item.id === interview.candidate_id);
                       const job = jobs.find((item) => item.id === interview.job_offer_id);
                       return (
@@ -508,6 +570,10 @@ export function InterviewsPage() {
               </div>
             </section>
           ) : null}
+
+          {interviewsArray.length > 0 && filteredInterviews.length === 0 ? (
+            <EmptyState title="Aucun entretien trouvÃ©" description="Modifiez la recherche pour afficher d'autres entretiens." />
+          ) : null}
         </>
       ) : null}
 
@@ -548,6 +614,14 @@ export function InterviewsPage() {
           ) : null}
 
           {evaluations.length > 0 ? (
+            <ListSearch
+              value={evaluationSearchQuery}
+              onChange={setEvaluationSearchQuery}
+              placeholder="Rechercher par candidat, email, poste, note, dÃ©cision ou date..."
+            />
+          ) : null}
+
+          {evaluations.length > 0 ? (
             <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -561,7 +635,7 @@ export function InterviewsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {evaluations.map((evaluation) => {
+                    {filteredEvaluations.map((evaluation) => {
                       const interview = interviews.find((item) => item.id === evaluation.interview_id);
                       const candidate = candidates.find((item) => item.id === evaluation.candidate_id);
                       const job = interview ? jobs.find((item) => item.id === interview.job_offer_id) : undefined;
@@ -604,6 +678,10 @@ export function InterviewsPage() {
                 </table>
               </div>
             </section>
+          ) : null}
+
+          {evaluations.length > 0 && filteredEvaluations.length === 0 ? (
+            <EmptyState title="Aucune Ã©valuation trouvÃ©e" description="Modifiez la recherche pour afficher d'autres Ã©valuations." />
           ) : null}
         </>
       ) : null}

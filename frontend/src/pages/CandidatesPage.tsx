@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
+import { ListSearch } from "../components/ListSearch";
 import { SourceBadge, formatSource } from "../components/SourceBadge";
 import { StatCard } from "../components/StatCard";
 import { SECTORS } from "../constants/sectors";
@@ -137,6 +138,7 @@ export function CandidatesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState("all");
   const [candidateFilter, setCandidateFilter] = useState<CandidateFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const totalPages = Math.max(1, Math.ceil(totalCandidates / PAGE_SIZE));
 
@@ -196,11 +198,30 @@ export function CandidatesPage() {
   };
 
   const filteredCandidates = useMemo(() => {
-    if (sourceFilter === "all") {
-      return candidates;
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const sourceFiltered = sourceFilter === "all" ? candidates : candidates.filter((candidate) => candidate.source === sourceFilter);
+    if (!normalizedQuery) {
+      return sourceFiltered;
     }
-    return candidates.filter((candidate) => candidate.source === sourceFilter);
-  }, [candidates, sourceFilter]);
+    return sourceFiltered.filter((candidate) =>
+      [
+        candidate.first_name,
+        candidate.last_name,
+        candidate.email,
+        candidate.phone,
+        candidate.location,
+        candidate.current_title,
+        candidate.current_company,
+        candidate.sector,
+        formatSource(candidate.source),
+        formatStatus(candidate.status),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [candidates, searchQuery, sourceFilter]);
 
   const openEditModal = (candidate: Candidate) => {
     setEditingCandidate(candidate);
@@ -350,6 +371,14 @@ export function CandidatesPage() {
       {message ? <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p> : null}
       {error ? <section className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</section> : null}
 
+      {!isLoading && !error && candidates.length > 0 ? (
+        <ListSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Rechercher par nom, email, poste, secteur, source ou statut..."
+        />
+      ) : null}
+
       {isLoading ? (
         <section className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">
           Chargement des candidats...
@@ -460,7 +489,7 @@ export function CandidatesPage() {
       ) : null}
 
       {!isLoading && !error && candidates.length > 0 && filteredCandidates.length === 0 ? (
-        <EmptyState title="Aucun candidat pour cette source" description="Modifiez le filtre source pour afficher d'autres profils." />
+        <EmptyState title="Aucun candidat trouvé" description="Modifiez la recherche ou le filtre source pour afficher d'autres profils." />
       ) : null}
 
       {isModalOpen && editingCandidate ? (

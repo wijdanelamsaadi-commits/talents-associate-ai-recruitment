@@ -1,6 +1,7 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { EmptyState } from "../components/EmptyState";
+import { ListSearch } from "../components/ListSearch";
 import {
   CONTRACT_TYPES,
   EDUCATION_LEVELS,
@@ -112,6 +113,33 @@ export function JobOffersPage() {
   const [formState, setFormState] = useState<JobFormState>(initialFormState);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredJobs = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return jobs;
+    }
+    return jobs.filter((job) =>
+      [
+        job.title,
+        job.company_name,
+        job.location,
+        job.sector,
+        job.contract_type,
+        job.status,
+        statusOptions.find((option) => option.value === job.status)?.label,
+        job.description,
+        ...job.required_skills,
+        ...job.soft_skills,
+        ...job.languages.map((entry) => `${entry.language} ${entry.level}`),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [jobs, searchQuery]);
 
   const loadJobs = async () => {
     setIsLoading(true);
@@ -247,6 +275,14 @@ export function JobOffersPage() {
       ) : null}
 
       {!isLoading && jobs.length > 0 ? (
+        <ListSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Rechercher par poste, client, secteur, statut ou compétence..."
+        />
+      ) : null}
+
+      {!isLoading && jobs.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
             <h3 className="text-base font-semibold text-[#0B1F3A]">Offres actives</h3>
@@ -265,7 +301,7 @@ export function JobOffersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {jobs.map((job) => (
+                {filteredJobs.map((job) => (
                   <tr key={job.id} className="hover:bg-slate-50">
                     <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{job.title}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job.company_name ?? "—"}</td>
@@ -301,6 +337,10 @@ export function JobOffersPage() {
             </table>
           </div>
         </section>
+      ) : null}
+
+      {!isLoading && jobs.length > 0 && filteredJobs.length === 0 ? (
+        <EmptyState title="Aucune offre trouvÃ©e" description="Modifiez la recherche pour afficher d'autres offres." />
       ) : null}
 
       {isModalOpen ? (

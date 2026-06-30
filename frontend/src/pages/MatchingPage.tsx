@@ -2,8 +2,9 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
+import { ListSearch } from "../components/ListSearch";
 import { StatCard } from "../components/StatCard";
-import { CONTRACT_TYPES, EDUCATION_LEVELS, EXPERIENCE_LEVELS, SECTORS } from "../constants/sectors";
+import { EDUCATION_LEVELS, EXPERIENCE_LEVELS, SECTORS } from "../constants/sectors";
 import { getCvDownloadUrl } from "../lib/cv";
 import { getApiErrorMessage } from "../lib/errors";
 import { Candidate, VivierSearchResult, getCandidates, searchCandidatesVivier } from "../services/candidates";
@@ -15,7 +16,6 @@ type VivierSearchForm = {
   secteur: string;
   experience_level: string;
   education_level: string;
-  contract_type: string;
   technical_skills: string;
   soft_skills: string;
   langues: string;
@@ -26,7 +26,6 @@ const initialSearchForm: VivierSearchForm = {
   secteur: "",
   experience_level: "",
   education_level: "",
-  contract_type: "",
   technical_skills: "",
   soft_skills: "",
   langues: "",
@@ -91,6 +90,8 @@ export function MatchingPage() {
   const [hasSearched, setHasSearched] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [vivierSearchQuery, setVivierSearchQuery] = useState("");
+  const [historySearchQuery, setHistorySearchQuery] = useState("");
 
   const loadData = async () => {
     setIsLoading(true);
@@ -131,6 +132,57 @@ export function MatchingPage() {
   const matchedSkills = skillList(currentResult?.matched_skills ?? null);
   const missingSkills = skillList(currentResult?.missing_skills ?? null);
 
+  const filteredVivierResults = useMemo(() => {
+    const normalizedQuery = vivierSearchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return vivierResults;
+    }
+    return vivierResults.filter((result) =>
+      [
+        result.candidate.first_name,
+        result.candidate.last_name,
+        result.candidate.email,
+        result.candidate.current_title,
+        result.candidate.current_company,
+        result.candidate.sector,
+        result.score,
+        result.has_cv ? "cv" : "sans cv",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [vivierResults, vivierSearchQuery]);
+
+  const filteredResults = useMemo(() => {
+    const normalizedQuery = historySearchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return results;
+    }
+    return results.filter((result) => {
+      const candidate = findCandidate(candidates, result.candidate_id);
+      const job = findJob(jobs, result.job_offer_id);
+      return [
+        result.candidate_name,
+        candidateName(candidate),
+        candidate?.email,
+        result.job_title,
+        job?.title,
+        job?.company_name,
+        result.score,
+        formatRecommendation(result.recommendation),
+        new Date(result.created_at).toLocaleDateString("fr-FR"),
+        ...skillList(result.matched_skills),
+        ...skillList(result.missing_skills),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
+  }, [candidates, historySearchQuery, jobs, results]);
+
   const handleJobSelect = (jobId: string) => {
     setSelectedJobId(jobId);
     const job = findJob(jobs, jobId);
@@ -138,7 +190,6 @@ export function MatchingPage() {
       setSearchForm((current) => ({
         ...current,
         poste: job.title,
-        contract_type: job.contract_type ?? current.contract_type,
         education_level: job.education_level ?? current.education_level,
         technical_skills: job.required_skills.join("; "),
       }));
@@ -318,22 +369,6 @@ export function MatchingPage() {
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">Type de contrat</span>
-              <select
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
-                onChange={(event) => setSearchForm((current) => ({ ...current, contract_type: event.target.value }))}
-                value={searchForm.contract_type}
-              >
-                <option value="">—</option>
-                {CONTRACT_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
               <span className="text-sm font-medium text-slate-700">Compétences techniques</span>
               <input
                 className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
@@ -392,12 +427,20 @@ export function MatchingPage() {
       </section>
 
       {hasSearched ? (
+        <>
+        {vivierResults.length > 0 ? (
+          <ListSearch
+            value={vivierSearchQuery}
+            onChange={setVivierSearchQuery}
+            placeholder="Rechercher par candidat, email, poste, secteur ou score..."
+          />
+        ) : null}
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
             <h3 className="text-base font-semibold text-[#0B1F3A]">Résultats du vivier</h3>
-            <p className="mt-1 text-sm text-slate-600">{vivierResults.length} candidat(s) correspondant(s)</p>
+            <p className="mt-1 text-sm text-slate-600">{filteredVivierResults.length} candidat(s) correspondant(s)</p>
           </div>
-          {vivierResults.length === 0 ? (
+          {filteredVivierResults.length === 0 ? (
             <div className="p-5">
               <EmptyState title="Aucun candidat trouvé" description="Affinez vos critères de recherche." />
             </div>
@@ -416,7 +459,7 @@ export function MatchingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {vivierResults.map((result) => (
+                  {filteredVivierResults.map((result) => (
                     <tr key={result.candidate.id} className="hover:bg-slate-50">
                       <td className="whitespace-nowrap px-5 py-4">
                         <Link
@@ -461,6 +504,7 @@ export function MatchingPage() {
             </div>
           )}
         </section>
+        </>
       ) : null}
 
       <details className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -595,6 +639,14 @@ export function MatchingPage() {
         />
       ) : null}
 
+      {!isLoading && results.length > 0 ? (
+        <ListSearch
+          value={historySearchQuery}
+          onChange={setHistorySearchQuery}
+          placeholder="Rechercher par candidat, offre, score, recommandation ou compÃ©tence..."
+        />
+      ) : null}
+
       {results.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
@@ -613,7 +665,7 @@ export function MatchingPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {results.map((result) => {
+                {filteredResults.map((result) => {
                   const candidate = findCandidate(candidates, result.candidate_id);
                   const job = findJob(jobs, result.job_offer_id);
                   const displayCandidateName = result.candidate_name ?? candidateName(candidate);
@@ -645,6 +697,10 @@ export function MatchingPage() {
             </table>
           </div>
         </section>
+      ) : null}
+
+      {!isLoading && results.length > 0 && filteredResults.length === 0 ? (
+        <EmptyState title="Aucun matching trouvÃ©" description="Modifiez la recherche pour afficher d'autres rÃ©sultats." />
       ) : null}
     </div>
   );

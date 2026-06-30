@@ -216,16 +216,6 @@ export function DashboardPage() {
           </label>
 
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-slate-700">Date d&apos;ouverture (au)</span>
-            <input
-              type="date"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              value={filters.opened_to ?? ""}
-              onChange={(event) => updateFilter("opened_to", event.target.value || undefined)}
-            />
-          </label>
-
-          <label className="block text-sm">
             <span className="mb-1 block font-medium text-slate-700">Localisation</span>
             <select
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"

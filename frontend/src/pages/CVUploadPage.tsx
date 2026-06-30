@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
+import { ListSearch } from "../components/ListSearch";
 import { getApiErrorMessage } from "../lib/errors";
 import { Candidate, getCandidates } from "../services/candidates";
 import { CVFile, ExtractedCVText, ParsedCV, getCVFiles, getCVText, parseCV, uploadBatchCVs, uploadCV } from "../services/cv";
@@ -78,11 +79,36 @@ export function CVUploadPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const selectedCandidate = useMemo(
     () => candidates.find((candidate) => candidate.id === selectedCandidateId),
     [candidates, selectedCandidateId],
   );
+
+  const filteredCVFiles = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return cvFiles;
+    }
+    return cvFiles.filter((cvFile) => {
+      const candidate = candidates.find((item) => item.id === cvFile.candidate_id);
+      return [
+        cvFile.original_filename,
+        cvFile.mime_type,
+        formatParsingStatus(cvFile.parsing_status),
+        candidate?.first_name,
+        candidate?.last_name,
+        candidate?.email,
+        candidate?.phone,
+        candidate?.current_title,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
+  }, [candidates, cvFiles, searchQuery]);
 
   const loadPageData = async () => {
     setIsLoadingPage(true);
@@ -358,6 +384,14 @@ export function CVUploadPage() {
         />
       ) : null}
 
+      {!isLoadingPage && cvFiles.length > 0 ? (
+        <ListSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Rechercher par fichier, candidat, email, poste ou statut..."
+        />
+      ) : null}
+
       {cvFiles.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
@@ -376,7 +410,7 @@ export function CVUploadPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {cvFiles.map((cvFile) => {
+                {filteredCVFiles.map((cvFile) => {
                   const candidate = candidates.find((item) => item.id === cvFile.candidate_id);
                   return (
                     <tr key={cvFile.id} className={selectedCVId === cvFile.id ? "bg-blue-50/60" : "hover:bg-slate-50"}>
@@ -416,6 +450,10 @@ export function CVUploadPage() {
         </section>
       ) : null}
 
+      {!isLoadingPage && cvFiles.length > 0 && filteredCVFiles.length === 0 ? (
+        <EmptyState title="Aucun CV trouvÃ©" description="Modifiez la recherche pour afficher d'autres fichiers CV." />
+      ) : null}
+
       {cvFiles.length > 0 ? (
         <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <summary className="cursor-pointer text-sm font-semibold text-[#0B1F3A]">Actions de diagnostic administrateur</summary>
@@ -423,7 +461,7 @@ export function CVUploadPage() {
             L'analyse manuelle est conservée uniquement pour le diagnostic. Les imports de CV déclenchent déjà l'analyse et le matching IA automatiquement.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            {cvFiles.map((cvFile) => (
+            {filteredCVFiles.map((cvFile) => (
               <button
                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isParsing}

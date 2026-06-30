@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { ListSearch } from "../components/ListSearch";
 import { getApiErrorMessage } from "../lib/errors";
 import {
   AdminUser,
@@ -45,6 +46,28 @@ export function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredUsers = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return users;
+    }
+    return users.filter((user) =>
+      [
+        user.full_name,
+        user.email,
+        formatRole(user.role),
+        formatStatus(user.status),
+        user.created_at,
+        user.last_login_at,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [searchQuery, users]);
 
   const loadUsers = async () => {
     setError(null);
@@ -133,6 +156,14 @@ export function AdminUsersPage() {
       {message ? <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p> : null}
       {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
 
+      {users.length > 0 ? (
+        <ListSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Rechercher par nom, email, rÃ´le ou statut..."
+        />
+      ) : null}
+
       <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
           <h3 className="font-semibold text-[#0B1F3A]">Comptes système</h3>
@@ -149,7 +180,7 @@ export function AdminUsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id}>
                   <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{user.full_name}</td>
                   <td className="whitespace-nowrap px-5 py-4 text-slate-700">{user.email}</td>
@@ -176,6 +207,11 @@ export function AdminUsersPage() {
           </table>
         </div>
       </section>
+      {users.length > 0 && filteredUsers.length === 0 ? (
+        <p className="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
+          Aucun utilisateur ne correspond Ã  cette recherche.
+        </p>
+      ) : null}
     </div>
   );
 }

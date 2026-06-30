@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { EmptyState } from "../components/EmptyState";
+import { ListSearch } from "../components/ListSearch";
 import { SourceBadge } from "../components/SourceBadge";
 import { StatCard } from "../components/StatCard";
 import { getApiErrorMessage } from "../lib/errors";
@@ -45,11 +46,32 @@ export function OutlookImportPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const selectedFileNames = useMemo(
     () => selectedFiles.map((file) => file.name).join(", "),
     [selectedFiles],
   );
+
+  const filteredImports = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return imports;
+    }
+    return imports.filter((importItem) =>
+      [
+        importItem.filename,
+        importItem.imported_count,
+        importItem.updated_count,
+        importItem.skipped_count,
+        importItem.failed_count,
+        new Date(importItem.created_at).toLocaleString(),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [imports, searchQuery]);
 
   const loadImports = async () => {
     setIsLoading(true);
@@ -175,6 +197,8 @@ export function OutlookImportPage() {
       ) : imports.length === 0 ? (
         <EmptyState title="Aucun import de CV" description="Importez des CV pour créer ou mettre à jour les candidats et lancer le matching IA automatiquement." />
       ) : (
+        <>
+        <ListSearch value={searchQuery} onChange={setSearchQuery} placeholder="Rechercher par lot, compteur ou date..." />
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
             <h3 className="text-base font-semibold text-[#0B1F3A]">Historique des imports de CV</h3>
@@ -192,7 +216,7 @@ export function OutlookImportPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {imports.map((importItem) => (
+                {filteredImports.map((importItem) => (
                   <tr className="hover:bg-slate-50" key={importItem.id}>
                     <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{importItem.filename}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{importItem.imported_count}</td>
@@ -206,6 +230,10 @@ export function OutlookImportPage() {
             </table>
           </div>
         </section>
+        {filteredImports.length === 0 ? (
+          <EmptyState title="Aucun import de CV trouvÃ©" description="Modifiez la recherche pour afficher d'autres lots." />
+        ) : null}
+        </>
       )}
     </div>
   );
