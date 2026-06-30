@@ -22,6 +22,9 @@ export type CVUploadProcessed = CVFile & {
   parser_model: string | null;
   structured_json: ParsedCVJson | null;
   matching_result_ids: string[];
+  message: string | null;
+  duplicate: boolean;
+  updated_existing: boolean;
 };
 
 export type CVBatchResultItem = {
@@ -127,6 +130,36 @@ export async function parseCV(cvFileId: string): Promise<ParsedCV> {
 export async function getParsedCV(cvFileId: string): Promise<ParsedCV> {
   const response = await apiClient.get<ParsedCV>(`/api/cv/${cvFileId}/parsed`);
   return response.data;
+}
+
+function filenameFromContentDisposition(contentDisposition: string | undefined): string | null {
+  if (!contentDisposition) {
+    return null;
+  }
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+  const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+  return filenameMatch?.[1] ?? null;
+}
+
+export async function downloadCVFile(cvFileId: string, fallbackFilename: string): Promise<void> {
+  const response = await apiClient.get<Blob>(`/api/cv/${cvFileId}/download`, {
+    responseType: "blob",
+  });
+  const contentDisposition = String(response.headers["content-disposition"] ?? "");
+  const contentType = String(response.headers["content-type"] ?? "application/octet-stream");
+  const filename = filenameFromContentDisposition(contentDisposition) ?? fallbackFilename;
+  const blob = new Blob([response.data], { type: contentType });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 export async function deleteCVFile(cvFileId: string): Promise<void> {

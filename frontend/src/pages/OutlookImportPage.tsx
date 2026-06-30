@@ -25,6 +25,17 @@ function getFilesReport(importItem: OutlookImport | null) {
   return Array.isArray(files) ? files : [];
 }
 
+function formatImportStatus(status: unknown) {
+  const labels: Record<string, string> = {
+    imported: "Importé",
+    updated: "Mis à jour",
+    skipped: "Ignoré",
+    failed: "Échec",
+    processed: "Traité",
+  };
+  return labels[String(status ?? "processed")] ?? String(status ?? "Traité");
+}
+
 export function OutlookImportPage() {
   const [imports, setImports] = useState<OutlookImport[]>([]);
   const [summary, setSummary] = useState<OutlookImportSummary>(emptySummary);
@@ -48,7 +59,7 @@ export function OutlookImportPage() {
       setImports(historyData);
       setSummary(summaryData);
     } catch (loadError) {
-      setError(getApiErrorMessage(loadError, "Unable to load Outlook import history."));
+      setError(getApiErrorMessage(loadError, "Impossible de charger l'historique des imports de CV."));
     } finally {
       setIsLoading(false);
     }
@@ -65,29 +76,29 @@ export function OutlookImportPage() {
     setLatestImport(null);
 
     if (selectedFiles.length === 0) {
-      setError("Select a ZIP archive or one or more PDF/DOCX CV files first.");
+      setError("Veuillez sélectionner une archive ZIP ou un ou plusieurs CV PDF/DOCX.");
       return;
     }
 
     const invalidFile = selectedFiles.find((file) => !/\.(zip|pdf|docx)$/i.test(file.name));
     if (invalidFile) {
-      setError(`${invalidFile.name} is not supported. Upload ZIP, PDF, or DOCX files.`);
+      setError(`${invalidFile.name} n'est pas pris en charge. Importez des fichiers ZIP, PDF ou DOCX.`);
       return;
     }
 
     setIsUploading(true);
-    setMessage("Uploading Outlook CVs...");
+    setMessage("Import des CV en cours...");
     try {
-      setMessage("Parsing CVs and running automatic matching...");
+      setMessage("Analyse des CV et matching IA en cours...");
       const result = await uploadOutlookCVs(selectedFiles);
       setLatestImport(result);
       setMessage(
-        `Import completed: ${result.imported_count} imported, ${result.updated_count} updated, ${result.skipped_count} skipped, ${result.failed_count} failed.`,
+        `Import terminé : ${result.imported_count} importé(s), ${result.updated_count} mis à jour, ${result.skipped_count} ignoré(s), ${result.failed_count} en échec.`,
       );
       setSelectedFiles([]);
       await loadImports();
     } catch (uploadError) {
-      setError(getApiErrorMessage(uploadError, "Outlook CV import failed."));
+      setError(getApiErrorMessage(uploadError, "L'import des CV a échoué."));
       setMessage(null);
     } finally {
       setIsUploading(false);
@@ -99,27 +110,27 @@ export function OutlookImportPage() {
   return (
     <div className="space-y-6">
       <section className="grid gap-4 md:grid-cols-5">
-        <StatCard label="Imports" value={String(summary.total_imports)} detail="Outlook batches processed" />
-        <StatCard label="Imported" value={String(summary.total_imported)} detail="New candidates created" />
-        <StatCard label="Updated" value={String(summary.total_updated)} detail="Existing candidates refreshed" />
-        <StatCard label="Skipped" value={String(summary.total_skipped)} detail="Unsupported or oversized files" />
-        <StatCard label="Failed" value={String(summary.total_failed)} detail="Files needing review" />
+        <StatCard label="Imports" value={String(summary.total_imports)} detail="Lots de CV traités" />
+        <StatCard label="Importés" value={String(summary.total_imported)} detail="Nouveaux candidats créés" />
+        <StatCard label="Mis à jour" value={String(summary.total_updated)} detail="Candidats existants actualisés" />
+        <StatCard label="Ignorés" value={String(summary.total_skipped)} detail="Fichiers non pris en charge ou trop volumineux" />
+        <StatCard label="Échecs" value={String(summary.total_failed)} detail="Fichiers à vérifier" />
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-[#0B1F3A]">Outlook CV import</h2>
+            <h2 className="text-lg font-semibold text-[#0B1F3A]">Import local de CV</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Import CV attachments saved locally by the Outlook VBA macro. Upload one ZIP archive or multiple PDF/DOCX files; the platform extracts, parses, creates candidates, and runs matching automatically.
+              Importez une archive ZIP ou plusieurs fichiers PDF/DOCX. La plateforme extrait le texte, analyse les CV, crée ou met à jour les candidats et lance le matching IA automatiquement.
             </p>
           </div>
-          <SourceBadge source="outlook_import" />
+          <SourceBadge source="cv_upload" />
         </div>
 
         <form className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end" onSubmit={handleUpload}>
           <label className="block flex-1">
-            <span className="text-sm font-medium text-slate-700">ZIP, PDF, or DOCX files</span>
+            <span className="text-sm font-medium text-slate-700">Fichiers ZIP, PDF ou DOCX</span>
             <input
               accept=".zip,.pdf,.docx,application/zip,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#1D6EEA]/10 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-[#1D6EEA]"
@@ -134,7 +145,7 @@ export function OutlookImportPage() {
             disabled={isUploading}
             type="submit"
           >
-            {isUploading ? "Processing..." : "Import Outlook CVs"}
+            {isUploading ? "Traitement en cours..." : "Importer les CV"}
           </button>
         </form>
 
@@ -143,13 +154,13 @@ export function OutlookImportPage() {
 
         {latestFiles.length > 0 ? (
           <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-[#0B1F3A]">Latest import report</p>
+            <p className="text-sm font-semibold text-[#0B1F3A]">Dernier rapport d'import</p>
             <div className="mt-3 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white">
               {latestFiles.map((file, index) => (
                 <div className="grid gap-2 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0 md:grid-cols-[1fr_auto_auto]" key={`${String(file.file)}-${index}`}>
-                  <span className="font-medium text-[#0B1F3A]">{String(file.file ?? "CV file")}</span>
-                  <span className="capitalize text-slate-700">{String(file.status ?? "processed")}</span>
-                  <span className="text-slate-500">{file.reason ? String(file.reason) : `${String(file.matching_results ?? 0)} matches`}</span>
+                  <span className="font-medium text-[#0B1F3A]">{String(file.file ?? "Fichier CV")}</span>
+                  <span className="capitalize text-slate-700">{formatImportStatus(file.status)}</span>
+                  <span className="text-slate-500">{file.reason ? String(file.reason) : `${String(file.matching_results ?? 0)} résultat(s) de matching IA`}</span>
                 </div>
               ))}
             </div>
@@ -159,24 +170,24 @@ export function OutlookImportPage() {
 
       {isLoading ? (
         <section className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">
-          Loading Outlook import history...
+          Chargement de l'historique des imports de CV...
         </section>
       ) : imports.length === 0 ? (
-        <EmptyState title="No Outlook imports yet" description="Upload Outlook CV attachments to create and match candidates automatically." />
+        <EmptyState title="Aucun import de CV" description="Importez des CV pour créer ou mettre à jour les candidats et lancer le matching IA automatiquement." />
       ) : (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Outlook import history</h3>
+            <h3 className="text-base font-semibold text-[#0B1F3A]">Historique des imports de CV</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-5 py-3 font-semibold">Batch</th>
-                  <th className="px-5 py-3 font-semibold">Imported</th>
-                  <th className="px-5 py-3 font-semibold">Updated</th>
-                  <th className="px-5 py-3 font-semibold">Skipped</th>
-                  <th className="px-5 py-3 font-semibold">Failed</th>
+                  <th className="px-5 py-3 font-semibold">Lot</th>
+                  <th className="px-5 py-3 font-semibold">Importés</th>
+                  <th className="px-5 py-3 font-semibold">Mis à jour</th>
+                  <th className="px-5 py-3 font-semibold">Ignorés</th>
+                  <th className="px-5 py-3 font-semibold">Échecs</th>
                   <th className="px-5 py-3 font-semibold">Date</th>
                 </tr>
               </thead>

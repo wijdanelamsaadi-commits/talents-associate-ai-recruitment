@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-
+import { ActivateAccountPage } from "./pages/ActivateAccountPage";
 import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
 import { CandidateProtectedRoute } from "./components/CandidateProtectedRoute";
@@ -54,6 +54,7 @@ export default function App() {
         </Route>
       </Route>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/activate/:token" element={<ActivateAccountPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />

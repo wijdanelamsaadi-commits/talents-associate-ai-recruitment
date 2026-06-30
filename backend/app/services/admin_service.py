@@ -1,3 +1,5 @@
+import secrets
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -6,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.models import Application, Candidate, EmailLog, JobOffer, SystemSetting, User
-from app.schemas.admin import AdminRecruiterCreate, AdminSettingsUpdate, AdminUserUpdate
+from app.schemas.admin import AdminSettingsUpdate, AdminUserCreate, AdminUserUpdate
 
 
 class AdminServiceError(ValueError):
@@ -17,13 +19,16 @@ def list_users(db: Session) -> list[User]:
     return list(db.scalars(select(User).order_by(User.created_at.desc(), User.email.asc())).all())
 
 
-def create_recruiter(db: Session, payload: AdminRecruiterCreate) -> User:
+def create_user(db: Session, payload: AdminUserCreate) -> User:
+    token = secrets.token_urlsafe(32)
     user = User(
         full_name=payload.full_name,
         email=payload.email.lower(),
-        password_hash=hash_password(payload.password),
+        password_hash=None,  # l'user ghadi y5tar password dyalo
         role=payload.role,
-        status="active",
+        status="invited",  # machi actif 7etta y3ber l'email
+        activation_token=token,
+        token_expires_at=datetime.now(timezone.utc) + timedelta(hours=48),
     )
     db.add(user)
     try:
@@ -32,7 +37,34 @@ def create_recruiter(db: Session, payload: AdminRecruiterCreate) -> User:
         db.rollback()
         raise
     db.refresh(user)
+    _send_activation_email(db, user, token)
     return user
+
+
+def _send_activation_email(db: Session, user: User, token: str) -> None:
+    import os
+
+    base = os.getenv("FRONTEND_URL", "http://127.0.0.1:5173")
+    link = f"{base}/activate/{token}"
+    subject = "Activez votre compte Talents Associate"
+    body = (
+        f"Bonjour {user.full_name},\n\n"
+        "Un compte vient d'être créé pour vous. Cliquez sur le lien ci-dessous "
+        "pour définir votre mot de passe :\n\n"
+        f"{link}\n\n"
+        "Ce lien expire dans 48 heures."
+    )
+
+    # mode console : l'lien kيبان f l'terminal dyal backend (zéro config)
+    print("=" * 70)
+    print("EMAIL D'ACTIVATION")
+    print("À      :", user.email)
+    print("Lien   :", link)
+    print("=" * 70)
+
+    # n sجّlo f l'جدول EmailLog
+    db.add(EmailLog(to_email=user.email, subject=subject, body=body, status="sent"))
+    db.commit()
 
 
 def get_user(db: Session, user_id: UUID) -> User | None:
@@ -101,7 +133,7 @@ def dashboard_stats(db: Session) -> dict[str, int]:
     return {
         "candidates_count": db.scalar(select(func.count()).select_from(Candidate)) or 0,
         "recruiters_count": db.scalar(
-            select(func.count()).select_from(User).where(User.role.in_(["recruiter", "hiring_manager"]), User.status != "deleted")
+            select(func.count()).select_from(User).where(User.role == "recruiter", User.status != "deleted")
         )
         or 0,
         "jobs_count": db.scalar(select(func.count()).select_from(JobOffer)) or 0,

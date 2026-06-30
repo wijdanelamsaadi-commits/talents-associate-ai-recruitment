@@ -26,6 +26,9 @@ class CVUploadProcessedRead(CVFileRead):
     parser_model: str | None
     structured_json: dict | None
     matching_result_ids: list[UUID]
+    message: str | None = None
+    duplicate: bool = False
+    updated_existing: bool = False
 
 
 class ExtractedCVTextRead(BaseModel):

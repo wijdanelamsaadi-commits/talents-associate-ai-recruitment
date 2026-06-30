@@ -46,8 +46,8 @@ def accept_application(db: Session, application: Application) -> Application:
             db,
             candidate_id=candidate.id,
             event_type="application_accepted",
-            title="Application accepted",
-            description="Recruiter accepted the application. Email notification is not enabled yet.",
+            title="Candidature acceptée",
+            description="Le recruteur a accepté la candidature.",
             metadata={"application_id": str(application.id), "status": "hired", "current_stage": "hired"},
         )
         notify_application_accepted(db, candidate=candidate, application=application, job=job)
@@ -71,8 +71,8 @@ def reject_application(db: Session, application: Application) -> Application:
             db,
             candidate_id=candidate.id,
             event_type="application_rejected",
-            title="Application rejected and candidate kept in talent pool",
-            description="Recruiter rejected the application and retained the candidate in the talent pool.",
+            title="Candidature refusée et candidat conservé dans le vivier",
+            description="Le recruteur a refusé la candidature et conservé le candidat dans le vivier.",
             metadata={"application_id": str(application.id), "status": "rejected", "is_talent_pool": True},
         )
         notify_application_rejected(db, candidate=candidate, application=application, job=job)
@@ -96,8 +96,8 @@ def reactivate_application(db: Session, application: Application) -> Application
             db,
             candidate_id=candidate.id,
             event_type="application_reactivated",
-            title="Application reactivated",
-            description="Recruiter reactivated the application while preserving candidate history.",
+            title="Candidature réactivée",
+            description="Le recruteur a réactivé la candidature tout en conservant l'historique du candidat.",
             metadata={
                 "application_id": str(application.id),
                 "application_status": "shortlisted",

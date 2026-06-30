@@ -119,8 +119,43 @@ def test_vivier_search_service_logic():
 
     # Search title="React"
     results_title = matching_service.search_candidates_vivier(db, poste="React")
-    assert len(results_title) == 2  # Both matched, Bob has title score > 0, Alice has 0
+    assert len(results_title) == 1
     assert results_title[0][0].first_name == "Bob"
+
+    # Search skill="n8n" should not return unrelated profiles with no skill match
+    c3 = Candidate(
+        id=uuid4(),
+        first_name="Karim",
+        last_name="Agence",
+        email="karim@example.com",
+        sector=None,
+        current_title="Responsable agence",
+        status="active",
+        source="manual",
+        is_talent_pool=False,
+        consent_given=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    c4 = Candidate(
+        id=uuid4(),
+        first_name="Nora",
+        last_name="Automation",
+        email="nora@example.com",
+        sector=None,
+        current_title="n8n Automation Developer",
+        status="active",
+        source="manual",
+        is_talent_pool=False,
+        consent_given=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db = FakeDb(items=[c3, c4])
+    skill_results = matching_service.search_candidates_vivier(db, secteur="Informatique", technical_skills="n8n")
+    assert len(skill_results) == 1
+    assert skill_results[0][0].first_name == "Nora"
+    assert skill_results[0][1] > 0
 
 
 def test_vivier_search_route():

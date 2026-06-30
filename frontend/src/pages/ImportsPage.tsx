@@ -30,7 +30,7 @@ export function ImportsPage() {
       setImports(historyData);
       setSummary(summaryData);
     } catch (loadError) {
-      setError(getApiErrorMessage(loadError, "Unable to load import history."));
+      setError(getApiErrorMessage(loadError, "Impossible de charger l'historique des imports."));
     } finally {
       setIsLoading(false);
     }
@@ -47,11 +47,11 @@ export function ImportsPage() {
     setLatestImport(null);
 
     if (!selectedFile) {
-      setError("Select a LinkedIn CSV file first.");
+      setError("Veuillez sélectionner un fichier CSV LinkedIn.");
       return;
     }
     if (!selectedFile.name.toLowerCase().endsWith(".csv")) {
-      setError("Only CSV files are supported.");
+      setError("Seuls les fichiers CSV sont pris en charge.");
       return;
     }
 
@@ -59,11 +59,11 @@ export function ImportsPage() {
     try {
       const result = await uploadLinkedInCSV(selectedFile);
       setLatestImport(result);
-      setMessage(`Import completed: ${result.imported_count} imported, ${result.updated_count} updated, ${result.skipped_count} skipped.`);
+      setMessage(`Import terminé : ${result.imported_count} importé(s), ${result.updated_count} mis à jour, ${result.skipped_count} ignoré(s).`);
       setSelectedFile(null);
       await loadImports();
     } catch (uploadError) {
-      setError(getApiErrorMessage(uploadError, "LinkedIn CSV import failed."));
+      setError(getApiErrorMessage(uploadError, "L'import CSV LinkedIn a échoué."));
     } finally {
       setIsUploading(false);
     }
@@ -72,25 +72,25 @@ export function ImportsPage() {
   return (
     <div className="space-y-6">
       <section className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Imports" value={String(summary.total_imports)} detail="CSV files processed" />
-        <StatCard label="Imported" value={String(summary.total_imported)} detail="New candidates created" />
-        <StatCard label="Updated" value={String(summary.total_updated)} detail="Existing candidates refreshed" />
-        <StatCard label="Skipped" value={String(summary.total_skipped)} detail="Rows missing required identifiers" />
+        <StatCard label="Imports" value={String(summary.total_imports)} detail="Fichiers CSV traités" />
+        <StatCard label="Importés" value={String(summary.total_imported)} detail="Nouveaux candidats créés" />
+        <StatCard label="Mis à jour" value={String(summary.total_updated)} detail="Candidats existants actualisés" />
+        <StatCard label="Ignorés" value={String(summary.total_skipped)} detail="Lignes sans identifiant requis" />
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-[#0B1F3A]">LinkedIn CSV import</h2>
+            <h2 className="text-lg font-semibold text-[#0B1F3A]">Import CSV LinkedIn</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Upload a LinkedIn export CSV. Candidates are deduplicated by email or LinkedIn URL and saved with source linkedin_csv.
+              Importez un export CSV LinkedIn. Les candidats sont dédupliqués par email ou URL LinkedIn et enregistrés avec la source Import LinkedIn.
             </p>
           </div>
         </div>
 
         <form className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end" onSubmit={handleUpload}>
           <label className="block flex-1">
-            <span className="text-sm font-medium text-slate-700">CSV file</span>
+            <span className="text-sm font-medium text-slate-700">Fichier CSV</span>
             <input
               accept=".csv,text/csv"
               className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#1D6EEA]/10 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-[#1D6EEA]"
@@ -103,7 +103,7 @@ export function ImportsPage() {
             disabled={isUploading}
             type="submit"
           >
-            {isUploading ? "Importing..." : "Upload CSV"}
+            {isUploading ? "Import en cours..." : "Importer le CSV"}
           </button>
         </form>
 
@@ -112,9 +112,9 @@ export function ImportsPage() {
 
         {latestImport?.report?.rows ? (
           <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-[#0B1F3A]">Latest import report</p>
+            <p className="text-sm font-semibold text-[#0B1F3A]">Dernier rapport d'import</p>
             <p className="mt-1 text-sm text-slate-600">
-              Rows processed: {latestImport.report.rows.length}. Review import history below for the persisted report.
+              Lignes traitées : {latestImport.report.rows.length}. Consultez l'historique ci-dessous pour le rapport enregistré.
             </p>
           </div>
         ) : null}
@@ -122,23 +122,23 @@ export function ImportsPage() {
 
       {isLoading ? (
         <section className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">
-          Loading import history...
+          Chargement de l'historique des imports...
         </section>
       ) : imports.length === 0 ? (
-        <EmptyState title="No imports yet" description="Upload a LinkedIn CSV export to create or update candidates." />
+        <EmptyState title="Aucun import" description="Importez un export CSV LinkedIn pour créer ou mettre à jour des candidats." />
       ) : (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Import history</h3>
+            <h3 className="text-base font-semibold text-[#0B1F3A]">Historique des imports</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-5 py-3 font-semibold">File</th>
-                  <th className="px-5 py-3 font-semibold">Imported</th>
-                  <th className="px-5 py-3 font-semibold">Updated</th>
-                  <th className="px-5 py-3 font-semibold">Skipped</th>
+                  <th className="px-5 py-3 font-semibold">Fichier</th>
+                  <th className="px-5 py-3 font-semibold">Importés</th>
+                  <th className="px-5 py-3 font-semibold">Mis à jour</th>
+                  <th className="px-5 py-3 font-semibold">Ignorés</th>
                   <th className="px-5 py-3 font-semibold">Date</th>
                 </tr>
               </thead>

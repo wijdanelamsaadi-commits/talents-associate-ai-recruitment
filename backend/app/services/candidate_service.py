@@ -21,11 +21,11 @@ def create_candidate(db: Session, candidate_in: CandidateCreate) -> Candidate:
     try:
         db.flush()
         event_type = "outlook_imported" if candidate.source == "outlook_import" else "candidate_created"
-        title = "Candidate imported from Outlook" if candidate.source == "outlook_import" else "Candidate created"
+        title = "Candidat importé depuis un fichier CV" if candidate.source == "outlook_import" else "Candidat créé"
         description = (
-            f"{candidate.first_name} {candidate.last_name} was imported from Outlook."
+            f"{candidate.first_name} {candidate.last_name} a été importé depuis un fichier CV."
             if candidate.source == "outlook_import"
-            else f"{candidate.first_name} {candidate.last_name} was added to the database."
+            else f"{candidate.first_name} {candidate.last_name} a été ajouté à la base de données."
         )
         create_timeline_event(
             db,
@@ -139,8 +139,8 @@ def update_candidate(db: Session, candidate: Candidate, candidate_in: CandidateU
             db,
             candidate_id=candidate.id,
             event_type="candidate_updated",
-            title="Candidate updated",
-            description="Candidate profile information was updated.",
+            title="Candidat mis à jour",
+            description="Les informations du profil candidat ont été mises à jour.",
             metadata={"updated_fields": sorted(candidate_data.keys())},
         )
         db.commit()
@@ -165,8 +165,8 @@ def archive_candidate(db: Session, candidate: Candidate) -> Candidate:
         db,
         candidate_id=candidate.id,
         event_type="candidate_archived",
-        title="Candidate archived",
-        description="Candidate was archived without deleting CV, applications, parsing, or history.",
+        title="Candidat archivé",
+        description="Le candidat a été archivé sans supprimer son CV, ses candidatures, son analyse ou son historique.",
         metadata={"status": "archived", "soft_delete": True},
     )
     db.commit()
@@ -200,8 +200,8 @@ def reject_candidate(db: Session, candidate: Candidate, application_id: UUID | N
         db,
         candidate_id=candidate.id,
         event_type="candidate_rejected",
-        title="Candidate rejected and kept in talent pool",
-        description="Candidate was rejected for an application and retained in the talent pool.",
+        title="Candidat refusé et conservé dans le vivier",
+        description="Le candidat a été refusé pour une candidature et conservé dans le vivier.",
         metadata={"status": "rejected", "is_talent_pool": True, "application_id": str(application_id) if application_id else None},
     )
     db.commit()
@@ -220,8 +220,8 @@ def reactivate_candidate(db: Session, candidate: Candidate, keep_in_talent_pool:
         db,
         candidate_id=candidate.id,
         event_type="candidate_reactivated",
-        title="Candidate reactivated",
-        description="Candidate was reactivated from archived or talent pool status.",
+        title="Candidat réactivé",
+        description="Le candidat a été réactivé depuis le statut archivé ou vivier.",
         metadata={"previous_status": previous_status, "is_talent_pool": keep_in_talent_pool},
     )
     db.commit()

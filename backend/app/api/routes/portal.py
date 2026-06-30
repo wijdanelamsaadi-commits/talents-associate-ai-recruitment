@@ -51,7 +51,7 @@ def register_candidate_account(payload: CandidateRegister, db: Session = Depends
     except CandidateAuthError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except Exception as exc:
-        detail = str(exc) if settings.ENVIRONMENT == "development" else "Candidate registration failed."
+        detail = str(exc) if settings.ENVIRONMENT == "development" else "La création du compte candidat a échoué."
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail) from exc
 
 
@@ -62,7 +62,7 @@ def login_candidate_account(payload: CandidateLogin, db: Session = Depends(get_d
     except CandidateAuthError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
     except Exception as exc:
-        detail = str(exc) if settings.ENVIRONMENT == "development" else "Candidate login failed."
+        detail = str(exc) if settings.ENVIRONMENT == "development" else "La connexion candidat a échoué."
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail) from exc
 
 
@@ -134,7 +134,7 @@ def mark_candidate_notification_read(
         candidate_id=candidate.id,
     )
     if notification is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification introuvable.")
     return notification
 
 
@@ -159,7 +159,7 @@ def list_jobs(db: Session = Depends(get_db)) -> list[PublicJobRead]:
 def get_job(job_id: UUID, db: Session = Depends(get_db)) -> PublicJobRead:
     job = get_public_job(db, job_id)
     if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job offer not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offre d'emploi introuvable.")
     return job
 
 
@@ -200,4 +200,4 @@ def apply_to_job(
     except TextExtractionError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except IntegrityError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Application could not be saved.") from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La candidature n'a pas pu être enregistrée.") from exc

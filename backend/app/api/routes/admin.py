@@ -9,9 +9,9 @@ from app.core.database import get_db
 from app.models import User
 from app.schemas.admin import (
     AdminDashboardStats,
-    AdminRecruiterCreate,
     AdminSettingsRead,
     AdminSettingsUpdate,
+    AdminUserCreate,
     AdminUserRead,
     AdminUserUpdate,
 )
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(requir
 def _get_user_or_404(user_id: UUID, db: Session) -> User:
     user = admin_service.get_user(db, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur introuvable.")
     return user
 
 
@@ -39,12 +39,12 @@ def list_users(db: Session = Depends(get_db)) -> list[AdminUserRead]:
     return admin_service.list_users(db)
 
 
-@router.post("/recruiters", response_model=AdminUserRead, status_code=status.HTTP_201_CREATED)
-def create_recruiter(payload: AdminRecruiterCreate, db: Session = Depends(get_db)) -> AdminUserRead:
+@router.post("/users", response_model=AdminUserRead, status_code=status.HTTP_201_CREATED)
+def create_user(payload: AdminUserCreate, db: Session = Depends(get_db)) -> AdminUserRead:
     try:
-        return admin_service.create_recruiter(db, payload)
+        return admin_service.create_user(db, payload)
     except IntegrityError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User with this email already exists.") from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Un utilisateur avec cet email existe déjà.") from exc
 
 
 @router.patch("/users/{user_id}", response_model=AdminUserRead)
@@ -53,7 +53,7 @@ def update_user(user_id: UUID, payload: AdminUserUpdate, db: Session = Depends(g
     try:
         return admin_service.update_user(db, user, payload)
     except IntegrityError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User with this email already exists.") from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Un utilisateur avec cet email existe déjà.") from exc
 
 
 @router.patch("/users/{user_id}/disable", response_model=AdminUserRead)

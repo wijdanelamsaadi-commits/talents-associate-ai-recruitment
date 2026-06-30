@@ -4,7 +4,7 @@ import zipfile
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -19,7 +19,7 @@ from app.schemas import (
     ParsedCVRead,
 )
 from app.services import cv_service
-from app.services.cv_service import CVUploadError
+from app.services.cv_service import CVUploadError, DuplicateCVError
 from app.services.text_extraction import TextExtractionError
 
 
@@ -28,6 +28,7 @@ router = APIRouter(prefix="/cv", tags=["cv"])
 
 @router.post("/upload", response_model=CVUploadProcessedRead, status_code=status.HTTP_201_CREATED)
 def upload_cv(
+    response: Response,
     file: UploadFile = File(...),
     candidate_id: UUID | None = Form(default=None),
     db: Session = Depends(get_db),
@@ -35,6 +36,7 @@ def upload_cv(
     try:
         cv_file = cv_service.upload_cv(db, candidate_id=candidate_id, upload_file=file)
         extracted_text, matching_results = cv_service.parse_and_auto_match_cv(db, cv_file_id=cv_file.id)
+        response.status_code = status.HTTP_200_OK if cv_file.updated_at != cv_file.created_at else status.HTTP_201_CREATED
         return CVUploadProcessedRead(
             id=cv_file.id,
             candidate_id=cv_file.candidate_id,
@@ -52,6 +54,34 @@ def upload_cv(
             parser_model=extracted_text.parser_model,
             structured_json=extracted_text.ai_output,
             matching_result_ids=[result.id for result in matching_results],
+            message="CV mis à jour avec succès." if cv_file.updated_at != cv_file.created_at else "CV importé avec succès.",
+            duplicate=False,
+            updated_existing=cv_file.updated_at != cv_file.created_at,
+        )
+    except DuplicateCVError as exc:
+        response.status_code = status.HTTP_200_OK
+        cv_file = exc.cv_file
+        extracted_text = cv_service.get_extracted_text(db, cv_file.id)
+        return CVUploadProcessedRead(
+            id=cv_file.id,
+            candidate_id=cv_file.candidate_id,
+            original_filename=cv_file.original_filename,
+            storage_path=cv_file.storage_path,
+            mime_type=cv_file.mime_type,
+            file_size_bytes=cv_file.file_size_bytes,
+            checksum_sha256=cv_file.checksum_sha256,
+            parsing_status=cv_file.parsing_status,
+            uploaded_at=cv_file.uploaded_at,
+            created_at=cv_file.created_at,
+            updated_at=cv_file.updated_at,
+            processing_status="duplicate",
+            confidence_score=float(extracted_text.confidence_score) if extracted_text and extracted_text.confidence_score is not None else None,
+            parser_model=extracted_text.parser_model if extracted_text else None,
+            structured_json=extracted_text.ai_output if extracted_text else None,
+            matching_result_ids=[],
+            message="Ce CV existe déjà dans la base de données.",
+            duplicate=True,
+            updated_existing=False,
         )
     except CVUploadError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -60,7 +90,7 @@ def upload_cv(
     except IntegrityError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="A database record for this CV could not be created.",
+            detail="L'enregistrement du CV en base de données n'a pas pu être créé.",
         ) from exc
 
 
@@ -72,7 +102,7 @@ def upload_cv_batch(
     if not file.filename.lower().endswith(".zip"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Batch upload only supports .zip files.",
+            detail="L'import par lot accepte uniquement les fichiers .zip.",
         )
 
     results = []
@@ -111,6 +141,15 @@ def upload_cv_batch(
                             candidate_id=cv_file.candidate_id,
                         )
                     )
+                except DuplicateCVError as e:
+                    results.append(
+                        CVBatchResultItem(
+                            filename=Path(filename).name,
+                            status="duplicate",
+                            candidate_id=e.cv_file.candidate_id,
+                            error_message="Ce CV existe déjà dans la base de données.",
+                        )
+                    )
                 except Exception as e:
                     error_count += 1
                     results.append(
@@ -124,16 +163,16 @@ def upload_cv_batch(
     except zipfile.BadZipFile:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid zip file.",
+            detail="Fichier ZIP invalide.",
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while processing the zip file: {e}",
+            detail=f"Une erreur est survenue pendant le traitement du fichier ZIP : {e}",
         )
 
     return CVBatchUploadSummary(
-        total=success_count + error_count,
+        total=len(results),
         success_count=success_count,
         error_count=error_count,
         results=results,
@@ -153,7 +192,7 @@ def list_cv_files(
 def get_cv_file(cv_file_id: UUID, db: Session = Depends(get_db)) -> CVFileRead:
     cv_file = cv_service.get_cv_file(db, cv_file_id)
     if cv_file is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="CV file not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fichier CV introuvable.")
     return cv_file
 
 
@@ -161,7 +200,7 @@ def get_cv_file(cv_file_id: UUID, db: Session = Depends(get_db)) -> CVFileRead:
 def delete_cv_file(cv_file_id: UUID, db: Session = Depends(get_db)) -> None:
     cv_file = cv_service.get_cv_file(db, cv_file_id)
     if cv_file is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="CV file not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fichier CV introuvable.")
 
     cv_service.delete_cv_file(db, cv_file)
 
@@ -170,7 +209,7 @@ def delete_cv_file(cv_file_id: UUID, db: Session = Depends(get_db)) -> None:
 def get_cv_text(cv_file_id: UUID, db: Session = Depends(get_db)) -> ExtractedCVTextRead:
     extracted_text = cv_service.get_extracted_text(db, cv_file_id)
     if extracted_text is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extracted CV text not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Texte extrait du CV introuvable.")
     return extracted_text
 
 
@@ -194,7 +233,7 @@ def parse_cv(cv_file_id: UUID, db: Session = Depends(get_db)) -> ParsedCVRead:
 def get_parsed_cv(cv_file_id: UUID, db: Session = Depends(get_db)) -> ParsedCVRead:
     extracted_text = cv_service.get_extracted_text(db, cv_file_id)
     if extracted_text is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Extracted CV text not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Texte extrait du CV introuvable.")
 
     return ParsedCVRead(
         cv_file_id=extracted_text.cv_file_id,
@@ -209,11 +248,11 @@ def get_parsed_cv(cv_file_id: UUID, db: Session = Depends(get_db)) -> ParsedCVRe
 def download_cv_file(cv_file_id: UUID, db: Session = Depends(get_db)) -> FileResponse:
     cv_file = cv_service.get_cv_file(db, cv_file_id)
     if cv_file is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="CV file not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fichier CV introuvable.")
 
     file_path = cv_file.storage_path
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File on disk not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fichier introuvable sur le disque.")
 
     return FileResponse(
         path=file_path,

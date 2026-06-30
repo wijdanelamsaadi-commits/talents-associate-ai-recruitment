@@ -1,3 +1,4 @@
+import logging
 import re
 import unicodedata
 from datetime import date
@@ -18,19 +19,21 @@ class MatchingError(ValueError):
     pass
 
 
+logger = logging.getLogger(__name__)
 SEMANTIC_SCORE_WEIGHT = 0.3
 MATCHING_MODEL_NAME = "hybrid-heuristic-embedding-v1"
 LIGHTWEIGHT_MODEL_NAME = "lightweight-title-match-v1"
+MIN_VIVIER_MATCH_SCORE = 20
 
 
 def match_candidate_to_job(db: Session, candidate_id: UUID, job_id: UUID, application_id: UUID | None = None) -> AIMatchingResult:
     candidate = db.get(Candidate, candidate_id)
     if candidate is None:
-        raise MatchingError("Candidate not found.")
+        raise MatchingError("Candidat introuvable.")
 
     job = db.get(JobOffer, job_id)
     if job is None:
-        raise MatchingError("Job offer not found.")
+        raise MatchingError("Offre d'emploi introuvable.")
 
     extracted_data = _get_latest_parsed_cv(db, candidate_id)
     has_parsed_cv = extracted_data is not None and extracted_data.ai_output
@@ -44,7 +47,7 @@ def match_candidate_to_job(db: Session, candidate_id: UUID, job_id: UUID, applic
         model_name = LIGHTWEIGHT_MODEL_NAME
         used_embedding = False
     else:
-        raise MatchingError("Candidate must have parsed CV data or a current job title before matching.")
+        raise MatchingError("Le candidat doit avoir un CV analysé ou un poste actuel avant le matching IA.")
 
     existing_result = _get_existing_generated_result(db, candidate_id, job_id)
 
@@ -77,8 +80,8 @@ def match_candidate_to_job(db: Session, candidate_id: UUID, job_id: UUID, applic
         db,
         candidate_id=candidate_id,
         event_type="ai_match_generated",
-        title="AI matching generated",
-        description=f"Generated a {output.score}/100 match score for {job.title}.",
+        title="Matching IA généré",
+        description=f"Score de matching IA de {output.score}/100 généré pour {job.title}.",
         metadata={
             "matching_result_id": str(result.id),
             "job_offer_id": str(job_id),
@@ -133,13 +136,13 @@ def calculate_match(parsed_candidate: dict, job: JobOffer, candidate_embedding: 
     recommendation = _recommendation(total_score)
 
     explanation = (
-        f"Matched {len(matched_required)} of {len(required_skills)} required skills"
-        f" and {len(matched_preferred)} preferred skills. "
-        f"Experience score is {experience_score}/100, diploma/education score is {education_score}/100, "
-        f"and language score is {language_score}/100. Weights prioritize competences, experience, "
-        f"and diplome: skills 40%, experience 30%, diploma 25%, languages 5%. "
-        f"Semantic similarity contributes {semantic_score}/100 with a {round(SEMANTIC_SCORE_WEIGHT * 100)}% blend weight. "
-        f"Recommendation: {recommendation}."
+        f"{len(matched_required)} compétence(s) obligatoire(s) correspondante(s) sur {len(required_skills)}"
+        f" et {len(matched_preferred)} compétence(s) souhaitée(s). "
+        f"Score expérience : {experience_score}/100, score formation/diplôme : {education_score}/100, "
+        f"score langues : {language_score}/100. La pondération priorise les compétences, l'expérience "
+        f"et le diplôme : compétences 40 %, expérience 30 %, diplôme 25 %, langues 5 %. "
+        f"La similarité sémantique contribue à {semantic_score}/100 avec un poids de {round(SEMANTIC_SCORE_WEIGHT * 100)} %. "
+        f"Recommandation : {recommendation}."
     )
 
     return MatchingOutput(
@@ -164,12 +167,12 @@ def calculate_lightweight_match(candidate: Candidate, job: JobOffer) -> Matching
     total_score = round((title_score * 0.60) + (company_score * 0.10) + (experience_score * 0.30))
     total_score = max(0, min(total_score, 100))
     recommendation = _recommendation(total_score)
-    recommendation_note = "Based on job title only - no CV available."
+    recommendation_note = "Basé uniquement sur le poste actuel - aucun CV disponible."
     explanation = (
-        f"Lightweight matching (no CV): title similarity is {title_score}/100, "
-        f"company match is {company_score}/100, experience estimate is {experience_score}/100. "
-        f"Weights: title 60%, company 10%, experience 30%. Note: {recommendation_note} "
-        f"Recommendation: {recommendation}."
+        f"Matching léger sans CV : similarité du poste {title_score}/100, "
+        f"correspondance entreprise {company_score}/100, estimation expérience {experience_score}/100. "
+        f"Pondération : poste 60 %, entreprise 10 %, expérience 30 %. Note : {recommendation_note} "
+        f"Recommandation : {recommendation}."
     )
     return MatchingOutput(
         score=total_score,
@@ -290,7 +293,7 @@ def auto_match_candidate(
 
 
 def _normalize_set(items: list[str]) -> set[str]:
-    return {str(item).strip().lower() for item in items if str(item).strip()}
+    return {_strip_accents(str(item).strip().lower()) for item in items if str(item).strip()}
 
 
 def _display_items(items: list[str]) -> set[str]:
@@ -456,12 +459,12 @@ def _language_score(candidate_languages: list[str], job_description: str | None)
 
 def _recommendation(score: int) -> str:
     if score >= 85:
-        return "strong_match"
+        return "Très bonne correspondance"
     if score >= 70:
-        return "good_match"
+        return "Bonne correspondance"
     if score >= 50:
-        return "average_match"
-    return "weak_match"
+        return "Correspondance moyenne"
+    return "Correspondance faible"
 
 
 def _clamp(value: float, minimum: float, maximum: float) -> float:
@@ -478,95 +481,369 @@ def search_candidates_vivier(
     technical_skills: str | None = None,
     soft_skills: str | None = None,
     langues: str | None = None,
-) -> list[tuple[Candidate, float, bool, UUID | None]]:
-    # 1. Query candidates not archived
+    limit: int | None = 200,
+) -> list[tuple[Candidate, float, bool, UUID | None, list[str], dict]]:
     statement = select(Candidate).where(Candidate.status != "archived")
     candidates = list(db.scalars(statement).all())
+    parsed_cv_by_candidate_id = _get_latest_parsed_cv_map(db, [candidate.id for candidate in candidates])
 
-    # 2. Build virtual job offer if any criteria are provided
-    req_skills = []
-    if technical_skills:
-        req_skills.extend([s.strip() for s in technical_skills.split(";") if s.strip()])
-    if soft_skills:
-        req_skills.extend([s.strip() for s in soft_skills.split(";") if s.strip()])
-
-    req_exp_years = None
-    if experience_level == "0–1 an":
-        req_exp_years = 1
-    elif experience_level == "2–5 ans":
-        req_exp_years = 2
-    elif experience_level == "5–10 ans":
-        req_exp_years = 5
-    elif experience_level == "10 ans et plus":
-        req_exp_years = 10
-
-    virtual_job = JobOffer(
-        title=poste or "",
-        required_skills=req_skills,
-        required_experience_years=req_exp_years,
-        education_level=education_level,
-        contract_type=contract_type,
-        description=langues or "",
+    technical_skill_filters = _split_filter_values(technical_skills)
+    soft_skill_filters = _split_filter_values(soft_skills)
+    language_filters = _split_filter_values(langues)
+    req_exp_years = _experience_level_to_years(experience_level)
+    has_filters = any(
+        [
+            poste,
+            secteur,
+            technical_skill_filters,
+            soft_skill_filters,
+            req_exp_years is not None,
+            education_level,
+            contract_type,
+            language_filters,
+        ]
     )
 
     results = []
-
     for candidate in candidates:
-        cv = _get_latest_parsed_cv(db, candidate.id)
+        cv = parsed_cv_by_candidate_id.get(candidate.id)
         has_cv = cv is not None and cv.ai_output is not None
-
-        # Hard filter for Secteur if provided
-        if secteur:
-            secteur_matched = False
-            # Check candidate model sector
-            if candidate.sector and _strip_accents(candidate.sector.lower()) == _strip_accents(secteur.lower()):
-                secteur_matched = True
-            # Check CV parsed sector
-            elif has_cv:
-                cv_sector = cv.ai_output.get("sector") or cv.ai_output.get("secteur") or ""
-                if cv_sector and _strip_accents(str(cv_sector).lower()) == _strip_accents(secteur.lower()):
-                    secteur_matched = True
-            if not secteur_matched:
-                continue
-
-        # Score candidate
+        parsed_payload = dict(cv.ai_output or {}) if has_cv else {}
         if has_cv:
-            match_output = calculate_match(cv.ai_output, virtual_job, cv.embedding)
-            score = float(match_output.score)
-            cv_file_id = cv.cv_file_id
-        else:
-            # Lightweight match: poste + secteur + entreprise
-            title_score = 0
-            if poste:
-                title_score = _title_keyword_score(candidate.current_title or "", poste, req_skills)
-            elif candidate.current_title:
-                title_score = 100
+            parsed_payload["__raw_text"] = cv.raw_text or ""
+        score, debug_details = _score_vivier_candidate(
+            candidate,
+            parsed_payload,
+            poste=poste,
+            secteur=secteur,
+            technical_skills=technical_skill_filters,
+            soft_skills=soft_skill_filters,
+            required_experience_years=req_exp_years,
+            education_level=education_level,
+            contract_type=contract_type,
+            languages=language_filters,
+        )
+        matched_skills = list(debug_details.get("matched_technical_skills") or [])
 
-            sector_score = 100
-            if secteur and candidate.sector:
-                sector_score = (
-                    100
-                    if _strip_accents(candidate.sector.lower()) == _strip_accents(secteur.lower())
-                    else 0
-                )
+        if score < MIN_VIVIER_MATCH_SCORE or (has_filters and score <= 0):
+            logger.debug(
+                "Vivier candidate rejected candidate_id=%s score=%s details=%s",
+                candidate.id,
+                score,
+                debug_details,
+            )
+            continue
 
-            company_score = 100 if candidate.current_company else 0
+        logger.debug(
+            "Vivier candidate selected candidate_id=%s score=%s details=%s",
+            candidate.id,
+            score,
+            debug_details,
+        )
+        cv_file_id = cv.cv_file_id if has_cv else None
+        results.append((candidate, score, has_cv, cv_file_id, matched_skills, debug_details))
 
-            if not poste and not secteur:
-                score = 100.0
-            else:
-                score = float(round((title_score * 0.50) + (sector_score * 0.30) + (company_score * 0.20)))
-            cv_file_id = None
-
-        results.append((candidate, score, has_cv, cv_file_id))
-
-    # Sort results: highest score first, then by Candidate.created_at desc
     results.sort(
         key=lambda x: (
             x[1],
-            x[0].created_at.timestamp() if x[0].created_at else 0.0
+            x[0].created_at.timestamp() if x[0].created_at else 0.0,
         ),
-        reverse=True
+        reverse=True,
     )
-    return results
+    if limit is None:
+        return results
+    return results[:limit]
+
+
+def _get_latest_parsed_cv_map(db: Session, candidate_ids: list[UUID]) -> dict[UUID, ExtractedCVData]:
+    if not candidate_ids:
+        return {}
+
+    statement = (
+        select(ExtractedCVData)
+        .where(ExtractedCVData.candidate_id.in_(candidate_ids))
+        .where(ExtractedCVData.ai_output.is_not(None))
+        .order_by(ExtractedCVData.candidate_id, ExtractedCVData.updated_at.desc())
+    )
+    latest_by_candidate_id: dict[UUID, ExtractedCVData] = {}
+    for extracted_cv in db.scalars(statement).all():
+        if not isinstance(extracted_cv, ExtractedCVData):
+            continue
+        latest_by_candidate_id.setdefault(extracted_cv.candidate_id, extracted_cv)
+    return latest_by_candidate_id
+
+
+def _candidate_sector_score(candidate: Candidate, cv: ExtractedCVData | None, secteur: str | None) -> int:
+    if not secteur:
+        return 100
+
+    expected_sector = _strip_accents(secteur.lower())
+    candidate_sector = _strip_accents(candidate.sector.lower()) if candidate.sector else ""
+    if candidate_sector:
+        return 100 if candidate_sector == expected_sector else 0
+
+    if cv is not None and cv.ai_output:
+        cv_sector = cv.ai_output.get("sector") or cv.ai_output.get("secteur") or ""
+        if cv_sector:
+            return 100 if _strip_accents(str(cv_sector).lower()) == expected_sector else 0
+
+    return 0
+
+
+def _score_vivier_candidate(
+    candidate: Candidate,
+    parsed_candidate: dict,
+    *,
+    poste: str | None,
+    secteur: str | None,
+    technical_skills: list[str],
+    soft_skills: list[str],
+    required_experience_years: int | None,
+    education_level: str | None,
+    contract_type: str | None,
+    languages: list[str],
+) -> tuple[float, dict]:
+    criteria: list[tuple[str, float, int]] = []
+    debug_details: dict[str, object] = {}
+
+    candidate_skills = _candidate_skill_set(candidate, parsed_candidate, include_title_tokens=True)
+    candidate_soft_skills = _normalize_set(_extract_list_values(parsed_candidate, "soft_skills", "softSkills", "soft_skills_detected"))
+    candidate_languages = _extract_list_values(parsed_candidate, "languages", "langues", "language_codes")
+
+    if poste:
+        candidate_title = _string_value(candidate.current_title or parsed_candidate.get("current_title") or parsed_candidate.get("poste_actuel")) or ""
+        poste_score = _role_match_score(candidate_title, _string_value(parsed_candidate.get("__raw_text")) or "", poste)
+        criteria.append(("poste", 20, poste_score))
+        debug_details["poste_score"] = poste_score
+
+    if secteur:
+        sector_score = _candidate_sector_score_from_payload(candidate, parsed_candidate, secteur, candidate_skills)
+        debug_details["secteur_score"] = sector_score
+        if sector_score == 0:
+            debug_details["rejection_reason"] = "sector does not match"
+            return 0.0, debug_details
+        criteria.append(("secteur", 20, sector_score))
+
+    if technical_skills:
+        required_skill_set = _normalize_set(technical_skills)
+        matched_skills = sorted(required_skill_set & candidate_skills)
+        skill_score = _ratio_score(len(matched_skills), len(required_skill_set))
+        debug_details["technical_skill_score"] = skill_score
+        debug_details["matched_technical_skills"] = matched_skills
+        if skill_score == 0:
+            debug_details["rejection_reason"] = "no technical skill matched"
+            return 0.0, debug_details
+        criteria.append(("technical_skills", 35, skill_score))
+
+    if soft_skills:
+        required_soft_set = _normalize_set(soft_skills)
+        matched_soft_skills = sorted(required_soft_set & candidate_soft_skills)
+        soft_score = _ratio_score(len(matched_soft_skills), len(required_soft_set))
+        debug_details["soft_skill_score"] = soft_score
+        debug_details["matched_soft_skills"] = matched_soft_skills
+        if soft_score == 0:
+            debug_details["rejection_reason"] = "no soft skill matched"
+            return 0.0, debug_details
+        criteria.append(("soft_skills", 10, soft_score))
+
+    if required_experience_years is not None:
+        experience_score = _experience_score(
+            _extract_list_values(parsed_candidate, "experience", "experiences", "experiences_detaillees"),
+            parsed_candidate.get("total_experience_years")
+            or parsed_candidate.get("experience_totale")
+            or parsed_candidate.get("total_years_experience"),
+            required_experience_years,
+            contract_type,
+        )
+        criteria.append(("experience", 12, experience_score))
+        debug_details["experience_score"] = experience_score
+
+    if education_level:
+        education_score = _education_score(
+            _extract_list_values(parsed_candidate, "education", "diplomes", "diplôme"),
+            _string_value(parsed_candidate.get("highest_degree") or parsed_candidate.get("diplome")),
+            education_level,
+        )
+        criteria.append(("education", 13, education_score))
+        debug_details["education_score"] = education_score
+
+    if languages:
+        language_score = _language_match_score(candidate_languages, languages)
+        debug_details["language_score"] = language_score
+        if language_score == 0:
+            debug_details["rejection_reason"] = "no language matched"
+            return 0.0, debug_details
+        criteria.append(("languages", 10, language_score))
+
+    if not criteria:
+        debug_details["rejection_reason"] = "no search criteria"
+        return 0.0, debug_details
+
+    total_weight = sum(weight for _, weight, _ in criteria)
+    score = round(sum(score * weight for _, weight, score in criteria) / total_weight, 2)
+    debug_details["criteria"] = [name for name, _, _ in criteria]
+    debug_details["final_score"] = score
+    return score, debug_details
+
+
+def _candidate_sector_score_from_payload(candidate: Candidate, parsed_candidate: dict, secteur: str, candidate_skills: set[str]) -> int:
+    expected_sector = _strip_accents(secteur.lower())
+    explicit_sector = _string_value(candidate.sector or parsed_candidate.get("sector") or parsed_candidate.get("secteur"))
+    if explicit_sector:
+        return 100 if _strip_accents(explicit_sector.lower()) == expected_sector else 0
+
+    if expected_sector == "informatique":
+        it_terms = {
+            "developpeur", "developer", "dev", "software", "full", "stack", "backend", "frontend",
+            "php", "python", "java", "javascript", "react", "node", "sql", "n8n", "ia", "ai",
+            "data", "devops", "cloud", "informatique", "it",
+        }
+        title_tokens = _tokenize_title(candidate.current_title or "")
+        if candidate_skills & it_terms or title_tokens & it_terms:
+            return 70
+    return 0
+
+
+def _role_match_score(candidate_title: str, raw_text: str, requested_role: str) -> int:
+    title_score = _title_keyword_score(candidate_title, requested_role, [])
+    if title_score:
+        return title_score
+
+    requested_tokens = _expand_role_tokens(_tokenize_title(requested_role))
+    if not requested_tokens:
+        return 0
+
+    profile_tokens = _expand_role_tokens(_tokenize_title(raw_text[:2500]))
+    if not profile_tokens:
+        return 0
+    return _ratio_score(len(requested_tokens & profile_tokens), len(requested_tokens))
+
+
+def _expand_role_tokens(tokens: set[str]) -> set[str]:
+    expanded = set(tokens)
+    developer_terms = {
+        "developpeur",
+        "developpeuse",
+        "developpement",
+        "developer",
+        "software",
+        "full",
+        "stack",
+        "fullstack",
+        "backend",
+        "frontend",
+        "web",
+        "engineer",
+        "ingenieur",
+    }
+    has_developer_signal = bool(expanded & developer_terms) or any(
+        "veloppeur" in token or "developp" in token for token in expanded
+    )
+    if has_developer_signal:
+        expanded |= developer_terms
+    return expanded
+
+
+def _candidate_skill_set(candidate: Candidate, parsed_candidate: dict, *, include_title_tokens: bool = False) -> set[str]:
+    skills = _extract_list_values(
+        parsed_candidate,
+        "skills",
+        "competences",
+        "compétences",
+        "technical_skills",
+        "competences_techniques",
+    )
+    normalized = _normalize_set(skills)
+    raw_text = _string_value(parsed_candidate.get("__raw_text")) or ""
+    if raw_text:
+        normalized |= _extract_known_skill_tokens(raw_text)
+    if include_title_tokens and candidate.current_title:
+        normalized |= _tokenize_title(candidate.current_title)
+    return normalized
+
+
+def _extract_known_skill_tokens(text: str) -> set[str]:
+    normalized_text = _strip_accents(text.lower())
+    known_terms = {
+        "n8n",
+        "php",
+        "ia",
+        "ai",
+        "python",
+        "fastapi",
+        "sql",
+        "cloud",
+        "devops",
+        "data",
+        "deep learning",
+        "machine learning",
+        "docker",
+        "github actions",
+        "laravel",
+        "java",
+        "javascript",
+        "react",
+        "node",
+        "mysql",
+        "oracle",
+        "power bi",
+    }
+    found = set()
+    for term in known_terms:
+        if re.search(rf"\b{re.escape(term)}\b", normalized_text):
+            found.add(term)
+    return found
+
+
+def _extract_list_values(payload: dict, *keys: str) -> list[str]:
+    values: list[str] = []
+    for key in keys:
+        value = payload.get(key)
+        if value is None:
+            continue
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    values.extend(str(v) for v in item.values() if v is not None)
+                else:
+                    values.append(str(item))
+        elif isinstance(value, dict):
+            values.extend(str(v) for v in value.values() if v is not None)
+        else:
+            values.extend(part.strip() for part in re.split(r"[;,]", str(value)) if part.strip())
+    return values
+
+
+def _split_filter_values(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [part.strip() for part in re.split(r"[;,]", value) if part.strip()]
+
+
+def _experience_level_to_years(value: str | None) -> int | None:
+    normalized = _strip_accents(str(value or "").lower())
+    if "0" in normalized and "1" in normalized:
+        return 1
+    if "2" in normalized and "5" in normalized:
+        return 2
+    if "5" in normalized and "10" in normalized:
+        return 5
+    if "10" in normalized:
+        return 10
+    return None
+
+
+def _language_match_score(candidate_languages: list[str], required_languages: list[str]) -> int:
+    candidate_set = _normalize_set(candidate_languages)
+    required_set = _normalize_set(required_languages)
+    if not required_set:
+        return 100
+    return _ratio_score(len(candidate_set & required_set), len(required_set))
+
+
+def _string_value(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
 

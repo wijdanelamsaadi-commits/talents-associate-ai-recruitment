@@ -8,7 +8,6 @@ import { SECTORS } from "../constants/sectors";
 import { getApiErrorMessage } from "../lib/errors";
 import {
   Candidate,
-  archiveCandidate,
   getCandidatesPaginated,
   reactivateCandidate,
   updateCandidate,
@@ -36,11 +35,11 @@ const initialFormState: CandidateFormState = {
   city: "",
   current_title: "",
   sector: "",
-  source: "manual",
+  source: "cv_upload",
   status: "new",
 };
 
-const sourceOptions = ["manual", "cv_upload", "linkedin_csv", "candidate_portal", "outlook_import", "referral", "other"];
+const sourceOptions = ["cv_upload", "linkedin_csv", "candidate_portal"];
 const statusOptions = [
   "new",
   "active",
@@ -252,23 +251,6 @@ export function CandidatesPage() {
     setPage(1);
   };
 
-  const handleArchive = async (candidate: Candidate) => {
-    const shouldArchive = window.confirm(`Archiver le candidat "${candidate.first_name} ${candidate.last_name}" ?`);
-    if (!shouldArchive) {
-      return;
-    }
-
-    setError(null);
-    setMessage(null);
-    try {
-      await archiveCandidate(candidate.id);
-      setMessage("Candidat archivé. Son CV, son parsing IA, ses candidatures et son historique sont conservés.");
-      await loadCandidates(page, page === 1 ? null : cursorHistory[page - 2] ?? null);
-    } catch (archiveError) {
-      setError(getApiErrorMessage(archiveError, "Le candidat n'a pas pu être archivé."));
-    }
-  };
-
   const handleReactivate = async (candidate: Candidate) => {
     setError(null);
     setMessage(null);
@@ -431,16 +413,6 @@ export function CandidatesPage() {
                           type="button"
                         >
                           Modifier
-                        </button>
-                        <button
-                          className="rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void handleArchive(candidate);
-                          }}
-                          type="button"
-                        >
-                          Archiver
                         </button>
                         {candidate.status === "archived" || candidate.status === "rejected" || candidate.is_talent_pool ? (
                           <button

@@ -24,7 +24,7 @@ class CandidateBase(BaseModel):
     current_company: str | None = Field(default=None, max_length=150)
     sector: str | None = Field(default=None, max_length=150)
     gender: str | None = Field(default=None, pattern="^(M|F)$")
-    source: str = Field(default="manual", pattern="^(manual|cv_upload|linkedin_csv|candidate_portal|outlook_import|referral|other)$")
+    source: str = Field(default="cv_upload", pattern="^(cv_upload|linkedin_csv|candidate_portal)$")
     status: str = Field(
         default="new",
         pattern=CandidateStatusPattern,
@@ -56,7 +56,7 @@ class CandidateUpdate(BaseModel):
     gender: str | None = Field(default=None, pattern="^(M|F)$")
     source: str | None = Field(
         default=None,
-        pattern="^(manual|cv_upload|linkedin_csv|candidate_portal|outlook_import|referral|other)$",
+        pattern="^(cv_upload|linkedin_csv|candidate_portal)$",
     )
     status: str | None = Field(
         default=None,

@@ -22,7 +22,7 @@ def create_evaluation(db: Session, evaluation_in: EvaluationCreate) -> Evaluatio
     interview = _get_interview_or_raise(db, evaluation_in.interview_id)
     candidate_id = evaluation_in.candidate_id or interview.candidate_id
     if candidate_id != interview.candidate_id:
-        raise EvaluationError("Candidate does not match the interview candidate.")
+        raise EvaluationError("Le candidat ne correspond pas au candidat de l'entretien.")
 
     data = evaluation_in.model_dump()
     data["candidate_id"] = candidate_id
@@ -102,7 +102,7 @@ def update_evaluation(db: Session, evaluation: Evaluation, evaluation_in: Evalua
     if "candidate_id" in data and data["candidate_id"] is not None:
         interview = _get_interview_or_raise(db, evaluation.interview_id)
         if data["candidate_id"] != interview.candidate_id:
-            raise EvaluationError("Candidate does not match the interview candidate.")
+            raise EvaluationError("Le candidat ne correspond pas au candidat de l'entretien.")
         evaluation.candidate_id = data.pop("candidate_id")
 
     for field, value in data.items():
@@ -147,7 +147,7 @@ def calculate_global_score(score_data: dict, rating: int | None = None) -> Decim
 def _get_interview_or_raise(db: Session, interview_id: UUID) -> Interview:
     interview = db.get(Interview, interview_id)
     if interview is None:
-        raise EvaluationError("Interview not found.")
+        raise EvaluationError("Entretien introuvable.")
     return interview
 
 

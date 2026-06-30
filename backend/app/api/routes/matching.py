@@ -28,6 +28,15 @@ def list_matching_results(
     return matching_service.list_matching_results(db, skip=skip, limit=limit)
 
 
+@router.get("", response_model=list[MatchingResultRead])
+def list_matching_results_alias(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> list[MatchingResultRead]:
+    return matching_service.list_matching_results(db, skip=skip, limit=limit)
+
+
 @router.get("/candidate/{candidate_id}", response_model=list[MatchingResultRead])
 def list_candidate_matching_results(candidate_id: UUID, db: Session = Depends(get_db)) -> list[MatchingResultRead]:
     return matching_service.list_candidate_matching_results(db, candidate_id)
@@ -37,7 +46,7 @@ def list_candidate_matching_results(candidate_id: UUID, db: Session = Depends(ge
 def delete_matching_result(matching_result_id: UUID, db: Session = Depends(get_db)) -> None:
     matching_result = matching_service.get_matching_result(db, matching_result_id)
     if matching_result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Matching result not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Résultat de matching IA introuvable.")
 
     matching_service.delete_matching_result(db, matching_result)
 
@@ -52,6 +61,7 @@ def search_candidates_vivier(
     technical_skills: str | None = Query(default=None),
     soft_skills: str | None = Query(default=None),
     langues: str | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=500),
     db: Session = Depends(get_db),
 ) -> list[VivierSearchResult]:
     results = matching_service.search_candidates_vivier(
@@ -64,6 +74,7 @@ def search_candidates_vivier(
         technical_skills=technical_skills,
         soft_skills=soft_skills,
         langues=langues,
+        limit=limit,
     )
     return [
         VivierSearchResult(
@@ -71,7 +82,9 @@ def search_candidates_vivier(
             score=score,
             has_cv=has_cv,
             cv_file_id=cv_file_id,
+            matched_skills=matched_skills,
+            score_details=score_details,
         )
-        for candidate, score, has_cv, cv_file_id in results
+        for candidate, score, has_cv, cv_file_id, matched_skills, score_details in results
     ]
 

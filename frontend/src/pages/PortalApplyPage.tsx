@@ -139,7 +139,7 @@ export function PortalApplyPage() {
           {processingStep !== "idle" ? (
             <div className="grid gap-2 sm:grid-cols-3">
               {[
-                ["uploading", "Upload"],
+                ["uploading", "Import"],
                 ["processing", "Traitement"],
                 ["completed", "Terminé"],
               ].map(([key, label]) => (

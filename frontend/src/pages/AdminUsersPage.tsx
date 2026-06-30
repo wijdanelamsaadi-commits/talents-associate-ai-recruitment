@@ -3,7 +3,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { getApiErrorMessage } from "../lib/errors";
 import {
   AdminUser,
-  createRecruiter,
+  createUser,
   deleteAdminUser,
   disableAdminUser,
   enableAdminUser,
@@ -13,11 +13,31 @@ import {
 type AdminUserForm = {
   full_name: string;
   email: string;
-  password: string;
-  role: "recruiter" | "hiring_manager";
+  role: "admin" | "recruiter";
 };
 
-const initialForm: AdminUserForm = { full_name: "", email: "", password: "", role: "recruiter" };
+const initialForm: AdminUserForm = { full_name: "", email: "", role: "recruiter" };
+
+function formatRole(role: string) {
+  const labels: Record<string, string> = {
+    admin: "Administrateur",
+    recruiter: "Recruteur",
+    candidate: "Candidat",
+  };
+  return labels[role] ?? role;
+}
+
+function formatStatus(status: string) {
+  const labels: Record<string, string> = {
+    active: "Actif",
+    invited: "En attente d'activation",
+    suspended: "Désactivé",
+    disabled: "Désactivé",
+    inactive: "Inactif",
+    deleted: "Supprimé",
+  };
+  return labels[status] ?? status;
+}
 
 export function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -45,12 +65,12 @@ export function AdminUsersPage() {
     setError(null);
     setMessage(null);
     try {
-      await createRecruiter(form);
+      await createUser(form);
       setForm(initialForm);
-      setMessage("Recruteur créé avec succès.");
+      setMessage("Un email d'activation a été envoyé à l'utilisateur afin qu'il définisse son mot de passe.");
       await loadUsers();
     } catch (createError) {
-      setError(getApiErrorMessage(createError, "Impossible de créer le recruteur."));
+      setError(getApiErrorMessage(createError, "Impossible de créer l'utilisateur."));
     } finally {
       setIsSubmitting(false);
     }
@@ -76,8 +96,8 @@ export function AdminUsersPage() {
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="font-semibold text-[#0B1F3A]">Créer un recruteur</h3>
-        <form className="mt-4 grid gap-4 md:grid-cols-4" onSubmit={handleCreate}>
+        <h3 className="font-semibold text-[#0B1F3A]">Créer un utilisateur</h3>
+        <form className="mt-4 grid gap-4 md:grid-cols-3" onSubmit={handleCreate}>
           <input
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C]"
             onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))}
@@ -93,23 +113,15 @@ export function AdminUsersPage() {
             type="email"
             value={form.email}
           />
-          <input
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C]"
-            minLength={8}
-            onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-            placeholder="Mot de passe"
-            required
-            type="password"
-            value={form.password}
-          />
           <div className="flex gap-2">
             <select
               className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C]"
-              onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as "recruiter" | "hiring_manager" }))}
+              onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as "admin" | "recruiter" }))}
               value={form.role}
             >
+              <option value="administrateur" disabled hidden></option>
+              <option value="admin">Administrateur</option>
               <option value="recruiter">Recruteur</option>
-              <option value="hiring_manager">Hiring manager</option>
             </select>
             <button className="rounded-lg bg-[#E8590C] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={isSubmitting} type="submit">
               Créer
@@ -141,9 +153,9 @@ export function AdminUsersPage() {
                 <tr key={user.id}>
                   <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{user.full_name}</td>
                   <td className="whitespace-nowrap px-5 py-4 text-slate-700">{user.email}</td>
-                  <td className="whitespace-nowrap px-5 py-4 text-slate-700">{user.role}</td>
+                  <td className="whitespace-nowrap px-5 py-4 text-slate-700">{formatRole(user.role)}</td>
                   <td className="whitespace-nowrap px-5 py-4">
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{user.status}</span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{formatStatus(user.status)}</span>
                   </td>
                   <td className="whitespace-nowrap px-5 py-4">
                     <div className="flex flex-wrap gap-2">
@@ -154,7 +166,7 @@ export function AdminUsersPage() {
                         Réactiver
                       </button>
                       <button className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700" onClick={() => void runAction(() => deleteAdminUser(user.id), "Utilisateur supprimé en soft delete.")} type="button">
-                        Soft delete
+                        Supprimer
                       </button>
                     </div>
                   </td>

@@ -22,17 +22,16 @@ export type AdminDashboardStats = {
   email_failed_count: number;
 };
 
-export type CreateRecruiterPayload = {
+export type CreateUserPayload = {
   full_name: string;
   email: string;
-  password: string;
-  role: "recruiter" | "hiring_manager";
+  role: "admin" | "recruiter";
 };
 
 export type UpdateUserPayload = Partial<{
   full_name: string;
   email: string;
-  role: "admin" | "recruiter" | "hiring_manager";
+  role: "admin" | "recruiter";
   status: "active" | "invited" | "suspended" | "deleted";
   password: string;
 }>;
@@ -51,8 +50,8 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
   return response.data;
 }
 
-export async function createRecruiter(payload: CreateRecruiterPayload): Promise<AdminUser> {
-  const response = await apiClient.post<AdminUser>("/api/admin/recruiters", payload);
+export async function createUser(payload: CreateUserPayload): Promise<AdminUser> {
+  const response = await apiClient.post<AdminUser>("/api/admin/users", payload);
   return response.data;
 }
 

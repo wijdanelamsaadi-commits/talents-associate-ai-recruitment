@@ -25,7 +25,7 @@ async def upload_linkedin_csv(file: UploadFile = File(...), db: Session = Depend
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="LinkedIn CSV import could not be saved.") from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="L'import CSV LinkedIn n'a pas pu être enregistré.") from exc
 
 
 @router.get("/linkedin-csv", response_model=list[LinkedInImportRead])
@@ -57,7 +57,7 @@ async def upload_outlook_cvs(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Outlook CV import could not be saved.") from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="L'import des CV n'a pas pu être enregistré.") from exc
 
 
 @router.get("/outlook/history", response_model=list[OutlookImportRead])

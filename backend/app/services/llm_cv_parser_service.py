@@ -29,6 +29,8 @@ Format JSON obligatoire :
   "email": null,
   "phone": null,
   "telephone": null,
+  "ville": null,
+  "location": null,
   "linkedin_url": null,
   "linkedin": null,
   "current_company": null,
@@ -67,6 +69,10 @@ Format JSON obligatoire :
   "diplomes": [],
   "skills": [],
   "competences": [],
+  "technical_skills": [],
+  "competences_techniques": [],
+  "functional_skills": [],
+  "competences_fonctionnelles": [],
   "languages": [],
   "langues": [],
   "certifications": [],
@@ -86,6 +92,8 @@ EXPECTED_FIELDS: dict[str, Any] = {
     "email": None,
     "phone": None,
     "telephone": None,
+    "ville": None,
+    "location": None,
     "linkedin_url": None,
     "linkedin": None,
     "current_company": None,
@@ -101,6 +109,10 @@ EXPECTED_FIELDS: dict[str, Any] = {
     "diplomes": [],
     "skills": [],
     "competences": [],
+    "technical_skills": [],
+    "competences_techniques": [],
+    "functional_skills": [],
+    "competences_fonctionnelles": [],
     "languages": [],
     "langues": [],
     "certifications": [],
@@ -202,6 +214,8 @@ def _normalize_llm_payload(payload: dict[str, Any]) -> dict[str, Any]:
     normalized["nom"] = normalized["nom"] or normalized["last_name"]
     normalized["phone"] = normalized["phone"] or normalized["telephone"]
     normalized["telephone"] = normalized["telephone"] or normalized["phone"]
+    normalized["location"] = normalized["location"] or normalized["ville"]
+    normalized["ville"] = normalized["ville"] or normalized["location"]
     normalized["linkedin_url"] = normalized["linkedin_url"] or normalized["linkedin"]
     normalized["linkedin"] = normalized["linkedin"] or normalized["linkedin_url"]
     normalized["current_company"] = normalized["current_company"] or normalized["entreprise_actuelle"]
@@ -216,8 +230,12 @@ def _normalize_llm_payload(payload: dict[str, Any]) -> dict[str, Any]:
     normalized["experiences_detaillees"] = normalized["detailed_experience"]
     normalized["education"] = _normalize_education_items(normalized["education"] or normalized["diplomes"])
     normalized["diplomes"] = normalized["education"]
-    normalized["skills"] = normalized["skills"] or normalized["competences"]
+    normalized["skills"] = normalized["skills"] or normalized["competences"] or normalized["technical_skills"] or normalized["competences_techniques"]
     normalized["competences"] = normalized["competences"] or normalized["skills"]
+    normalized["technical_skills"] = normalized["technical_skills"] or normalized["skills"]
+    normalized["competences_techniques"] = normalized["competences_techniques"] or normalized["skills"]
+    normalized["functional_skills"] = normalized["functional_skills"] or normalized["competences_fonctionnelles"]
+    normalized["competences_fonctionnelles"] = normalized["competences_fonctionnelles"] or normalized["functional_skills"]
     normalized["languages"] = normalized["languages"] or normalized["langues"]
     normalized["langues"] = normalized["langues"] or normalized["languages"]
     normalized["gender"] = normalized["gender"] or normalized["sexe"]
@@ -320,6 +338,8 @@ def _heuristic_result(raw_text: str) -> ParsedCV:
     data["email"] = parsed.data.get("email") or None
     data["phone"] = parsed.data.get("phone") or None
     data["telephone"] = data["phone"]
+    data["location"] = parsed.data.get("location") or None
+    data["ville"] = parsed.data.get("ville") or data["location"]
     data["linkedin"] = data["linkedin_url"]
     data["entreprise_actuelle"] = data["current_company"]
     data["poste_actuel"] = data["current_title"]
@@ -327,6 +347,10 @@ def _heuristic_result(raw_text: str) -> ParsedCV:
     data["experiences_detaillees"] = data["detailed_experience"]
     data["diplomes"] = data["education"]
     data["competences"] = data["skills"]
+    data["technical_skills"] = parsed.data.get("technical_skills") or data["skills"]
+    data["competences_techniques"] = parsed.data.get("competences_techniques") or data["skills"]
+    data["functional_skills"] = parsed.data.get("functional_skills") or []
+    data["competences_fonctionnelles"] = parsed.data.get("competences_fonctionnelles") or data["functional_skills"]
     data["langues"] = data["languages"]
     data["sexe"] = data["gender"]
     data["parser_used"] = "heuristic"

@@ -18,7 +18,7 @@ def get_current_user(
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required.",
+            detail="Authentification requise.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -28,7 +28,7 @@ def get_current_user(
     except (KeyError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired access token.",
+            detail="Jeton d'accès invalide ou expiré.",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
 
@@ -36,7 +36,7 @@ def get_current_user(
     if user is None or user.status != "active":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Recruiter account is not active.",
+            detail="Le compte recruteur n'est pas actif.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -47,7 +47,7 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Administrator privileges are required.",
+            detail="Droits administrateur requis.",
         )
     return current_user
 
@@ -56,7 +56,7 @@ def require_recruiter_or_admin(current_user: User = Depends(get_current_user)) -
     if current_user.role not in {"admin", "recruiter", "hiring_manager"}:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Recruiter or administrator privileges are required.",
+            detail="Droits recruteur ou administrateur requis.",
         )
     return current_user
 
@@ -68,7 +68,7 @@ def get_current_candidate(
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Candidate authentication required.",
+            detail="Authentification candidat requise.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -78,7 +78,7 @@ def get_current_candidate(
     except (KeyError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired candidate access token.",
+            detail="Jeton d'accès candidat invalide ou expiré.",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
 
@@ -86,7 +86,7 @@ def get_current_candidate(
     if candidate is None or candidate.account_status != "active":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Candidate account is not active.",
+            detail="Le compte candidat n'est pas actif.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

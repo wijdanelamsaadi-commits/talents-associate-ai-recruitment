@@ -30,3 +30,12 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserRead
+
+
+class ActivationInfo(BaseModel):
+    email: EmailStr
+    full_name: str
+
+
+class ActivationSetPassword(BaseModel):
+    password: str = Field(min_length=8, max_length=128)

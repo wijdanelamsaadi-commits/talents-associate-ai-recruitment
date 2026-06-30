@@ -34,6 +34,12 @@ class CVUploadError(ValueError):
     pass
 
 
+class DuplicateCVError(CVUploadError):
+    def __init__(self, cv_file: CVFile):
+        super().__init__("Ce CV existe déjà dans la base de données.")
+        self.cv_file = cv_file
+
+
 def upload_cv(
     db: Session,
     candidate_id: UUID | None,
@@ -44,13 +50,13 @@ def upload_cv(
     original_filename = upload_file.filename or ""
     extension = Path(original_filename).suffix.lower()
     if extension not in SUPPORTED_EXTENSIONS:
-        raise CVUploadError("Unsupported file format. Only PDF, DOC, and DOCX files are allowed.")
+        raise CVUploadError("Format non pris en charge. Seuls les fichiers PDF, DOC et DOCX sont autorisés.")
 
     if upload_file.content_type and upload_file.content_type not in SUPPORTED_CONTENT_TYPES:
-        raise CVUploadError("Unsupported file type. Please upload a PDF, DOC, or DOCX file.")
+        raise CVUploadError("Type de fichier non pris en charge. Importez un fichier PDF, DOC ou DOCX.")
 
     if extension == ".doc":
-        raise CVUploadError("DOC text extraction is not supported yet. Please upload a PDF or DOCX file.")
+        raise CVUploadError("L'extraction de texte DOC n'est pas encore prise en charge. Importez un fichier PDF ou DOCX.")
 
     UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
     stored_filename = f"{uuid.uuid4()}{extension}"
@@ -59,19 +65,22 @@ def upload_cv(
     file_size, checksum = _save_upload_file(upload_file, stored_path)
     if file_size == 0:
         stored_path.unlink(missing_ok=True)
-        raise CVUploadError("Uploaded file is empty.")
+        raise CVUploadError("Le fichier importé est vide.")
 
     try:
+        existing_same_file = db.scalar(select(CVFile).where(CVFile.checksum_sha256 == checksum))
+        if existing_same_file is not None:
+            stored_path.unlink(missing_ok=True)
+            raise DuplicateCVError(existing_same_file)
+
         raw_text = extract_text_from_file(stored_path, extension)
         if not raw_text:
-            raise CVUploadError("No text could be extracted from this CV.")
+            raise CVUploadError("Aucun texte n'a pu être extrait de ce CV.")
 
-        parsed_cv = None
-        parsed_data = None
+        parsed_cv = parse_cv_text_configurable(raw_text)
+        parsed_data = parsed_cv.data or {}
 
         if candidate_id is None:
-            parsed_cv = parse_cv_text_configurable(raw_text)
-            parsed_data = parsed_cv.data or {}
             email = parsed_data.get("email")
 
             candidate = None
@@ -88,8 +97,8 @@ def upload_cv(
                         first_name = name_parts[0]
                         last_name = " ".join(name_parts[1:])
                     else:
-                        first_name = base_name or "Unknown"
-                        last_name = "Candidate"
+                        first_name = base_name or "Prénom"
+                        last_name = "Candidat"
                 
                 from app.schemas.candidate import CandidateCreate
                 from app.services import candidate_service
@@ -109,49 +118,75 @@ def upload_cv(
         else:
             candidate = db.get(Candidate, candidate_id)
             if candidate is None:
-                raise CVUploadError("Candidate not found.")
+                raise CVUploadError("Candidat introuvable.")
             if uploaded_by == "recruiter":
                 candidate.source = "cv_upload"
             is_new_parsed = False
 
-        cv_file = CVFile(
-            candidate_id=candidate_id,
-            original_filename=original_filename,
-            storage_path=str(stored_path),
-            mime_type=upload_file.content_type,
-            file_size_bytes=file_size,
-            checksum_sha256=checksum,
-            parsing_status="parsed" if is_new_parsed else "processing",
-        )
-        db.add(cv_file)
-        db.flush()
+        cv_file = _get_latest_cv_file_for_candidate(db, candidate_id)
+        replaces_existing_cv = cv_file is not None
+        if cv_file is None:
+            cv_file = CVFile(
+                candidate_id=candidate_id,
+                original_filename=original_filename,
+                storage_path=str(stored_path),
+                mime_type=upload_file.content_type,
+                file_size_bytes=file_size,
+                checksum_sha256=checksum,
+                parsing_status="parsed",
+            )
+            db.add(cv_file)
+            db.flush()
+        else:
+            cv_file.original_filename = original_filename
+            cv_file.storage_path = str(stored_path)
+            cv_file.mime_type = upload_file.content_type
+            cv_file.file_size_bytes = file_size
+            cv_file.checksum_sha256 = checksum
+            cv_file.parsing_status = "parsed"
+            cv_file.uploaded_at = datetime.now(timezone.utc)
+            db.flush()
 
-        extracted_data = ExtractedCVData(
-            cv_file_id=cv_file.id,
-            candidate_id=candidate_id,
-            raw_text=raw_text,
-            parsed_json=None,
-            ai_output=parsed_data if is_new_parsed else None,
-            confidence_score=parsed_cv.confidence_score if is_new_parsed else None,
-            parser_model=_parser_model(parsed_data) if is_new_parsed else None,
-            parsing_status="parsed" if is_new_parsed else "extracted",
-            status="approved" if is_new_parsed else "parsed",
-        )
-        db.add(extracted_data)
+        extracted_data = get_extracted_text(db, cv_file.id)
+        if extracted_data is None:
+            extracted_data = ExtractedCVData(
+                cv_file_id=cv_file.id,
+                candidate_id=candidate_id,
+                raw_text=raw_text,
+                parsed_json=None,
+                ai_output=parsed_data,
+                confidence_score=parsed_cv.confidence_score,
+                parser_model=_parser_model(parsed_data),
+                parsing_status="parsed",
+                status="approved",
+            )
+            db.add(extracted_data)
+        else:
+            extracted_data.candidate_id = candidate_id
+            extracted_data.raw_text = raw_text
+            extracted_data.parsed_json = None
+            extracted_data.ai_output = parsed_data
+            extracted_data.confidence_score = parsed_cv.confidence_score
+            extracted_data.parser_model = _parser_model(parsed_data)
+            extracted_data.parsing_status = "parsed"
+            extracted_data.status = "approved"
 
-        if is_new_parsed:
-            _generate_candidate_embedding(db, extracted_data)
-            update_candidate_profile_from_parsed_cv(db, extracted_data)
+        _generate_candidate_embedding(db, extracted_data, commit=False)
+        update_candidate_profile_from_parsed_cv(db, extracted_data)
 
         create_timeline_event(
             db,
             candidate_id=candidate_id,
             event_type="manual_cv_uploaded" if uploaded_by == "recruiter" else "cv_uploaded",
-            title="CV uploaded by candidate" if uploaded_by == "candidate_portal" else "CV uploaded",
+            title="CV remplacé" if replaces_existing_cv else ("CV importé par le candidat" if uploaded_by == "candidate_portal" else "CV importé"),
             description=(
-                f"Candidate uploaded and extracted text from {original_filename}."
+                f"Le CV existant a été remplacé par {original_filename}."
+                if replaces_existing_cv
+                else (
+                f"Le candidat a importé {original_filename} et le texte a été extrait."
                 if uploaded_by == "candidate_portal"
-                else f"Uploaded and extracted text from {original_filename}."
+                else f"{original_filename} a été importé et le texte a été extrait."
+                )
             ),
             metadata={
                 "cv_file_id": str(cv_file.id),
@@ -160,23 +195,24 @@ def upload_cv(
                 "source": uploaded_by,
                 "candidate_source": "cv_upload" if uploaded_by == "recruiter" else uploaded_by,
                 "application_id": str(application_id) if application_id else None,
+                "replaced_existing_cv": replaces_existing_cv,
             },
         )
 
-        if is_new_parsed:
-            create_timeline_event(
-                db,
-                candidate_id=candidate_id,
-                event_type="cv_parsed",
-                title="CV parsed",
-                description="Extracted CV text was converted into structured candidate data.",
-                metadata={
-                    "cv_file_id": str(cv_file.id),
-                    "confidence_score": float(parsed_cv.confidence_score) if parsed_cv.confidence_score is not None else None,
-                    "parser_used": parsed_data.get("parser_used", "llm"),
-                    "parser_model": extracted_data.parser_model,
-                },
-            )
+        create_timeline_event(
+            db,
+            candidate_id=candidate_id,
+            event_type="cv_parsed",
+            title="CV analysé",
+            description="Le texte extrait du CV a été converti en données candidat structurées.",
+            metadata={
+                "cv_file_id": str(cv_file.id),
+                "confidence_score": float(parsed_cv.confidence_score) if parsed_cv.confidence_score is not None else None,
+                "parser_used": parsed_data.get("parser_used", "llm"),
+                "parser_model": extracted_data.parser_model,
+                "replaced_existing_cv": replaces_existing_cv,
+            },
+        )
 
         db.commit()
         db.refresh(cv_file)
@@ -201,16 +237,28 @@ def get_extracted_text(db: Session, cv_file_id: UUID) -> ExtractedCVData | None:
     return db.scalar(statement)
 
 
+def _get_latest_cv_file_for_candidate(db: Session, candidate_id: UUID) -> CVFile | None:
+    statement = (
+        select(CVFile)
+        .where(CVFile.candidate_id == candidate_id)
+        .order_by(CVFile.uploaded_at.desc(), CVFile.created_at.desc())
+        .limit(1)
+    )
+    return db.scalar(statement)
+
+
 def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
     extracted_data = get_extracted_text(db, cv_file_id)
     if extracted_data is None:
-        raise CVUploadError("Extracted CV text not found.")
+        raise CVUploadError("Texte extrait du CV introuvable.")
 
-    if extracted_data.parsing_status == "parsed" and extracted_data.ai_output:
+    if extracted_data.parsing_status == "parsed" and extracted_data.ai_output and _has_minimum_parsing_signal(
+        extracted_data.ai_output
+    ):
         return extracted_data
 
     if not extracted_data.raw_text or not extracted_data.raw_text.strip():
-        raise CVUploadError("Cannot parse CV because extracted text is empty.")
+        raise CVUploadError("Impossible d'analyser le CV car le texte extrait est vide.")
 
     parsed_cv = parse_cv_text_configurable(extracted_data.raw_text)
     extracted_data.ai_output = parsed_cv.data
@@ -232,8 +280,8 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
         db,
         candidate_id=extracted_data.candidate_id,
         event_type="cv_parsed",
-        title="CV parsed",
-        description="Extracted CV text was converted into structured candidate data.",
+        title="CV analysé",
+        description="Le texte extrait du CV a été converti en données candidat structurées.",
         metadata={
             "cv_file_id": str(cv_file_id),
             "confidence_score": float(parsed_cv.confidence_score),
@@ -244,7 +292,7 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
 
     db.commit()
     db.refresh(extracted_data)
-    _generate_candidate_embedding(db, extracted_data)
+    _generate_candidate_embedding(db, extracted_data, commit=True)
     update_candidate_profile_from_parsed_cv(db, extracted_data)
     return extracted_data
 
@@ -252,7 +300,7 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
 def update_candidate_profile_from_parsed_cv(db: Session, extracted_data: ExtractedCVData) -> Candidate:
     candidate = db.get(Candidate, extracted_data.candidate_id)
     if candidate is None:
-        raise CVUploadError("Candidate not found.")
+        raise CVUploadError("Candidat introuvable.")
 
     parsed_data = extracted_data.ai_output or {}
     updates: dict[str, str] = {}
@@ -261,6 +309,7 @@ def update_candidate_profile_from_parsed_cv(db: Session, extracted_data: Extract
         ("last_name", "last_name"),
         ("email", "email"),
         ("phone", "phone"),
+        ("location", "location"),
         ("linkedin_url", "linkedin_url"),
         ("current_title", "current_title"),
         ("current_company", "current_company"),
@@ -270,7 +319,15 @@ def update_candidate_profile_from_parsed_cv(db: Session, extracted_data: Extract
         parsed_value = str(parsed_data.get(parsed_field) or "").strip()
         if parsed_field == "sector" and not parsed_value:
             parsed_value = str(parsed_data.get("secteur") or "").strip()
-        if parsed_value and not getattr(candidate, candidate_field):
+        if parsed_field == "location" and not parsed_value:
+            parsed_value = str(parsed_data.get("ville") or "").strip()
+        current_value = str(getattr(candidate, candidate_field) or "").strip()
+        is_placeholder_name = candidate_field in {"first_name", "last_name"} and candidate.last_name in {"Candidate", "Candidat"}
+        if candidate_field == "email" and parsed_value:
+            existing_candidate = db.scalar(select(Candidate).where(Candidate.email == parsed_value))
+            if existing_candidate is not None and existing_candidate.id != candidate.id:
+                continue
+        if parsed_value and (not current_value or is_placeholder_name):
             updates[candidate_field] = parsed_value
 
     for field, value in updates.items():
@@ -281,8 +338,8 @@ def update_candidate_profile_from_parsed_cv(db: Session, extracted_data: Extract
             db,
             candidate_id=candidate.id,
             event_type="candidate_updated",
-            title="Candidate updated from parsed CV",
-            description="Candidate profile fields were completed from parsed CV data.",
+            title="Candidat mis à jour depuis le CV analysé",
+            description="Les champs du profil candidat ont été complétés à partir des données du CV analysé.",
             metadata={"updated_fields": sorted(updates.keys()), "cv_file_id": str(extracted_data.cv_file_id)},
         )
         db.commit()
@@ -323,7 +380,7 @@ def _save_upload_file(upload_file: UploadFile, stored_path: Path) -> tuple[int, 
             file_size += len(chunk)
             if file_size > MAX_CV_FILE_SIZE_BYTES:
                 stored_path.unlink(missing_ok=True)
-                raise CVUploadError("File is too large. Maximum allowed size is 5MB.")
+                raise CVUploadError("Le fichier est trop volumineux. La taille maximale autorisée est de 5 Mo.")
 
             sha256.update(chunk)
             buffer.write(chunk)
@@ -338,15 +395,39 @@ def _parser_model(parsed_data: dict) -> str:
     return "heuristic-v1"
 
 
-def _generate_candidate_embedding(db: Session, extracted_data: ExtractedCVData) -> None:
+def _has_minimum_parsing_signal(parsed_data: dict) -> bool:
+    list_fields = (
+        "skills",
+        "competences",
+        "technical_skills",
+        "competences_techniques",
+        "education",
+        "diplomes",
+        "experience",
+        "detailed_experience",
+        "experiences_detaillees",
+    )
+    scalar_fields = ("email", "phone", "telephone", "first_name", "last_name", "prenom", "nom")
+    has_list_signal = any(parsed_data.get(field) for field in list_fields)
+    has_scalar_signal = any(parsed_data.get(field) for field in scalar_fields)
+    confidence = parsed_data.get("parser_confidence")
+    try:
+        confidence_value = float(confidence) if confidence is not None else 0.0
+    except (TypeError, ValueError):
+        confidence_value = 0.0
+    return has_list_signal or has_scalar_signal or confidence_value > 0
+
+
+def _generate_candidate_embedding(db: Session, extracted_data: ExtractedCVData, *, commit: bool = False) -> None:
     try:
         embedding_text = build_candidate_embedding_text(extracted_data)
         extracted_data.embedding = generate_embedding(embedding_text)
         extracted_data.embedding_generated_at = datetime.now(timezone.utc)
-        db.commit()
-        db.refresh(extracted_data)
+        db.flush()
+        if commit:
+            db.commit()
+            db.refresh(extracted_data)
     except Exception as exc:
-        db.rollback()
         logger.warning("Candidate embedding generation failed; continuing without embedding: %s", exc)
 
 

@@ -28,7 +28,7 @@ def list_job_offers(
 def get_job_offer(job_id: UUID, db: Session = Depends(get_db)) -> JobOfferRead:
     job = job_service.get_job_offer(db, job_id)
     if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job offer not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offre d'emploi introuvable.")
     return job
 
 
@@ -36,7 +36,7 @@ def get_job_offer(job_id: UUID, db: Session = Depends(get_db)) -> JobOfferRead:
 def update_job_offer(job_id: UUID, job_in: JobOfferUpdate, db: Session = Depends(get_db)) -> JobOfferRead:
     job = job_service.get_job_offer(db, job_id)
     if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job offer not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offre d'emploi introuvable.")
     return job_service.update_job_offer(db, job, job_in)
 
 
@@ -44,5 +44,5 @@ def update_job_offer(job_id: UUID, job_in: JobOfferUpdate, db: Session = Depends
 def delete_job_offer(job_id: UUID, db: Session = Depends(get_db)) -> None:
     job = job_service.get_job_offer(db, job_id)
     if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job offer not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offre d'emploi introuvable.")
     job_service.delete_job_offer(db, job)

@@ -40,7 +40,7 @@ def create_candidate(candidate_in: CandidateCreate, db: Session = Depends(get_db
     except IntegrityError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Candidate with this email already exists.",
+            detail="Un candidat avec cet email existe déjà.",
         ) from exc
 
 
@@ -85,7 +85,7 @@ def list_candidates(
 def get_candidate(candidate_id: UUID, db: Session = Depends(get_db)) -> CandidateRead:
     candidate = candidate_service.get_candidate(db, candidate_id)
     if candidate is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidat introuvable.")
     return candidate
 
 
@@ -93,7 +93,7 @@ def get_candidate(candidate_id: UUID, db: Session = Depends(get_db)) -> Candidat
 def get_candidate_history(candidate_id: UUID, db: Session = Depends(get_db)) -> CandidateHistoryRead:
     history = application_service.get_candidate_history(db, candidate_id)
     if history is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidat introuvable.")
     return history
 
 
@@ -101,14 +101,14 @@ def get_candidate_history(candidate_id: UUID, db: Session = Depends(get_db)) -> 
 def update_candidate(candidate_id: UUID, candidate_in: CandidateUpdate, db: Session = Depends(get_db)) -> CandidateRead:
     candidate = candidate_service.get_candidate(db, candidate_id)
     if candidate is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidat introuvable.")
 
     try:
         return candidate_service.update_candidate(db, candidate, candidate_in)
     except IntegrityError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Candidate with this email already exists.",
+            detail="Un candidat avec cet email existe déjà.",
         ) from exc
 
 
@@ -116,7 +116,7 @@ def update_candidate(candidate_id: UUID, candidate_in: CandidateUpdate, db: Sess
 def delete_candidate(candidate_id: UUID, db: Session = Depends(get_db)) -> None:
     candidate = candidate_service.get_candidate(db, candidate_id)
     if candidate is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidat introuvable.")
 
     candidate_service.delete_candidate(db, candidate)
 
@@ -125,7 +125,7 @@ def delete_candidate(candidate_id: UUID, db: Session = Depends(get_db)) -> None:
 def archive_candidate(candidate_id: UUID, db: Session = Depends(get_db)) -> CandidateRead:
     candidate = candidate_service.get_candidate(db, candidate_id)
     if candidate is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidat introuvable.")
     return candidate_service.archive_candidate(db, candidate)
 
 
@@ -137,7 +137,7 @@ def reactivate_candidate(
 ) -> CandidateRead:
     candidate = candidate_service.get_candidate(db, candidate_id)
     if candidate is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidat introuvable.")
     return candidate_service.reactivate_candidate(db, candidate, keep_in_talent_pool=keep_in_talent_pool)
 
 
@@ -149,7 +149,7 @@ def reject_candidate(
 ) -> CandidateRead:
     candidate = candidate_service.get_candidate(db, candidate_id)
     if candidate is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidat introuvable.")
     return candidate_service.reject_candidate(db, candidate, application_id=application_id)
 
 
@@ -157,7 +157,7 @@ def reject_candidate(
 def list_candidate_timeline(candidate_id: UUID, db: Session = Depends(get_db)) -> list[TimelineEventRead]:
     candidate = candidate_service.get_candidate(db, candidate_id)
     if candidate is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidat introuvable.")
 
     events = timeline_service.list_candidate_timeline(db, candidate_id)
     return [_serialize_timeline_event(event) for event in events]
@@ -171,6 +171,6 @@ def create_candidate_timeline_event(
 ) -> TimelineEventRead:
     event = timeline_service.create_manual_timeline_event(db, candidate_id, event_in)
     if event is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidat introuvable.")
 
     return _serialize_timeline_event(event)

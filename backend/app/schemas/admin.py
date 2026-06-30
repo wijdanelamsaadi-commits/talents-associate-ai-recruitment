@@ -18,17 +18,16 @@ class AdminUserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class AdminRecruiterCreate(BaseModel):
+class AdminUserCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=150)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
-    role: str = Field(default="recruiter", pattern="^(recruiter|hiring_manager)$")
+    role: str = Field(default="recruiter", pattern="^(admin|recruiter)$")
 
 
 class AdminUserUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=150)
     email: EmailStr | None = None
-    role: str | None = Field(default=None, pattern="^(admin|recruiter|hiring_manager)$")
+    role: str | None = Field(default=None, pattern="^(admin|recruiter)$")
     status: str | None = Field(default=None, pattern="^(active|invited|suspended|deleted)$")
     password: str | None = Field(default=None, min_length=8, max_length=128)
 

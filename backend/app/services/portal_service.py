@@ -36,7 +36,7 @@ def register_candidate(db: Session, payload: CandidateRegister) -> CandidateToke
     normalized_email = payload.email.lower().strip()
     candidate = db.scalar(select(Candidate).where(Candidate.email == normalized_email))
     if candidate and candidate.password_hash:
-        raise CandidateAuthError("A candidate account already exists with this email.")
+        raise CandidateAuthError("Un compte candidat existe déjà avec cet email.")
 
     if candidate is None:
         candidate = Candidate(
@@ -53,7 +53,7 @@ def register_candidate(db: Session, payload: CandidateRegister) -> CandidateToke
         db.add(candidate)
         db.flush()
         event_type = "candidate_created"
-        title = "Candidate account created"
+        title = "Compte candidat créé"
     else:
         candidate.first_name = payload.first_name
         candidate.last_name = payload.last_name
@@ -64,7 +64,7 @@ def register_candidate(db: Session, payload: CandidateRegister) -> CandidateToke
         candidate.status = "active"
         candidate.consent_given = True
         event_type = "portal_update"
-        title = "Candidate account activated"
+        title = "Compte candidat activé"
 
     candidate.password_hash = hash_password(payload.password)
     candidate.account_status = "active"
@@ -73,7 +73,7 @@ def register_candidate(db: Session, payload: CandidateRegister) -> CandidateToke
         candidate_id=candidate.id,
         event_type=event_type,
         title=title,
-        description="Candidate created or activated a secure portal account.",
+        description="Le candidat a créé ou activé un compte portail sécurisé.",
         metadata={"source": "candidate_portal"},
     )
     db.commit()
@@ -85,9 +85,9 @@ def login_candidate(db: Session, payload: CandidateLogin) -> CandidateTokenRespo
     _ensure_candidate_account_columns(db)
     candidate = db.scalar(select(Candidate).where(Candidate.email == payload.email.lower().strip()))
     if candidate is None or not candidate.password_hash or not verify_password(payload.password, candidate.password_hash):
-        raise CandidateAuthError("Invalid email or password.")
+        raise CandidateAuthError("Email ou mot de passe invalide.")
     if candidate.account_status != "active":
-        raise CandidateAuthError("Candidate account is not active.")
+        raise CandidateAuthError("Le compte candidat n'est pas actif.")
 
     candidate.last_login_at = db.execute(select(func.now())).scalar_one()
     db.commit()
@@ -156,8 +156,8 @@ def update_candidate_profile(db: Session, candidate: Candidate, payload: Candida
             db,
             candidate_id=candidate.id,
             event_type="portal_update",
-            title="Candidate profile updated",
-            description="Candidate updated profile information from the portal.",
+            title="Profil candidat mis à jour",
+            description="Le candidat a mis à jour ses informations depuis le portail.",
             metadata={"updated_fields": sorted(changed_fields)},
         )
         db.commit()
@@ -175,11 +175,11 @@ def replace_candidate_cv(db: Session, candidate: Candidate, upload_file: UploadF
 def apply_authenticated_candidate(db: Session, candidate: Candidate, job_id: UUID) -> PortalApplicationResponse:
     job = get_public_job(db, job_id)
     if job is None:
-        raise PortalApplicationError("Job offer is not available for public applications.")
+        raise PortalApplicationError("Cette offre n'est pas ouverte aux candidatures publiques.")
 
     latest_cv = _get_latest_cv_file(db, candidate.id)
     if latest_cv is None:
-        raise PortalApplicationError("Upload a CV before applying to this job.")
+        raise PortalApplicationError("Importez un CV avant de postuler à cette offre.")
 
     application = _get_or_create_application(db, candidate.id, job.id)
     application.cv_file_id = latest_cv.id
@@ -196,7 +196,7 @@ def apply_authenticated_candidate(db: Session, candidate: Candidate, job_id: UUI
         candidate_id=candidate.id,
         application_id=application.id,
         cv_file_id=latest_cv.id,
-        message="Application submitted from your candidate portal.",
+        message="Candidature envoyée depuis votre espace candidat.",
     )
 
 
@@ -279,7 +279,7 @@ def submit_application(
 ) -> PortalApplicationResponse:
     job = get_public_job(db, job_id)
     if job is None:
-        raise PortalApplicationError("Job offer is not available for public applications.")
+        raise PortalApplicationError("Cette offre n'est pas ouverte aux candidatures publiques.")
 
     candidate = _get_or_create_candidate(db, candidate_data)
     application = _get_or_create_application(db, candidate.id, job.id)
@@ -306,7 +306,7 @@ def submit_application(
         candidate_id=candidate.id,
         application_id=application.id,
         cv_file_id=cv_file.id,
-        message="Application submitted.",
+        message="Candidature envoyée.",
     )
 
 
@@ -334,7 +334,7 @@ def _get_or_create_candidate(db: Session, candidate_data: PortalCandidateData) -
             db,
             candidate_id=candidate.id,
             event_type="candidate_created",
-            title="Candidate created from portal",
+            title="Candidat créé depuis le portail",
             description=f"{candidate.first_name} {candidate.last_name} applied through the candidate portal.",
             metadata={"source": "candidate_portal", "status": candidate.status},
         )
@@ -357,8 +357,8 @@ def _get_or_create_candidate(db: Session, candidate_data: PortalCandidateData) -
             db,
             candidate_id=candidate.id,
             event_type="candidate_updated",
-            title="Candidate updated from portal",
-            description="Candidate profile was updated from a public application form.",
+            title="Candidat mis à jour depuis le portail",
+            description="Le profil candidat a été mis à jour depuis le formulaire public de candidature.",
             metadata={"updated_fields": sorted(updates.keys())},
         )
         db.commit()
@@ -392,8 +392,8 @@ def _get_or_create_application(db: Session, candidate_id: UUID, job_id: UUID) ->
         db,
         candidate_id=candidate_id,
         event_type="candidate_application_submitted",
-        title="Candidate applied through portal",
-        description="Candidate submitted an application through the public portal.",
+        title="Candidature envoyée depuis le portail",
+        description="Le candidat a envoyé une candidature depuis le portail public.",
         metadata={"source": "candidate_portal", "application_id": str(application.id), "job_offer_id": str(job_id)},
     )
     db.commit()

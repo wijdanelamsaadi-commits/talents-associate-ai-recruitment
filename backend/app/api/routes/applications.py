@@ -30,7 +30,7 @@ class ApplicationRead(BaseModel):
 def _get_application_or_404(application_id: UUID, db: Session):
     application = application_service.get_application(db, application_id)
     if application is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidature introuvable.")
     return application
 
 

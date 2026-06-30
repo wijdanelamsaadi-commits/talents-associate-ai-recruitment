@@ -40,7 +40,7 @@ class TimestampMixin:
 class User(TimestampMixin, Base):
     __tablename__ = "users"
     __table_args__ = (
-        CheckConstraint("role IN ('admin', 'recruiter', 'hiring_manager')", name="ck_users_role"),
+        CheckConstraint("role IN ('admin', 'recruiter')", name="ck_users_role"),
         CheckConstraint("status IN ('active', 'invited', 'suspended', 'deleted')", name="ck_users_status"),
     )
 
@@ -52,10 +52,12 @@ class User(TimestampMixin, Base):
     )
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     role: Mapped[str] = mapped_column(String(30), default="recruiter", nullable=False)
     status: Mapped[str] = mapped_column(String(30), default="active", index=True, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    activation_token: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     owned_candidates: Mapped[list[Candidate]] = relationship(back_populates="owner")
     uploaded_cv_files: Mapped[list[CVFile]] = relationship(back_populates="uploaded_by")

@@ -74,7 +74,7 @@ def update_interview(db: Session, interview: Interview, interview_in: InterviewU
     next_start = data.get("scheduled_start_at", interview.scheduled_start_at)
     next_end = data.get("scheduled_end_at", interview.scheduled_end_at)
     if next_end is not None and next_end <= next_start:
-        raise InterviewError("Interview end time must be after start time.")
+        raise InterviewError("L'heure de fin de l'entretien doit être postérieure à l'heure de début.")
 
     candidate_id = data.pop("candidate_id", None)
     job_offer_id = data.pop("job_offer_id", None)
@@ -117,15 +117,15 @@ def delete_interview(db: Session, interview: Interview) -> None:
 def get_interview_job_offer_id(db: Session, interview: Interview) -> UUID:
     application = db.get(Application, interview.application_id)
     if application is None:
-        raise InterviewError("Interview application not found.")
+        raise InterviewError("Candidature liée à l'entretien introuvable.")
     return application.job_offer_id
 
 
 def _get_or_create_application(db: Session, candidate_id: UUID, job_offer_id: UUID) -> Application:
     if db.get(Candidate, candidate_id) is None:
-        raise InterviewError("Candidate not found.")
+        raise InterviewError("Candidat introuvable.")
     if db.get(JobOffer, job_offer_id) is None:
-        raise InterviewError("Job offer not found.")
+        raise InterviewError("Offre d'emploi introuvable.")
 
     statement = select(Application).where(
         Application.candidate_id == candidate_id,

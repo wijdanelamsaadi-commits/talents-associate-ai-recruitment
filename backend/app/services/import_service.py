@@ -40,15 +40,15 @@ logger = logging.getLogger(__name__)
 async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInCSVImport:
     filename = upload_file.filename or "linkedin-export.csv"
     if not filename.lower().endswith(".csv"):
-        raise ImportError("Only CSV files are supported.")
+        raise ImportError("Seuls les fichiers CSV sont pris en charge.")
 
     content = await upload_file.read()
     if not content:
-        raise ImportError("Uploaded CSV file is empty.")
+        raise ImportError("Le fichier CSV importé est vide.")
 
     reader = _build_csv_reader(content)
     if not reader.fieldnames:
-        raise ImportError("CSV file has no header row.")
+        raise ImportError("Le fichier CSV ne contient pas de ligne d'en-tête.")
 
     imported = 0
     updated = 0
@@ -68,7 +68,7 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
             rows_report.append({
                 "row": row_number,
                 "status": "skipped",
-                "reason": "Missing email, LinkedIn URL, and name/company match keys.",
+                "reason": "Email, URL LinkedIn et clés nom/entreprise manquants.",
             })
             continue
 
@@ -82,7 +82,7 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
         )
         if candidate is None and (not first_name or not last_name):
             skipped += 1
-            rows_report.append({"row": row_number, "status": "skipped", "reason": "Missing candidate name for new record."})
+            rows_report.append({"row": row_number, "status": "skipped", "reason": "Nom du candidat manquant pour un nouveau profil."})
             continue
 
         if candidate is None:
@@ -104,8 +104,8 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
                 db,
                 candidate_id=candidate.id,
                 event_type="linkedin_csv_imported",
-                title="Candidate imported from LinkedIn CSV",
-                description=f"{candidate.first_name} {candidate.last_name} was imported from a LinkedIn CSV file.",
+                title="Candidat importé depuis un CSV LinkedIn",
+                description=f"{candidate.first_name} {candidate.last_name} a été importé depuis un fichier CSV LinkedIn.",
                 metadata={"source": "linkedin_csv", "filename": filename, "row": row_number},
             )
             imported += 1
@@ -118,8 +118,8 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
                 db,
                 candidate_id=candidate.id,
                 event_type="linkedin_csv_imported",
-                title="Candidate updated from LinkedIn CSV",
-                description="Candidate profile was updated during LinkedIn CSV import.",
+                title="Candidat mis à jour depuis un CSV LinkedIn",
+                description="Le profil candidat a été mis à jour pendant l'import CSV LinkedIn.",
                 metadata={"source": "linkedin_csv", "filename": filename, "row": row_number, "updated_fields": changed_fields},
             )
         updated += 1
@@ -161,7 +161,7 @@ def get_linkedin_import_summary(db: Session) -> dict[str, int]:
 
 async def import_outlook_cvs(db: Session, upload_files: list[UploadFile]) -> OutlookCVImport:
     if not upload_files:
-        raise ImportError("Upload a ZIP archive or at least one PDF/DOCX CV file.")
+        raise ImportError("Importez une archive ZIP ou au moins un fichier CV PDF/DOCX.")
 
     batches: list[dict[str, bytes | str | None]] = []
     source_names: list[str] = []
@@ -178,7 +178,7 @@ async def import_outlook_cvs(db: Session, upload_files: list[UploadFile]) -> Out
             batches.append({"filename": filename, "content": content, "content_type": upload_file.content_type})
 
     if not batches:
-        raise ImportError("No CV files were found in the Outlook import upload.")
+        raise ImportError("Aucun fichier CV n'a été trouvé dans l'import.")
 
     imported = 0
     updated = 0
@@ -196,7 +196,7 @@ async def import_outlook_cvs(db: Session, upload_files: list[UploadFile]) -> Out
         content_type = item.get("content_type")
         if not isinstance(content, bytes):
             failed += 1
-            files_report.append({"file": filename, "status": "failed", "reason": "Invalid file content."})
+            files_report.append({"file": filename, "status": "failed", "reason": "Contenu du fichier invalide."})
             continue
 
         result = _process_outlook_cv_file(db, filename=filename, content=content, content_type=str(content_type) if content_type else None)
@@ -253,7 +253,7 @@ def _decode_csv(content: bytes) -> str:
             return content.decode(encoding)
         except UnicodeDecodeError:
             continue
-    raise ImportError("CSV encoding is not supported.")
+    raise ImportError("L'encodage du fichier CSV n'est pas pris en charge.")
 
 
 def _build_csv_reader(content: bytes) -> csv.DictReader:
@@ -311,9 +311,9 @@ def _find_candidate_for_cv(db: Session, parsed_data: dict[str, Any]) -> Candidat
 def _process_outlook_cv_file(db: Session, filename: str, content: bytes, content_type: str | None) -> dict[str, Any]:
     extension = Path(filename).suffix.lower()
     if extension not in OUTLOOK_SUPPORTED_EXTENSIONS:
-        return {"file": filename, "status": "skipped", "reason": "Only PDF and DOCX CV files are supported."}
+        return {"file": filename, "status": "skipped", "reason": "Seuls les fichiers CV PDF et DOCX sont pris en charge."}
     if len(content) > MAX_CV_FILE_SIZE_BYTES:
-        return {"file": filename, "status": "skipped", "reason": "File is larger than 5MB."}
+        return {"file": filename, "status": "skipped", "reason": "Le fichier dépasse 5 Mo."}
 
     UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
     stored_path = UPLOAD_DIRECTORY / f"{uuid.uuid4()}{extension}"
@@ -324,7 +324,7 @@ def _process_outlook_cv_file(db: Session, filename: str, content: bytes, content
         raw_text = extract_text_from_file(stored_path, extension)
         if not raw_text.strip():
             stored_path.unlink(missing_ok=True)
-            return {"file": filename, "status": "failed", "reason": "No text could be extracted from this CV."}
+            return {"file": filename, "status": "failed", "reason": "Aucun texte n'a pu être extrait de ce CV."}
 
         parsed_cv = parse_cv_text_configurable(raw_text)
         parsed_data = parsed_cv.data
@@ -332,8 +332,8 @@ def _process_outlook_cv_file(db: Session, filename: str, content: bytes, content
         status = "updated" if candidate is not None else "imported"
 
         if candidate is None:
-            first_name = str(parsed_data.get("first_name") or "").strip() or "Unknown"
-            last_name = str(parsed_data.get("last_name") or "").strip() or Path(filename).stem[:100] or "Candidate"
+            first_name = str(parsed_data.get("first_name") or "").strip() or "Prénom"
+            last_name = str(parsed_data.get("last_name") or "").strip() or Path(filename).stem[:100] or "Candidat"
             candidate = Candidate(
                 first_name=first_name,
                 last_name=last_name,
@@ -388,16 +388,16 @@ def _process_outlook_cv_file(db: Session, filename: str, content: bytes, content
             db,
             candidate_id=candidate.id,
             event_type="outlook_imported",
-            title="Candidate imported from Outlook",
-            description=f"{candidate.first_name} {candidate.last_name} was processed from an Outlook CV attachment.",
+            title="Candidat importé depuis un fichier CV",
+            description=f"{candidate.first_name} {candidate.last_name} a été traité depuis un fichier CV importé.",
             metadata={"source": "outlook_import", "filename": filename, "cv_file_id": str(cv_file.id), "status": status},
         )
         create_timeline_event(
             db,
             candidate_id=candidate.id,
             event_type="cv_parsed",
-            title="CV parsed",
-            description="Outlook CV attachment was extracted and parsed automatically.",
+            title="CV analysé",
+            description="Le fichier CV importé a été extrait et analysé automatiquement.",
             metadata={
                 "source": "outlook_import",
                 "cv_file_id": str(cv_file.id),
@@ -424,7 +424,7 @@ def _process_outlook_cv_file(db: Session, filename: str, content: bytes, content
     except Exception as exc:
         db.rollback()
         stored_path.unlink(missing_ok=True)
-        return {"file": filename, "status": "failed", "reason": "Outlook CV import failed.", "detail": str(exc)}
+        return {"file": filename, "status": "failed", "reason": "L'import du CV a échoué.", "detail": str(exc)}
 
 
 def _extract_zip_cv_files(filename: str, content: bytes) -> list[dict[str, bytes | str | None]]:
@@ -442,7 +442,7 @@ def _extract_zip_cv_files(filename: str, content: bytes) -> list[dict[str, bytes
                         "content": b"",
                         "content_type": None,
                         "status": "skipped",
-                        "reason": "Only PDF and DOCX CV files are supported.",
+                        "reason": "Seuls les fichiers CV PDF et DOCX sont pris en charge.",
                     })
                     continue
                 if member.file_size > MAX_CV_FILE_SIZE_BYTES:
@@ -451,13 +451,13 @@ def _extract_zip_cv_files(filename: str, content: bytes) -> list[dict[str, bytes
                         "content": b"",
                         "content_type": None,
                         "status": "skipped",
-                        "reason": "File is larger than 5MB.",
+                        "reason": "Le fichier dépasse 5 Mo.",
                     })
                     continue
                 files.append({"filename": member_name, "content": archive.read(member), "content_type": _guess_mime_type(extension)})
         return files
     except zipfile.BadZipFile as exc:
-        raise ImportError(f"{filename} is not a valid ZIP archive.") from exc
+        raise ImportError(f"{filename} n'est pas une archive ZIP valide.") from exc
 
 
 def _update_candidate_from_parsed_cv(candidate: Candidate, parsed_data: dict[str, Any]) -> None:

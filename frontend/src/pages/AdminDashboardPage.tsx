@@ -40,7 +40,7 @@ export function AdminDashboardPage() {
         <StatCard label="Candidats" value={String(stats.candidates_count)} detail="Profils en base" />
         <StatCard label="Recruteurs" value={String(stats.recruiters_count)} detail="Comptes RH actifs ou suspendus" />
         <StatCard label="Offres" value={String(stats.jobs_count)} detail="Offres enregistrées" />
-        <StatCard label="Candidatures" value={String(stats.applications_count)} detail="Applications suivies" />
+        <StatCard label="Candidatures" value={String(stats.applications_count)} detail="Candidatures suivies" />
         <StatCard label="Vivier candidats" value={String(stats.talent_pool_count)} detail="Candidats conservés pour recontact" />
         <StatCard
           label="Emails"

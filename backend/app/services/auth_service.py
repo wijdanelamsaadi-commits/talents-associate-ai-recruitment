@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -32,12 +34,38 @@ def register_recruiter(db: Session, recruiter_in: RecruiterRegister) -> User:
 
 def authenticate_recruiter(db: Session, email: str, password: str) -> User | None:
     user = get_user_by_email(db, email)
-    if user is None or user.role not in {"admin", "recruiter", "hiring_manager"}:
+    if user is None or user.role not in {"admin", "recruiter"}:
         return None
-    if user.status != "active" or not verify_password(password, user.password_hash):
+    if user.status != "active" or not user.password_hash:
+        return None
+    if not verify_password(password, user.password_hash):
         return None
     return user
 
 
 def create_token_response(user: User) -> TokenResponse:
     return TokenResponse(access_token=create_access_token(user.id, user.email), user=user)
+
+
+def get_user_by_activation_token(db: Session, token: str) -> User | None:
+    if not token:
+        return None
+    user = db.scalar(select(User).where(User.activation_token == token))
+    if user is None or user.token_expires_at is None:
+        return None
+    if user.token_expires_at < datetime.now(timezone.utc):
+        return None
+    return user
+
+
+def activate_user(db: Session, token: str, password: str) -> User | None:
+    user = get_user_by_activation_token(db, token)
+    if user is None:
+        return None
+    user.password_hash = hash_password(password)
+    user.status = "active"
+    user.activation_token = None  # l'token ma y3awedch yۆستعمل
+    user.token_expires_at = None
+    db.commit()
+    db.refresh(user)
+    return user

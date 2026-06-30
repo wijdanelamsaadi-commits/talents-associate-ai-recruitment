@@ -16,9 +16,9 @@ def extract_text_from_file(file_path: Path, extension: str) -> str:
     if normalized_extension == ".docx":
         return _extract_docx_text(file_path)
     if normalized_extension == ".doc":
-        raise TextExtractionError("DOC text extraction is not supported yet. Please upload a PDF or DOCX file.")
+        raise TextExtractionError("L'extraction de texte DOC n'est pas encore prise en charge. Importez un fichier PDF ou DOCX.")
 
-    raise TextExtractionError("Unsupported file format.")
+    raise TextExtractionError("Format de fichier non pris en charge.")
 
 
 def _extract_pdf_text(file_path: Path) -> str:
@@ -26,7 +26,7 @@ def _extract_pdf_text(file_path: Path) -> str:
         reader = PdfReader(str(file_path))
         parts = [page.extract_text() or "" for page in reader.pages]
     except Exception as exc:
-        raise TextExtractionError("Could not extract text from the PDF file.") from exc
+        raise TextExtractionError("Impossible d'extraire le texte du fichier PDF.") from exc
 
     return _normalize_text("\n".join(parts))
 
@@ -36,7 +36,7 @@ def _extract_docx_text(file_path: Path) -> str:
         document = Document(str(file_path))
         paragraphs = [paragraph.text for paragraph in document.paragraphs]
     except Exception as exc:
-        raise TextExtractionError("Could not extract text from the DOCX file.") from exc
+        raise TextExtractionError("Impossible d'extraire le texte du fichier DOCX.") from exc
 
     return _normalize_text("\n".join(paragraphs))
 

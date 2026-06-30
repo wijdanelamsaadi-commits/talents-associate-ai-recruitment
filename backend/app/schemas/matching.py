@@ -52,4 +52,6 @@ class VivierSearchResult(BaseModel):
     score: float
     has_cv: bool
     cv_file_id: UUID | None = None
+    matched_skills: list[str] = Field(default_factory=list)
+    score_details: dict | None = None
 
