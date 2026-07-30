@@ -160,7 +160,7 @@ export function AdminUsersPage() {
         <ListSearch
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Rechercher par nom, email, rÃ´le ou statut..."
+          placeholder="Rechercher par nom, email, rôle ou statut..."
         />
       ) : null}
 
@@ -209,7 +209,7 @@ export function AdminUsersPage() {
       </section>
       {users.length > 0 && filteredUsers.length === 0 ? (
         <p className="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
-          Aucun utilisateur ne correspond Ã  cette recherche.
+          Aucun utilisateur ne correspond à cette recherche.
         </p>
       ) : null}
     </div>

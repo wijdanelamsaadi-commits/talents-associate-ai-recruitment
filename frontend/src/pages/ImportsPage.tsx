@@ -180,7 +180,7 @@ export function ImportsPage() {
           </div>
         </section>
         {filteredImports.length === 0 ? (
-          <EmptyState title="Aucun import trouvÃ©" description="Modifiez la recherche pour afficher d'autres imports LinkedIn." />
+          <EmptyState title="Aucun import trouvé" description="Modifiez la recherche pour afficher d'autres imports LinkedIn." />
         ) : null}
         </>
       )}

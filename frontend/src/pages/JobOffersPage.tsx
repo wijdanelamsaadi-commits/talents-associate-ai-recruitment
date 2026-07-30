@@ -104,6 +104,30 @@ function toPayload(formState: JobFormState): JobOfferPayload {
   };
 }
 
+function buildShareUrl(job: JobOffer) {
+  const configuredBaseUrl = import.meta.env.VITE_PUBLIC_PORTAL_BASE_URL?.trim();
+  const baseUrl = (configuredBaseUrl || window.location.origin).replace(/\/+$/, "");
+  return `${baseUrl}/portal/jobs/${job.id}`;
+}
+
+function buildShareText(job: JobOffer) {
+  const shareUrl = buildShareUrl(job);
+  const companyLine = job.company_name ? [`🏢 Entreprise : ${job.company_name}`, ""] : [];
+  return [
+    `🚀 Nouvelle opportunité : ${job.title}`,
+    "",
+    ...companyLine,
+    `📍 Localisation : ${job.location ?? "Non renseignée"}`,
+    "",
+    `📄 Type de contrat : ${job.contract_type ?? "Non renseigné"}`,
+    "",
+    "Rejoignez Talents Associate et postulez dès maintenant :",
+    shareUrl,
+    "",
+    "#Recrutement #Emploi #Carrière #TalentsAssociate #Maroc",
+  ].join("\n");
+}
+
 export function JobOffersPage() {
   const [jobs, setJobs] = useState<JobOffer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -114,6 +138,7 @@ export function JobOffersPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sharingJob, setSharingJob] = useState<JobOffer | null>(null);
 
   const filteredJobs = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -240,6 +265,18 @@ export function JobOffersPage() {
     }
   };
 
+  const handleCopyShareText = async () => {
+    if (!sharingJob) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(buildShareText(sharingJob));
+      setMessage("Texte de publication copié.");
+    } catch {
+      setError("Impossible de copier le texte automatiquement. Vous pouvez le sélectionner manuellement.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <section className="flex flex-wrap items-center justify-between gap-3">
@@ -323,6 +360,13 @@ export function JobOffersPage() {
                           Modifier
                         </button>
                         <button
+                          className="rounded-lg border border-[#1D6EEA]/30 px-3 py-1.5 text-xs font-semibold text-[#1D6EEA] hover:bg-blue-50"
+                          onClick={() => setSharingJob(job)}
+                          type="button"
+                        >
+                          Partager
+                        </button>
+                        <button
                           className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
                           onClick={() => void handleDelete(job)}
                           type="button"
@@ -340,7 +384,7 @@ export function JobOffersPage() {
       ) : null}
 
       {!isLoading && jobs.length > 0 && filteredJobs.length === 0 ? (
-        <EmptyState title="Aucune offre trouvÃ©e" description="Modifiez la recherche pour afficher d'autres offres." />
+        <EmptyState title="Aucune offre trouvée" description="Modifiez la recherche pour afficher d'autres offres." />
       ) : null}
 
       {isModalOpen ? (
@@ -565,6 +609,56 @@ export function JobOffersPage() {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      ) : null}
+
+      {sharingJob ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#0B1F3A]/40 px-4 py-6">
+          <section className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+            <div className="border-b border-slate-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-[#0B1F3A]">Partager l'offre</h3>
+              <p className="mt-1 text-sm text-slate-600">Modèle prêt à publier sur les réseaux sociaux.</p>
+            </div>
+            <div className="space-y-4 p-6">
+              <textarea
+                className="min-h-56 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                readOnly
+                value={buildShareText(sharingJob)}
+              />
+              <div className="flex flex-wrap justify-end gap-3">
+                <a
+                  className="rounded-lg border border-[#1D6EEA]/30 px-4 py-2 text-sm font-semibold text-[#1D6EEA] hover:bg-blue-50"
+                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(buildShareUrl(sharingJob))}`}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  LinkedIn
+                </a>
+                <a
+                  className="rounded-lg border border-[#1D6EEA]/30 px-4 py-2 text-sm font-semibold text-[#1D6EEA] hover:bg-blue-50"
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(buildShareUrl(sharingJob))}`}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Facebook
+                </a>
+                <button
+                  className="rounded-lg bg-[#E8590C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c94709]"
+                  onClick={() => void handleCopyShareText()}
+                  type="button"
+                >
+                  Copier le texte
+                </button>
+                <button
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  onClick={() => setSharingJob(null)}
+                  type="button"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
           </section>
         </div>
       ) : null}

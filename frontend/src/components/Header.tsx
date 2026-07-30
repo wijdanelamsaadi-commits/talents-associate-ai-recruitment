@@ -12,6 +12,7 @@ const recruiterPageTitles: Record<string, string> = {
 };
 
 const adminPageTitles: Record<string, string> = {
+  "/dashboard": "Tableau de bord",
   "/cv-upload": "Import de CV",
   "/imports": "Import LinkedIn",
   "/candidates": "Vivier candidats",

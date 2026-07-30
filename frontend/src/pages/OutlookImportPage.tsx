@@ -231,7 +231,7 @@ export function OutlookImportPage() {
           </div>
         </section>
         {filteredImports.length === 0 ? (
-          <EmptyState title="Aucun import de CV trouvÃ©" description="Modifiez la recherche pour afficher d'autres lots." />
+          <EmptyState title="Aucun import de CV trouvé" description="Modifiez la recherche pour afficher d'autres lots." />
         ) : null}
         </>
       )}

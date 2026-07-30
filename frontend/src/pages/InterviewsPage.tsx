@@ -572,7 +572,7 @@ export function InterviewsPage() {
           ) : null}
 
           {interviewsArray.length > 0 && filteredInterviews.length === 0 ? (
-            <EmptyState title="Aucun entretien trouvÃ©" description="Modifiez la recherche pour afficher d'autres entretiens." />
+            <EmptyState title="Aucun entretien trouvé" description="Modifiez la recherche pour afficher d'autres entretiens." />
           ) : null}
         </>
       ) : null}
@@ -617,7 +617,7 @@ export function InterviewsPage() {
             <ListSearch
               value={evaluationSearchQuery}
               onChange={setEvaluationSearchQuery}
-              placeholder="Rechercher par candidat, email, poste, note, dÃ©cision ou date..."
+              placeholder="Rechercher par candidat, email, poste, note, décision ou date..."
             />
           ) : null}
 
@@ -681,7 +681,7 @@ export function InterviewsPage() {
           ) : null}
 
           {evaluations.length > 0 && filteredEvaluations.length === 0 ? (
-            <EmptyState title="Aucune Ã©valuation trouvÃ©e" description="Modifiez la recherche pour afficher d'autres Ã©valuations." />
+            <EmptyState title="Aucune évaluation trouvée" description="Modifiez la recherche pour afficher d'autres évaluations." />
           ) : null}
         </>
       ) : null}

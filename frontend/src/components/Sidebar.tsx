@@ -9,11 +9,11 @@ type NavigationItem = {
 };
 
 const recruiterNavigation: NavigationItem[] = [
-  { label: "Tableau de bord", to: "/dashboard", icon: "T" },
   { label: "Vivier candidats", to: "/candidates", icon: "C" },
   { label: "Offres d'emploi", to: "/jobs", icon: "O" },
   { label: "Matching IA", to: "/matching", icon: "M" },
   { label: "Entretien", to: "/interviews", icon: "E" },
+  { label: "Tableau de bord", to: "/dashboard", icon: "T" },
 ];
 
 const adminNavigation: NavigationItem[] = [
@@ -24,13 +24,14 @@ const adminNavigation: NavigationItem[] = [
   { label: "Matching IA", to: "/matching", icon: "M" },
   { label: "Évaluation candidat", to: "/interviews", icon: "E" },
   { label: "Création profil", to: "/admin/users", icon: "U" },
+  { label: "Tableau de bord", to: "/dashboard", icon: "T" },
 ];
 
 export function Sidebar() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const visibleNavigation = isAdmin ? adminNavigation : recruiterNavigation;
-  const homePath = isAdmin ? "/cv-upload" : "/dashboard";
+  const homePath = "/dashboard";
   const spaceLabel = isAdmin ? "Espace administrateur" : "Espace recruteur";
 
   return (

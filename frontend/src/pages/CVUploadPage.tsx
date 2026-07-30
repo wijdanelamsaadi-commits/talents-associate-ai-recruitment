@@ -451,7 +451,7 @@ export function CVUploadPage() {
       ) : null}
 
       {!isLoadingPage && cvFiles.length > 0 && filteredCVFiles.length === 0 ? (
-        <EmptyState title="Aucun CV trouvÃ©" description="Modifiez la recherche pour afficher d'autres fichiers CV." />
+        <EmptyState title="Aucun CV trouvé" description="Modifiez la recherche pour afficher d'autres fichiers CV." />
       ) : null}
 
       {cvFiles.length > 0 ? (
