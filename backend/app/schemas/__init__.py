@@ -19,6 +19,7 @@ from app.schemas.portal import (
     PortalApplicationStatusItem,
     PortalApplicationStatusResponse,
     PortalCandidateData,
+    PublicPortalApplicationResponse,
     PublicJobRead,
 )
 from app.schemas.timeline import TimelineEventCreate, TimelineEventRead
@@ -63,6 +64,7 @@ __all__ = [
     "PortalApplicationStatusItem",
     "PortalApplicationStatusResponse",
     "PortalCandidateData",
+    "PublicPortalApplicationResponse",
     "PublicJobRead",
     "RecruiterLogin",
     "RecruiterRegister",

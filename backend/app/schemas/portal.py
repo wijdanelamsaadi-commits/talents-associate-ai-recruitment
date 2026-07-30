@@ -62,6 +62,17 @@ class PortalApplicationResponse(BaseModel):
     message: str
 
 
+class PublicPortalApplicationResponse(BaseModel):
+    success: bool = True
+    candidate_id: UUID
+    application_id: UUID
+    cv_file_id: UUID
+    candidate_status: str
+    cv_received: bool
+    processing_status: str
+    message: str
+
+
 class PortalApplicationStatusItem(BaseModel):
     application_id: UUID
     job_offer_id: UUID

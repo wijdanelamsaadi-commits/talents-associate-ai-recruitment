@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     EMBEDDING_API_KEY: str | None = None
     EMBEDDING_REQUEST_TIMEOUT_SECONDS: int = 30
     EMBEDDING_MAX_RETRIES: int = 2
+    WORDPRESS_API_KEY: str | None = None
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
     SMTP_USER: str | None = None

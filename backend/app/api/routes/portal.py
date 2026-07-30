@@ -1,7 +1,8 @@
+import secrets
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
-from pydantic import ValidationError
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile, status
+from pydantic import EmailStr, ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,7 @@ from app.schemas import (
     PortalApplicationResponse,
     PortalApplicationStatusResponse,
     PortalCandidateData,
+    PublicPortalApplicationResponse,
     PublicJobRead,
 )
 from app.services import notification_service
@@ -27,6 +29,7 @@ from app.services.cv_service import CVUploadError
 from app.services.portal_service import (
     CandidateAuthError,
     PortalApplicationError,
+    PortalPublicApplicationError,
     apply_authenticated_candidate,
     get_application_status_by_email,
     get_candidate_profile,
@@ -37,11 +40,27 @@ from app.services.portal_service import (
     register_candidate,
     replace_candidate_cv,
     submit_application,
+    submit_wordpress_application,
     update_candidate_profile,
 )
 from app.services.text_extraction import TextExtractionError
 
 router = APIRouter(prefix="/portal", tags=["candidate portal"])
+
+
+def require_wordpress_api_key(
+    x_talents_api_key: str | None = Header(default=None, alias="X-Talents-Api-Key"),
+) -> None:
+    expected_key = settings.WORDPRESS_API_KEY
+    if not expected_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="L'intégration WordPress n'est pas configurée.",
+        )
+    if not x_talents_api_key:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Clé API manquante.")
+    if not secrets.compare_digest(x_talents_api_key, expected_key):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Clé API invalide.")
 
 
 @router.post("/auth/register", response_model=CandidateTokenResponse, status_code=status.HTTP_201_CREATED)
@@ -114,6 +133,46 @@ def read_candidate_applications(
     return list_authenticated_applications(db, candidate)
 
 
+@router.post("/applications", response_model=PublicPortalApplicationResponse, status_code=status.HTTP_201_CREATED)
+def receive_wordpress_application(
+    _api_key: None = Depends(require_wordpress_api_key),
+    opportunite: str = Form(..., min_length=1),
+    nom: str = Form(..., min_length=1),
+    prenom: str = Form(..., min_length=1),
+    email: EmailStr = Form(...),
+    telephone: str | None = Form(default=None),
+    ville: str = Form(..., min_length=1),
+    message: str | None = Form(default=None),
+    cv: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> PublicPortalApplicationResponse:
+    try:
+        return submit_wordpress_application(
+            db,
+            opportunite=opportunite,
+            nom=nom,
+            prenom=prenom,
+            email=str(email),
+            telephone=telephone,
+            ville=ville,
+            message=message,
+            upload_file=cv,
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors()) from exc
+    except PortalPublicApplicationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    except CVUploadError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except TextExtractionError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    except IntegrityError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La candidature n'a pas pu être enregistrée.") from exc
+    except Exception as exc:
+        detail = str(exc) if settings.ENVIRONMENT == "development" else "La candidature n'a pas pu être traitée."
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail) from exc
+
+
 @router.get("/notifications", response_model=list[CandidateNotificationRead])
 def read_candidate_notifications(
     candidate: Candidate = Depends(require_candidate),
@@ -165,10 +224,10 @@ def get_job(job_id: UUID, db: Session = Depends(get_db)) -> PublicJobRead:
 
 @router.get("/status", response_model=PortalApplicationStatusResponse)
 def get_application_status(
-    email: str = Query(..., min_length=3),
+    email: EmailStr = Query(...),
     db: Session = Depends(get_db),
 ) -> PortalApplicationStatusResponse:
-    return get_application_status_by_email(db, email)
+    return get_application_status_by_email(db, str(email))
 
 
 @router.post("/jobs/{job_id}/apply", response_model=PortalApplicationResponse, status_code=status.HTTP_201_CREATED)

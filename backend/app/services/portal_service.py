@@ -1,3 +1,6 @@
+import hashlib
+from datetime import datetime, timezone
+from pathlib import Path
 from uuid import UUID
 
 from fastapi import UploadFile
@@ -6,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import create_candidate_access_token, hash_password, verify_password
-from app.models import AIMatchingResult, Application, CVFile, Candidate, JobOffer
+from app.models import AIMatchingResult, Application, CVFile, Candidate, CandidateTimelineEvent, JobOffer
 from app.schemas.portal import (
     CandidateApplicationRead,
     CandidateLogin,
@@ -18,8 +21,12 @@ from app.schemas.portal import (
     PortalApplicationStatusItem,
     PortalApplicationStatusResponse,
     PortalCandidateData,
+    PublicPortalApplicationResponse,
 )
-from app.services.cv_service import parse_and_auto_match_cv, upload_cv
+from app.services import cv_service
+from app.services.cv_service import DuplicateCVError, parse_and_auto_match_cv, upload_cv
+from app.services.embedding_service import build_job_embedding_text, generate_embedding
+from app.services.matching_service import match_candidate_to_job
 from app.services.timeline_service import create_timeline_event
 
 
@@ -29,6 +36,12 @@ class PortalApplicationError(ValueError):
 
 class CandidateAuthError(ValueError):
     pass
+
+
+class PortalPublicApplicationError(ValueError):
+    def __init__(self, message: str, status_code: int = 400):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 def register_candidate(db: Session, payload: CandidateRegister) -> CandidateTokenResponse:
@@ -310,6 +323,113 @@ def submit_application(
     )
 
 
+def submit_wordpress_application(
+    db: Session,
+    *,
+    opportunite: str,
+    nom: str,
+    prenom: str,
+    email: str,
+    telephone: str | None,
+    ville: str,
+    message: str | None,
+    upload_file: UploadFile,
+) -> PublicPortalApplicationResponse:
+    job = _resolve_public_job_offer(db, opportunite)
+    candidate_data = PortalCandidateData(
+        first_name=prenom.strip(),
+        last_name=nom.strip(),
+        email=email.strip().lower(),
+        phone=(telephone or "").strip() or None,
+        location=ville.strip(),
+    )
+    checksum, _file_size = _inspect_public_cv_upload(upload_file)
+    existing_cv = db.scalar(select(CVFile).where(CVFile.checksum_sha256 == checksum))
+
+    if existing_cv is not None:
+        candidate = _get_candidate_for_duplicate_cv(db, candidate_data, existing_cv)
+        application, created_application = _get_or_create_wordpress_application(db, candidate.id, job.id)
+        if application.cv_file_id is None:
+            application.cv_file_id = existing_cv.id
+            db.commit()
+            db.refresh(application)
+        _record_wordpress_message(
+            db,
+            candidate_id=candidate.id,
+            application_id=application.id,
+            job_id=job.id,
+            message=message,
+            dedupe_key=checksum,
+            created_application=created_application,
+            duplicate_cv=True,
+        )
+        processing_status = "cv_deja_present"
+        if _get_existing_generated_match(db, candidate.id, job.id) is None:
+            _ensure_job_embedding(job)
+            db.commit()
+            match_candidate_to_job(db, candidate.id, job.id, application_id=application.id)
+            processing_status = "cv_deja_present_matching_genere"
+        return PublicPortalApplicationResponse(
+            candidate_id=candidate.id,
+            application_id=application.id,
+            cv_file_id=existing_cv.id,
+            candidate_status="existant",
+            cv_received=True,
+            processing_status=processing_status,
+            message="Votre candidature a bien été reçue.",
+        )
+
+    candidate = _get_or_create_candidate(db, candidate_data)
+    application, _created_application = _get_or_create_wordpress_application(db, candidate.id, job.id)
+
+    try:
+        cv_file = upload_cv(
+            db,
+            candidate_id=candidate.id,
+            upload_file=upload_file,
+            uploaded_by="candidate_portal",
+            application_id=application.id,
+        )
+    except DuplicateCVError as exc:
+        cv_file = exc.cv_file
+        processing_status = "cv_deja_present"
+    else:
+        processing_status = "analyse_effectuee"
+
+    application.cv_file_id = cv_file.id
+    db.commit()
+    db.refresh(application)
+    _record_wordpress_message(
+        db,
+        candidate_id=candidate.id,
+        application_id=application.id,
+        job_id=job.id,
+        message=message,
+        dedupe_key=checksum,
+        created_application=False,
+        duplicate_cv=False,
+    )
+
+    _ensure_job_embedding(job)
+    db.commit()
+    parse_and_auto_match_cv(
+        db,
+        cv_file_id=cv_file.id,
+        selected_job_id=job.id,
+        application_id=application.id,
+    )
+
+    return PublicPortalApplicationResponse(
+        candidate_id=candidate.id,
+        application_id=application.id,
+        cv_file_id=cv_file.id,
+        candidate_status="cree_ou_mis_a_jour",
+        cv_received=True,
+        processing_status=processing_status,
+        message="Votre candidature a bien été reçue.",
+    )
+
+
 def _get_or_create_candidate(db: Session, candidate_data: PortalCandidateData) -> Candidate:
     statement = select(Candidate).where(Candidate.email == candidate_data.email.lower())
     candidate = db.scalar(statement)
@@ -399,6 +519,170 @@ def _get_or_create_application(db: Session, candidate_id: UUID, job_id: UUID) ->
     db.commit()
     db.refresh(application)
     return application
+
+
+def _resolve_public_job_offer(db: Session, opportunite: str) -> JobOffer:
+    value = (opportunite or "").strip()
+    if not value:
+        raise PortalPublicApplicationError("L'opportunité est obligatoire.", status_code=400)
+
+    try:
+        job_id = UUID(value)
+    except ValueError:
+        job_id = None
+
+    if job_id is not None:
+        job = get_public_job(db, job_id)
+        if job is None:
+            raise PortalPublicApplicationError("L'offre demandée est introuvable ou inactive.", status_code=404)
+        return job
+
+    normalized_title = value.lower()
+    statement = (
+        select(JobOffer)
+        .where(JobOffer.status == "open")
+        .where(func.lower(JobOffer.title) == normalized_title)
+        .order_by(JobOffer.created_at.desc())
+    )
+    job = db.scalar(statement)
+    if job is None:
+        statement = (
+            select(JobOffer)
+            .where(JobOffer.status == "open")
+            .where(JobOffer.title.ilike(f"%{value}%"))
+            .order_by(JobOffer.created_at.desc())
+        )
+        job = db.scalar(statement)
+    if job is None:
+        raise PortalPublicApplicationError("Aucune offre active ne correspond à l'opportunité demandée.", status_code=404)
+    return job
+
+
+def _inspect_public_cv_upload(upload_file: UploadFile) -> tuple[str, int]:
+    original_filename = upload_file.filename or ""
+    extension = Path(original_filename).suffix.lower()
+    if extension not in {".pdf", ".doc", ".docx"}:
+        raise PortalPublicApplicationError("Format de CV non autorisé. Importez un fichier PDF, DOC ou DOCX.", status_code=415)
+    if extension == ".doc":
+        raise PortalPublicApplicationError(
+            "Le format DOC n'est pas encore exploitable par le parser. Importez un fichier PDF ou DOCX.",
+            status_code=415,
+        )
+    sha256 = hashlib.sha256()
+    file_size = 0
+    while chunk := upload_file.file.read(1024 * 1024):
+        file_size += len(chunk)
+        if file_size > cv_service.MAX_CV_FILE_SIZE_BYTES:
+            upload_file.file.seek(0)
+            raise PortalPublicApplicationError("Le CV est trop volumineux. La taille maximale autorisée est de 5 Mo.", status_code=413)
+        sha256.update(chunk)
+    upload_file.file.seek(0)
+    if file_size == 0:
+        raise PortalPublicApplicationError("Le CV est obligatoire et ne peut pas être vide.", status_code=400)
+    return sha256.hexdigest(), file_size
+
+
+def _get_candidate_for_duplicate_cv(db: Session, candidate_data: PortalCandidateData, cv_file: CVFile) -> Candidate:
+    candidate = db.scalar(select(Candidate).where(Candidate.email == candidate_data.email.lower()))
+    if candidate is not None:
+        if candidate.id != cv_file.candidate_id:
+            raise PortalPublicApplicationError("Ce CV existe déjà dans la base de données.", status_code=409)
+        return _get_or_create_candidate(db, candidate_data)
+    if cv_file.candidate.email and cv_file.candidate.email.lower() != candidate_data.email.lower():
+        raise PortalPublicApplicationError("Ce CV existe déjà dans la base de données.", status_code=409)
+    return cv_file.candidate
+
+
+def _get_or_create_wordpress_application(db: Session, candidate_id: UUID, job_id: UUID) -> tuple[Application, bool]:
+    statement = select(Application).where(
+        Application.candidate_id == candidate_id,
+        Application.job_offer_id == job_id,
+    )
+    application = db.scalar(statement)
+    if application is not None:
+        return application, False
+
+    application = Application(
+        candidate_id=candidate_id,
+        job_offer_id=job_id,
+        source="candidate_portal",
+        status="submitted",
+        current_stage="application_submitted",
+    )
+    db.add(application)
+    db.flush()
+    create_timeline_event(
+        db,
+        candidate_id=candidate_id,
+        event_type="candidate_application_submitted",
+        title="Candidature reçue depuis WordPress",
+        description="Le candidat a envoyé une candidature depuis le formulaire Talents Associate.",
+        metadata={"source": "wordpress", "application_id": str(application.id), "job_offer_id": str(job_id)},
+    )
+    db.commit()
+    db.refresh(application)
+    return application, True
+
+
+def _record_wordpress_message(
+    db: Session,
+    *,
+    candidate_id: UUID,
+    application_id: UUID,
+    job_id: UUID,
+    message: str | None,
+    dedupe_key: str,
+    created_application: bool,
+    duplicate_cv: bool,
+) -> None:
+    cleaned_message = (message or "").strip()
+    if not cleaned_message:
+        return
+    existing_event = db.scalar(
+        select(CandidateTimelineEvent)
+        .where(CandidateTimelineEvent.candidate_id == candidate_id)
+        .where(CandidateTimelineEvent.event_type == "note")
+        .where(CandidateTimelineEvent.event_metadata["application_id"].astext == str(application_id))
+        .where(CandidateTimelineEvent.event_metadata["source"].astext == "wordpress")
+        .where(CandidateTimelineEvent.event_metadata["message_checksum"].astext == hashlib.sha256(cleaned_message.encode("utf-8")).hexdigest())
+    )
+    if existing_event is not None:
+        return
+    create_timeline_event(
+        db,
+        candidate_id=candidate_id,
+        event_type="note",
+        title="Message de candidature WordPress",
+        description="Message reçu avec la candidature WordPress.",
+        metadata={
+            "source": "wordpress",
+            "application_id": str(application_id),
+            "job_offer_id": str(job_id),
+            "message": cleaned_message,
+            "message_checksum": hashlib.sha256(cleaned_message.encode("utf-8")).hexdigest(),
+            "cv_checksum": dedupe_key,
+            "created_application": created_application,
+            "duplicate_cv": duplicate_cv,
+        },
+    )
+    db.commit()
+
+
+def _ensure_job_embedding(job: JobOffer) -> None:
+    if job.embedding:
+        return
+    job.embedding = generate_embedding(build_job_embedding_text(job))
+    job.embedding_generated_at = datetime.now(timezone.utc)
+
+
+def _get_existing_generated_match(db: Session, candidate_id: UUID, job_id: UUID) -> AIMatchingResult | None:
+    statement = (
+        select(AIMatchingResult)
+        .where(AIMatchingResult.candidate_id == candidate_id)
+        .where(AIMatchingResult.job_offer_id == job_id)
+        .where(AIMatchingResult.status == "generated")
+    )
+    return db.scalar(statement)
 
 
 def _get_best_application_match(db: Session, application_id: UUID) -> AIMatchingResult | None:
