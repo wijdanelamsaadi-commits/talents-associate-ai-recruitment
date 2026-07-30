@@ -5,9 +5,9 @@ import { EmptyState } from "../components/EmptyState";
 import { ListSearch } from "../components/ListSearch";
 import { StatCard } from "../components/StatCard";
 import { EDUCATION_LEVELS, EXPERIENCE_LEVELS, SECTORS } from "../constants/sectors";
-import { getCvDownloadUrl } from "../lib/cv";
 import { getApiErrorMessage } from "../lib/errors";
 import { Candidate, VivierSearchResult, getCandidates, searchCandidatesVivier } from "../services/candidates";
+import { downloadCVFile } from "../services/cv";
 import { JobOffer, getJobOffers } from "../services/jobs";
 import { MatchingResult, deleteMatchingResult, getMatchingResults, runMatching } from "../services/matching";
 
@@ -150,6 +150,7 @@ export function MatchingPage() {
   const [error, setError] = useState<string | null>(null);
   const [vivierSearchQuery, setVivierSearchQuery] = useState("");
   const [historySearchQuery, setHistorySearchQuery] = useState("");
+  const [downloadingCvId, setDownloadingCvId] = useState<string | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -322,6 +323,19 @@ export function MatchingPage() {
       setResults(await getMatchingResults());
     } catch (deleteError) {
       setError(getApiErrorMessage(deleteError, "Le résultat n'a pas pu être supprimé."));
+    }
+  };
+
+  const handleDownloadCV = async (cvFileId: string, candidate: Candidate) => {
+    setError(null);
+    setDownloadingCvId(cvFileId);
+    try {
+      const fallbackFilename = `${candidate.first_name}-${candidate.last_name}-CV.pdf`.replaceAll(" ", "-");
+      await downloadCVFile(cvFileId, fallbackFilename);
+    } catch (downloadError) {
+      setError(getApiErrorMessage(downloadError, "Le téléchargement du CV a échoué."));
+    } finally {
+      setDownloadingCvId(null);
     }
   };
 
@@ -546,15 +560,14 @@ export function MatchingPage() {
                             Voir le profil
                           </Link>
                           {result.cv_file_id ? (
-                            <a
+                            <button
                               className="rounded-lg border border-[#1D6EEA]/30 px-3 py-1.5 text-xs font-semibold text-[#1D6EEA] hover:bg-blue-50"
-                              download
-                              href={getCvDownloadUrl(result.cv_file_id)}
-                              rel="noreferrer"
-                              target="_blank"
+                              disabled={downloadingCvId === result.cv_file_id}
+                              onClick={() => void handleDownloadCV(result.cv_file_id as string, result.candidate)}
+                              type="button"
                             >
                               Télécharger CV
-                            </a>
+                            </button>
                           ) : null}
                         </div>
                       </td>
