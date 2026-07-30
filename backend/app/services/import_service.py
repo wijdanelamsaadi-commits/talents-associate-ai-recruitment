@@ -509,7 +509,7 @@ def _parser_model(parsed_data: dict) -> str:
     if parsed_data.get("parser_used") == "llm":
         from app.core.config import settings
 
-        return f"openai:{settings.LLM_MODEL or 'gpt-4o-mini'}"
+        return f"openai:{settings.effective_llm_model}"
     return "heuristic-v1"
 
 

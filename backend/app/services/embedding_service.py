@@ -1,4 +1,9 @@
+import json
+import logging
 import math
+import time
+import urllib.error
+import urllib.request
 import warnings
 from typing import Any
 
@@ -7,12 +12,15 @@ from app.models import ExtractedCVData, JobOffer
 
 
 _model = None
+logger = logging.getLogger(__name__)
 
 
 def generate_embedding(text: str) -> list[float]:
     clean_text = text.strip()
     if not clean_text:
         return []
+    if settings.EMBEDDING_PROVIDER.lower() == "openai":
+        return _generate_openai_embedding(clean_text)
     model = _get_model()
     vector = next(model.embed([clean_text]))
     return [float(value) for value in vector.tolist()]
@@ -75,6 +83,59 @@ def _get_model():
             warnings.filterwarnings("ignore", message=".*now uses mean pooling.*", category=UserWarning)
             _model = TextEmbedding(model_name=settings.EMBEDDING_MODEL_NAME)
     return _model
+
+
+def _generate_openai_embedding(text: str) -> list[float]:
+    api_key = settings.effective_embedding_api_key
+    if not api_key:
+        raise RuntimeError("OpenAI embedding API key is not configured.")
+
+    payload = {
+        "model": settings.EMBEDDING_MODEL_NAME,
+        "input": text,
+    }
+    request = urllib.request.Request(
+        "https://api.openai.com/v1/embeddings",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    response_payload = _open_embedding_request_with_retries(
+        request,
+        settings.EMBEDDING_REQUEST_TIMEOUT_SECONDS,
+        settings.EMBEDDING_MAX_RETRIES,
+    )
+    embedding = response_payload.get("data", [{}])[0].get("embedding")
+    if not isinstance(embedding, list):
+        raise RuntimeError("OpenAI embedding response did not contain a vector.")
+    vector = [float(value) for value in embedding]
+    logger.info(
+        "OpenAI embedding generated model=%s dimension=%s",
+        settings.EMBEDDING_MODEL_NAME,
+        len(vector),
+    )
+    return vector
+
+
+def _open_embedding_request_with_retries(
+    request: urllib.request.Request,
+    timeout_seconds: int,
+    max_retries: int,
+) -> dict[str, Any]:
+    attempts = max(1, max_retries)
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+            last_error = exc
+            if attempt < attempts - 1:
+                time.sleep(2**attempt)
+    raise RuntimeError("OpenAI embedding request failed.") from last_error
 
 
 def _join_items(items: Any) -> str:

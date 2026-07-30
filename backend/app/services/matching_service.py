@@ -404,16 +404,19 @@ MONTHS_BY_NAME = {
 }
 
 
-def _education_score(education_items: list[str], highest_degree: str | None, education_level: str | None) -> int:
+def _education_score(education_items: object, highest_degree: object | None, education_level: str | None) -> int:
     if not education_level:
         return 100
     required_degree = _normalize_degree_level(education_level)
-    candidate_degree = _normalize_degree_level(highest_degree)
+    education_text = _normalize_education_text(education_items)
+    highest_degree_text = _normalize_education_text(highest_degree)
+    combined_education_text = " ".join(part for part in (highest_degree_text, education_text) if part).strip()
+    candidate_degree = _normalize_degree_level(highest_degree_text) or _normalize_degree_level(combined_education_text)
     degree_rank = {"high_school": 1, "associate": 2, "bachelor": 3, "master": 4, "phd": 5}
     if required_degree and candidate_degree:
         return 100 if degree_rank[candidate_degree] >= degree_rank[required_degree] else 40
-    education_text = " ".join(education_items).lower()
-    required = education_level.lower().strip()
+    normalized_education_text = _strip_accents(combined_education_text.lower())
+    required = _strip_accents(education_level.lower().strip())
     keywords = {
         "phd": {"phd", "doctorate", "doctor", "doctorat"},
         "master": {"master", "msc", "ma", "engineer", "engineering", "ingenieur", "ingénieur", "bac+4", "bac+5"},
@@ -423,7 +426,41 @@ def _education_score(education_items: list[str], highest_degree: str | None, edu
         "degree": {"degree", "diploma", "master", "bachelor", "licence", "engineer", "ingenieur", "ingénieur"},
     }
     expected_terms = keywords.get(required_degree or required, {required})
-    return 100 if any(term in education_text for term in expected_terms) else 40 if education_items or highest_degree else 0
+    normalized_expected_terms = {_strip_accents(term.lower()) for term in expected_terms}
+    return 100 if any(term in normalized_education_text for term in normalized_expected_terms) else 40 if combined_education_text else 0
+
+
+def _normalize_education_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, dict):
+        preferred_keys = (
+            "degree",
+            "diplome",
+            "diplôme",
+            "school",
+            "etablissement",
+            "établissement",
+            "obtained_date",
+            "date_obtention",
+            "description",
+        )
+        parts: list[str] = []
+        for key in preferred_keys:
+            if key in value:
+                text = _normalize_education_text(value.get(key))
+                if text:
+                    parts.append(text)
+        if not parts:
+            parts = [_normalize_education_text(item) for item in value.values()]
+        return " ".join(part for part in parts if part).strip()
+    if isinstance(value, (list, tuple, set)):
+        return " ".join(part for part in (_normalize_education_text(item) for item in value) if part).strip()
+    return str(value).strip()
 
 
 def _normalize_degree_level(value: str | None) -> str | None:

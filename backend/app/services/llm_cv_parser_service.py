@@ -1,12 +1,18 @@
 import json
+import logging
 import re
+import time
 import urllib.error
 import urllib.request
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+
 from app.core.config import settings
 from app.services.cv_parser import ParsedCV, parse_cv_text
 
+
+logger = logging.getLogger(__name__)
 
 CV_PARSER_PROMPT = """
 Tu es un service d'extraction de CV pour Talents Associate.
@@ -127,18 +133,109 @@ class LLMParserError(RuntimeError):
     pass
 
 
+class LLMExperienceItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company: str | None = None
+    entreprise: str | None = None
+    title: str | None = None
+    poste: str | None = None
+    start_date: str | None = None
+    date_debut: str | None = None
+    end_date: str | None = None
+    date_fin: str | None = None
+    location: str | None = None
+    description: str | None = None
+
+
+class LLMEducationItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    degree: str | None = None
+    diplome: str | None = None
+    school: str | None = None
+    etablissement: str | None = None
+    obtained_date: str | None = None
+    date_obtention: str | None = None
+    description: str | None = None
+
+
+class LLMCVPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prenom: str | None = None
+    nom: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    telephone: str | None = None
+    ville: str | None = None
+    location: str | None = None
+    linkedin_url: str | None = None
+    linkedin: str | None = None
+    current_company: str | None = None
+    entreprise_actuelle: str | None = None
+    current_title: str | None = None
+    poste_actuel: str | None = None
+    total_experience_years: float | None = Field(default=None, ge=0)
+    experience_totale: float | None = Field(default=None, ge=0)
+    experience: list[str] = Field(default_factory=list)
+    detailed_experience: list[LLMExperienceItem] = Field(default_factory=list)
+    experiences_detaillees: list[LLMExperienceItem] = Field(default_factory=list)
+    education: list[LLMEducationItem] = Field(default_factory=list)
+    diplomes: list[LLMEducationItem] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
+    competences: list[str] = Field(default_factory=list)
+    technical_skills: list[str] = Field(default_factory=list)
+    competences_techniques: list[str] = Field(default_factory=list)
+    functional_skills: list[str] = Field(default_factory=list)
+    competences_fonctionnelles: list[str] = Field(default_factory=list)
+    languages: list[str] = Field(default_factory=list)
+    langues: list[str] = Field(default_factory=list)
+    certifications: list[str] = Field(default_factory=list)
+    soft_skills: list[str] = Field(default_factory=list)
+    gender: str | None = None
+    sexe: str | None = None
+    parser_confidence: float | None = Field(default=None, ge=0, le=1)
+
+    @field_validator(
+        "skills",
+        "competences",
+        "technical_skills",
+        "competences_techniques",
+        "functional_skills",
+        "competences_fonctionnelles",
+        "languages",
+        "langues",
+        "certifications",
+        "soft_skills",
+        "experience",
+        mode="before",
+    )
+    @classmethod
+    def coerce_string_list(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            return []
+        return [str(item).strip() for item in value if str(item or "").strip()]
+
+
 def parse_cv_text_configurable(raw_text: str) -> ParsedCV:
     if not _is_llm_available():
         return _heuristic_result(raw_text)
 
     try:
         llm_data = _parse_with_openai(raw_text)
-        normalized = _normalize_llm_payload(llm_data)
+        validated_payload = LLMCVPayload.model_validate(llm_data).model_dump()
+        normalized = _normalize_llm_payload(validated_payload)
         confidence_score = _coerce_confidence(normalized.get("parser_confidence"))
         normalized["parser_confidence"] = confidence_score
         normalized["parser_used"] = "llm"
         return ParsedCV(data=normalized, confidence_score=confidence_score)
-    except Exception:
+    except (LLMParserError, ValidationError) as exc:
+        logger.warning("OpenAI CV parsing failed; fallback heuristic used: %s", type(exc).__name__)
         return _heuristic_result(raw_text)
 
 
@@ -151,7 +248,7 @@ def _is_llm_available() -> bool:
 
 
 def _parse_with_openai(raw_text: str) -> dict[str, Any]:
-    model = settings.LLM_MODEL or "gpt-4o-mini"
+    model = settings.effective_llm_model
     payload = {
         "model": model,
         "messages": [
@@ -159,7 +256,14 @@ def _parse_with_openai(raw_text: str) -> dict[str, Any]:
             {"role": "user", "content": f"Texte du CV :\n{raw_text[:30000]}"},
         ],
         "temperature": 0,
-        "response_format": {"type": "json_object"},
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "talents_cv_parser",
+                "schema": _openai_cv_json_schema(),
+                "strict": True,
+            },
+        },
     }
     request = urllib.request.Request(
         "https://api.openai.com/v1/chat/completions",
@@ -171,11 +275,7 @@ def _parse_with_openai(raw_text: str) -> dict[str, Any]:
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(request, timeout=45) as response:
-            response_payload = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise LLMParserError("OpenAI CV parsing request failed.") from exc
+    response_payload = _open_url_with_retries(request, settings.LLM_REQUEST_TIMEOUT_SECONDS, settings.LLM_MAX_RETRIES)
 
     content = (
         response_payload.get("choices", [{}])[0]
@@ -183,6 +283,20 @@ def _parse_with_openai(raw_text: str) -> dict[str, Any]:
         .get("content", "")
     )
     return _loads_json_object(content)
+
+
+def _open_url_with_retries(request: urllib.request.Request, timeout_seconds: int, max_retries: int) -> dict[str, Any]:
+    attempts = max(1, max_retries)
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+            last_error = exc
+            if attempt < attempts - 1:
+                time.sleep(2**attempt)
+    raise LLMParserError("OpenAI CV parsing request failed.") from last_error
 
 
 def _loads_json_object(content: str) -> dict[str, Any]:
@@ -252,6 +366,86 @@ def _normalize_llm_payload(payload: dict[str, Any]) -> dict[str, Any]:
         ]
 
     return normalized
+
+
+def _openai_cv_json_schema() -> dict[str, Any]:
+    nullable_string = {"anyOf": [{"type": "string"}, {"type": "null"}]}
+    nullable_number = {"anyOf": [{"type": "number"}, {"type": "null"}]}
+    string_array = {"type": "array", "items": {"type": "string"}}
+    experience_item = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "company": nullable_string,
+            "entreprise": nullable_string,
+            "title": nullable_string,
+            "poste": nullable_string,
+            "start_date": nullable_string,
+            "date_debut": nullable_string,
+            "end_date": nullable_string,
+            "date_fin": nullable_string,
+            "location": nullable_string,
+            "description": nullable_string,
+        },
+        "required": ["company", "entreprise", "title", "poste", "start_date", "date_debut", "end_date", "date_fin", "location", "description"],
+    }
+    education_item = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "degree": nullable_string,
+            "diplome": nullable_string,
+            "school": nullable_string,
+            "etablissement": nullable_string,
+            "obtained_date": nullable_string,
+            "date_obtention": nullable_string,
+            "description": nullable_string,
+        },
+        "required": ["degree", "diplome", "school", "etablissement", "obtained_date", "date_obtention", "description"],
+    }
+    properties = {
+        "prenom": nullable_string,
+        "nom": nullable_string,
+        "first_name": nullable_string,
+        "last_name": nullable_string,
+        "email": nullable_string,
+        "phone": nullable_string,
+        "telephone": nullable_string,
+        "ville": nullable_string,
+        "location": nullable_string,
+        "linkedin_url": nullable_string,
+        "linkedin": nullable_string,
+        "current_company": nullable_string,
+        "entreprise_actuelle": nullable_string,
+        "current_title": nullable_string,
+        "poste_actuel": nullable_string,
+        "total_experience_years": nullable_number,
+        "experience_totale": nullable_number,
+        "experience": string_array,
+        "detailed_experience": {"type": "array", "items": experience_item},
+        "experiences_detaillees": {"type": "array", "items": experience_item},
+        "education": {"type": "array", "items": education_item},
+        "diplomes": {"type": "array", "items": education_item},
+        "skills": string_array,
+        "competences": string_array,
+        "technical_skills": string_array,
+        "competences_techniques": string_array,
+        "functional_skills": string_array,
+        "competences_fonctionnelles": string_array,
+        "languages": string_array,
+        "langues": string_array,
+        "certifications": string_array,
+        "soft_skills": string_array,
+        "gender": nullable_string,
+        "sexe": nullable_string,
+        "parser_confidence": nullable_number,
+    }
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": properties,
+        "required": list(properties.keys()),
+    }
 
 
 def _normalize_experience_items(items: Any) -> list[Any]:

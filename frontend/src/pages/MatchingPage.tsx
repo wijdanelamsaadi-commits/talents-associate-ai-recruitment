@@ -74,6 +74,64 @@ function DetailedScores({ scores }: { scores: MatchingResult["detailed_scores"] 
   );
 }
 
+function getScoreValue(scores: MatchingResult["detailed_scores"], key: string) {
+  const value = scores?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function getBusinessScore(scores: MatchingResult["detailed_scores"]) {
+  const skillScore = getScoreValue(scores, "skill_score");
+  const experienceScore = getScoreValue(scores, "experience_score");
+  const educationScore = getScoreValue(scores, "education_score");
+  const languageScore = getScoreValue(scores, "language_score");
+
+  if (skillScore === null || experienceScore === null || educationScore === null || languageScore === null) {
+    return null;
+  }
+
+  return Math.round((skillScore * 0.4) + (experienceScore * 0.3) + (educationScore * 0.25) + (languageScore * 0.05));
+}
+
+function formatScore(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value)}%` : "-";
+}
+
+const matchingScoreLabels = [
+  ["business_score", "Score métier"],
+  ["semantic_score", "Similarité sémantique"],
+  ["skill_score", "Compétences"],
+  ["experience_score", "Expérience"],
+  ["education_score", "Formation"],
+  ["language_score", "Langues"],
+] as const;
+
+function MatchingScoreBreakdown({ result }: { result: MatchingResult }) {
+  const scores = result.detailed_scores;
+  if (!scores) {
+    return <p className="text-sm text-slate-500">Aucun score détaillé disponible.</p>;
+  }
+
+  const scoreValues = {
+    business_score: getBusinessScore(scores),
+    semantic_score: result.semantic_score ?? getScoreValue(scores, "semantic_score"),
+    skill_score: getScoreValue(scores, "skill_score"),
+    experience_score: getScoreValue(scores, "experience_score"),
+    education_score: getScoreValue(scores, "education_score"),
+    language_score: getScoreValue(scores, "language_score"),
+  };
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {matchingScoreLabels.map(([key, label]) => (
+        <article key={key} className="rounded-lg border border-slate-200 bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+          <p className="mt-2 text-2xl font-semibold text-[#0B1F3A]">{formatScore(scoreValues[key])}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export function MatchingPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [jobs, setJobs] = useState<JobOffer[]>([]);
@@ -270,7 +328,7 @@ export function MatchingPage() {
   return (
     <div className="space-y-6">
       <section className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Score moyen" value={`${averageScore}%`} detail="Sur les résultats enregistrés" />
+        <StatCard label="Score moyen Matching IA" value={`${averageScore}%`} detail="Sur les résultats enregistrés" />
         <StatCard label="Fortes correspondances" value={String(strongMatches)} detail="Candidats avec un score ≥ 80%" />
         <StatCard label="Résultats enregistrés" value={String(results.length)} detail="Générés après traitement des CV" />
       </section>
@@ -281,6 +339,9 @@ export function MatchingPage() {
           <p className="mt-1 text-sm text-slate-600">
             Filtrez les candidats par critères métier. Avec CV : matching sur compétences, expérience, formation et
             intitulé. Sans CV : matching sur poste, secteur et entreprise.
+          </p>
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+            Score temporaire calculé à partir des critères de recherche. Ce score n’est pas le Matching IA final.
           </p>
         </div>
 
@@ -390,7 +451,7 @@ export function MatchingPage() {
               <span className="mt-1 block text-xs text-slate-500">Séparées par des points-virgules</span>
             </label>
 
-            <label className="block lg:col-span-2">
+            <label className="block">
               <span className="text-sm font-medium text-slate-700">Langues</span>
               <input
                 className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
@@ -432,7 +493,7 @@ export function MatchingPage() {
           <ListSearch
             value={vivierSearchQuery}
             onChange={setVivierSearchQuery}
-            placeholder="Rechercher par candidat, email, poste, secteur ou score..."
+            placeholder="Rechercher par candidat, email, poste, secteur ou pertinence..."
           />
         ) : null}
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -453,7 +514,7 @@ export function MatchingPage() {
                     <th className="px-5 py-3 font-semibold">Email</th>
                     <th className="px-5 py-3 font-semibold">Poste actuel</th>
                     <th className="px-5 py-3 font-semibold">Secteur</th>
-                    <th className="px-5 py-3 font-semibold">Score</th>
+                    <th className="px-5 py-3 font-semibold">Pertinence vivier</th>
                     <th className="px-5 py-3 font-semibold">CV</th>
                     <th className="px-5 py-3 font-semibold">Actions</th>
                   </tr>
@@ -507,13 +568,15 @@ export function MatchingPage() {
         </>
       ) : null}
 
-      <details className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <summary className="cursor-pointer text-sm font-semibold text-[#0B1F3A]">Actions de débogage admin</summary>
+      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="mt-5 text-lg font-semibold text-[#0B1F3A]">Matching manuel candidat / offre</h2>
+            <h2 className="text-lg font-semibold text-[#0B1F3A]">Matching IA persistant</h2>
+            <p className="mt-1 text-sm font-semibold text-[#1D6EEA]">
+              Endpoint : POST /api/matching/candidate/{"{candidate_id}"}/job/{"{job_id}"}
+            </p>
             <p className="mt-1 text-sm text-slate-600">
-              Utilisez ceci uniquement pour tester ou régénérer une comparaison spécifique.
+              Sélectionnez un candidat et une offre pour générer et enregistrer le score hybride final.
             </p>
           </div>
         </div>
@@ -560,7 +623,7 @@ export function MatchingPage() {
               onClick={() => void handleRunMatching()}
               type="button"
             >
-              {isRunning ? "En cours..." : "Lancer le matching"}
+              {isRunning ? "En cours..." : "Lancer le Matching IA"}
             </button>
           </div>
         </div>
@@ -571,7 +634,7 @@ export function MatchingPage() {
             <span className="font-semibold">{selectedDebugJob?.title ?? "aucune offre"}</span>.
           </p>
         ) : null}
-      </details>
+      </section>
 
       {message ? <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p> : null}
       {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
@@ -580,10 +643,11 @@ export function MatchingPage() {
         <section className="space-y-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-semibold text-[#0B1F3A]">Dernier résultat de matching</h3>
+              <h3 className="text-base font-semibold text-[#0B1F3A]">Dernier résultat de Matching IA</h3>
               <p className="mt-1 text-sm text-slate-600">{currentResult.explanation ?? "Aucune explication fournie."}</p>
             </div>
             <div className="text-right">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score de Matching IA</p>
               <p className="text-3xl font-semibold text-[#0B1F3A]">{currentResult.score}%</p>
               <p className="text-sm font-semibold capitalize text-[#1D6EEA]">
                 {formatRecommendation(currentResult.recommendation)}
@@ -591,7 +655,13 @@ export function MatchingPage() {
             </div>
           </div>
 
-          <DetailedScores scores={currentResult.detailed_scores} />
+          <MatchingScoreBreakdown result={currentResult} />
+          <p className="text-sm text-slate-600">
+            Modèle d’embedding :{" "}
+            <span className="font-semibold text-[#0B1F3A]">
+              {currentResult.embedding_version ?? (currentResult.used_semantic_embedding ? "text-embedding-3-small" : "Non utilisé")}
+            </span>
+          </p>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <article className="rounded-lg border border-slate-200 p-4">
@@ -643,7 +713,7 @@ export function MatchingPage() {
         <ListSearch
           value={historySearchQuery}
           onChange={setHistorySearchQuery}
-          placeholder="Rechercher par candidat, offre, score, recommandation ou compÃ©tence..."
+          placeholder="Rechercher par candidat, offre, score, recommandation ou compétence..."
         />
       ) : null}
 
@@ -658,7 +728,8 @@ export function MatchingPage() {
                 <tr>
                   <th className="px-5 py-3 font-semibold">Candidat</th>
                   <th className="px-5 py-3 font-semibold">Offre</th>
-                  <th className="px-5 py-3 font-semibold">Score</th>
+                  <th className="px-5 py-3 font-semibold">Score de Matching IA</th>
+                  <th className="px-5 py-3 font-semibold">Détails</th>
                   <th className="px-5 py-3 font-semibold">Recommandation</th>
                   <th className="px-5 py-3 font-semibold">Date</th>
                   <th className="px-5 py-3 font-semibold">Actions</th>
@@ -670,11 +741,26 @@ export function MatchingPage() {
                   const job = findJob(jobs, result.job_offer_id);
                   const displayCandidateName = result.candidate_name ?? candidateName(candidate);
                   const displayJobTitle = result.job_title ?? job?.title ?? result.job_offer_id;
+                  const businessScore = getBusinessScore(result.detailed_scores);
+                  const semanticScore = result.semantic_score ?? getScoreValue(result.detailed_scores, "semantic_score");
                   return (
                     <tr key={result.id} className="hover:bg-slate-50">
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">{displayCandidateName}</td>
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">{displayJobTitle}</td>
                       <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{result.score}%</td>
+                      <td className="min-w-[260px] px-5 py-4 text-xs text-slate-600">
+                        <div className="flex flex-wrap gap-x-3 gap-y-1">
+                          <span>Métier {formatScore(businessScore)}</span>
+                          <span>Sémantique {formatScore(semanticScore)}</span>
+                          <span>Compétences {formatScore(getScoreValue(result.detailed_scores, "skill_score"))}</span>
+                          <span>Expérience {formatScore(getScoreValue(result.detailed_scores, "experience_score"))}</span>
+                          <span>Formation {formatScore(getScoreValue(result.detailed_scores, "education_score"))}</span>
+                          <span>Langues {formatScore(getScoreValue(result.detailed_scores, "language_score"))}</span>
+                        </div>
+                        <p className="mt-1 text-slate-500">
+                          Embedding : {result.embedding_version ?? (result.used_semantic_embedding ? "text-embedding-3-small" : "Non utilisé")}
+                        </p>
+                      </td>
                       <td className="whitespace-nowrap px-5 py-4 capitalize text-slate-700">
                         {formatRecommendation(result.recommendation)}
                       </td>
@@ -700,7 +786,7 @@ export function MatchingPage() {
       ) : null}
 
       {!isLoading && results.length > 0 && filteredResults.length === 0 ? (
-        <EmptyState title="Aucun matching trouvÃ©" description="Modifiez la recherche pour afficher d'autres rÃ©sultats." />
+        <EmptyState title="Aucun matching trouvé" description="Modifiez la recherche pour afficher d'autres résultats." />
       ) : null}
     </div>
   );

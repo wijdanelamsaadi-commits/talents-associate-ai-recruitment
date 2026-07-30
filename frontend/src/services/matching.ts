@@ -15,6 +15,9 @@ export type MatchingResult = {
   updated_at: string;
   candidate_name?: string | null;
   job_title?: string | null;
+  semantic_score?: number | null;
+  used_semantic_embedding?: boolean;
+  embedding_version?: string | null;
 };
 
 export async function runMatching(candidateId: string, jobId: string): Promise<MatchingResult> {

@@ -390,7 +390,7 @@ def _save_upload_file(upload_file: UploadFile, stored_path: Path) -> tuple[int, 
 
 def _parser_model(parsed_data: dict) -> str:
     if parsed_data.get("parser_used") == "llm":
-        model = settings.LLM_MODEL or "gpt-4o-mini"
+        model = settings.effective_llm_model
         return f"openai:{model}"
     return "heuristic-v1"
 
