@@ -67,7 +67,7 @@ function DetailedScores({ scores }: { scores: MatchingResult["detailed_scores"] 
       {Object.entries(scores).map(([label, value]) => (
         <article key={label} className="rounded-lg border border-slate-200 bg-white p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replaceAll("_", " ")}</p>
-          <p className="mt-2 text-2xl font-semibold text-[#0B1F3A]">{Number(value).toFixed(0)}%</p>
+          <p className="mt-2 text-2xl font-semibold text-[#24303F]">{Number(value).toFixed(0)}%</p>
         </article>
       ))}
     </div>
@@ -125,7 +125,7 @@ function MatchingScoreBreakdown({ result }: { result: MatchingResult }) {
       {matchingScoreLabels.map(([key, label]) => (
         <article key={key} className="rounded-lg border border-slate-200 bg-white p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-          <p className="mt-2 text-2xl font-semibold text-[#0B1F3A]">{formatScore(scoreValues[key])}</p>
+          <p className="mt-2 text-2xl font-semibold text-[#24303F]">{formatScore(scoreValues[key])}</p>
         </article>
       ))}
     </div>
@@ -349,7 +349,7 @@ export function MatchingPage() {
 
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div>
-          <h2 className="text-lg font-semibold text-[#0B1F3A]">Recherche dans le vivier</h2>
+          <h2 className="text-lg font-semibold text-[#24303F]">Recherche dans le vivier</h2>
           <p className="mt-1 text-sm text-slate-600">
             Filtrez les candidats par critères métier. Avec CV : matching sur compétences, expérience, formation et
             intitulé. Sans CV : matching sur poste, secteur et entreprise.
@@ -364,7 +364,7 @@ export function MatchingPage() {
             <label className="block">
               <span className="text-sm font-medium text-slate-700">Poste (intitulé)</span>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                 list="job-titles"
                 onChange={(event) => setSearchForm((current) => ({ ...current, poste: event.target.value }))}
                 placeholder="Saisie libre ou sélection depuis les offres"
@@ -382,7 +382,7 @@ export function MatchingPage() {
             <label className="block">
               <span className="text-sm font-medium text-slate-700">Offre existante (optionnel)</span>
               <select
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                 onChange={(event) => handleJobSelect(event.target.value)}
                 value={selectedJobId}
               >
@@ -398,7 +398,7 @@ export function MatchingPage() {
             <label className="block">
               <span className="text-sm font-medium text-slate-700">Secteur d&apos;activité</span>
               <select
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                 onChange={(event) => setSearchForm((current) => ({ ...current, secteur: event.target.value }))}
                 value={searchForm.secteur}
               >
@@ -414,7 +414,7 @@ export function MatchingPage() {
             <label className="block">
               <span className="text-sm font-medium text-slate-700">Niveau d&apos;expérience</span>
               <select
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                 onChange={(event) => setSearchForm((current) => ({ ...current, experience_level: event.target.value }))}
                 value={searchForm.experience_level}
               >
@@ -430,7 +430,7 @@ export function MatchingPage() {
             <label className="block">
               <span className="text-sm font-medium text-slate-700">Niveau d&apos;études</span>
               <select
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                 onChange={(event) => setSearchForm((current) => ({ ...current, education_level: event.target.value }))}
                 value={searchForm.education_level}
               >
@@ -446,7 +446,7 @@ export function MatchingPage() {
             <label className="block">
               <span className="text-sm font-medium text-slate-700">Compétences techniques</span>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                 onChange={(event) => setSearchForm((current) => ({ ...current, technical_skills: event.target.value }))}
                 placeholder="Python; SQL; React"
                 value={searchForm.technical_skills}
@@ -457,7 +457,7 @@ export function MatchingPage() {
             <label className="block">
               <span className="text-sm font-medium text-slate-700">Compétences comportementales</span>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                 onChange={(event) => setSearchForm((current) => ({ ...current, soft_skills: event.target.value }))}
                 placeholder="Communication; Leadership"
                 value={searchForm.soft_skills}
@@ -468,7 +468,7 @@ export function MatchingPage() {
             <label className="block">
               <span className="text-sm font-medium text-slate-700">Langues</span>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                 onChange={(event) => setSearchForm((current) => ({ ...current, langues: event.target.value }))}
                 placeholder="Français; Anglais"
                 value={searchForm.langues}
@@ -478,7 +478,7 @@ export function MatchingPage() {
 
           <div className="flex flex-wrap gap-3">
             <button
-              className="rounded-lg bg-[#1D6EEA] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#165AC0] disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg bg-[#EE6C2F] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isSearching}
               type="submit"
             >
@@ -512,7 +512,7 @@ export function MatchingPage() {
         ) : null}
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Résultats du vivier</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">Résultats du vivier</h3>
             <p className="mt-1 text-sm text-slate-600">{filteredVivierResults.length} candidat(s) correspondant(s)</p>
           </div>
           {filteredVivierResults.length === 0 ? (
@@ -538,7 +538,7 @@ export function MatchingPage() {
                     <tr key={result.candidate.id} className="hover:bg-slate-50">
                       <td className="whitespace-nowrap px-5 py-4">
                         <Link
-                          className="font-semibold text-[#1D6EEA] hover:text-[#165AC0]"
+                          className="font-semibold text-[#EE6C2F] hover:text-[#D9551B]"
                           to={`/candidates/${result.candidate.id}`}
                         >
                           {result.candidate.first_name} {result.candidate.last_name}
@@ -547,7 +547,7 @@ export function MatchingPage() {
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">{result.candidate.email ?? "-"}</td>
                       <td className="px-5 py-4 text-slate-700">{result.candidate.current_title ?? "-"}</td>
                       <td className="px-5 py-4 text-slate-700">{result.candidate.sector ?? "-"}</td>
-                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{Math.round(result.score)}%</td>
+                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#24303F]">{Math.round(result.score)}%</td>
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
                         {result.has_cv ? "Oui" : "Non"}
                       </td>
@@ -561,7 +561,7 @@ export function MatchingPage() {
                           </Link>
                           {result.cv_file_id ? (
                             <button
-                              className="rounded-lg border border-[#1D6EEA]/30 px-3 py-1.5 text-xs font-semibold text-[#1D6EEA] hover:bg-blue-50"
+                              className="rounded-lg border border-[#EE6C2F]/30 px-3 py-1.5 text-xs font-semibold text-[#EE6C2F] hover:bg-orange-50"
                               disabled={downloadingCvId === result.cv_file_id}
                               onClick={() => void handleDownloadCV(result.cv_file_id as string, result.candidate)}
                               type="button"
@@ -584,8 +584,8 @@ export function MatchingPage() {
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-[#0B1F3A]">Matching IA persistant</h2>
-            <p className="mt-1 text-sm font-semibold text-[#1D6EEA]">
+            <h2 className="text-lg font-semibold text-[#24303F]">Matching IA persistant</h2>
+            <p className="mt-1 text-sm font-semibold text-[#EE6C2F]">
               Endpoint : POST /api/matching/candidate/{"{candidate_id}"}/job/{"{job_id}"}
             </p>
             <p className="mt-1 text-sm text-slate-600">
@@ -598,7 +598,7 @@ export function MatchingPage() {
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Candidat</span>
             <select
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
               disabled={isLoading || candidates.length === 0}
               onChange={(event) => setSelectedCandidateId(event.target.value)}
               value={selectedCandidateId}
@@ -615,7 +615,7 @@ export function MatchingPage() {
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Offre d&apos;emploi</span>
             <select
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
               disabled={isLoading || jobs.length === 0}
               onChange={(event) => setSelectedDebugJobId(event.target.value)}
               value={selectedDebugJobId}
@@ -631,7 +631,7 @@ export function MatchingPage() {
 
           <div className="flex items-end">
             <button
-              className="h-10 w-full rounded-lg bg-[#1D6EEA] px-4 text-sm font-semibold text-white hover:bg-[#165AC0] disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
+              className="h-10 w-full rounded-lg bg-[#EE6C2F] px-4 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
               disabled={isLoading || isRunning || !selectedCandidateId || !selectedDebugJobId}
               onClick={() => void handleRunMatching()}
               type="button"
@@ -656,13 +656,13 @@ export function MatchingPage() {
         <section className="space-y-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-semibold text-[#0B1F3A]">Dernier résultat de Matching IA</h3>
+              <h3 className="text-base font-semibold text-[#24303F]">Dernier résultat de Matching IA</h3>
               <p className="mt-1 text-sm text-slate-600">{currentResult.explanation ?? "Aucune explication fournie."}</p>
             </div>
             <div className="text-right">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score de Matching IA</p>
-              <p className="text-3xl font-semibold text-[#0B1F3A]">{currentResult.score}%</p>
-              <p className="text-sm font-semibold capitalize text-[#1D6EEA]">
+              <p className="text-3xl font-semibold text-[#24303F]">{currentResult.score}%</p>
+              <p className="text-sm font-semibold capitalize text-[#EE6C2F]">
                 {formatRecommendation(currentResult.recommendation)}
               </p>
             </div>
@@ -671,14 +671,14 @@ export function MatchingPage() {
           <MatchingScoreBreakdown result={currentResult} />
           <p className="text-sm text-slate-600">
             Modèle d’embedding :{" "}
-            <span className="font-semibold text-[#0B1F3A]">
+            <span className="font-semibold text-[#24303F]">
               {currentResult.embedding_version ?? (currentResult.used_semantic_embedding ? "text-embedding-3-small" : "Non utilisé")}
             </span>
           </p>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <article className="rounded-lg border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-[#0B1F3A]">Compétences correspondantes</p>
+              <p className="text-sm font-semibold text-[#24303F]">Compétences correspondantes</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {matchedSkills.length > 0 ? (
                   matchedSkills.map((skill) => (
@@ -692,7 +692,7 @@ export function MatchingPage() {
               </div>
             </article>
             <article className="rounded-lg border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-[#0B1F3A]">Compétences manquantes</p>
+              <p className="text-sm font-semibold text-[#24303F]">Compétences manquantes</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {missingSkills.length > 0 ? (
                   missingSkills.map((skill) => (
@@ -733,7 +733,7 @@ export function MatchingPage() {
       {results.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Historique des matchings</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">Historique des matchings</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -760,7 +760,7 @@ export function MatchingPage() {
                     <tr key={result.id} className="hover:bg-slate-50">
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">{displayCandidateName}</td>
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">{displayJobTitle}</td>
-                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{result.score}%</td>
+                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#24303F]">{result.score}%</td>
                       <td className="min-w-[260px] px-5 py-4 text-xs text-slate-600">
                         <div className="flex flex-wrap gap-x-3 gap-y-1">
                           <span>Métier {formatScore(businessScore)}</span>

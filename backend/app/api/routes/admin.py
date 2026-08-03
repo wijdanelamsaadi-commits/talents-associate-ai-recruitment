@@ -43,6 +43,8 @@ def list_users(db: Session = Depends(get_db)) -> list[AdminUserRead]:
 def create_user(payload: AdminUserCreate, db: Session = Depends(get_db)) -> AdminUserRead:
     try:
         return admin_service.create_user(db, payload)
+    except AdminServiceError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except IntegrityError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Un utilisateur avec cet email existe déjà.") from exc
 

@@ -86,7 +86,7 @@ function ClientLogo({ client }: { client: Client }) {
   return (
     <div className="flex h-28 items-center justify-center rounded-[16px] border border-slate-100 bg-white px-5 shadow-md shadow-slate-900/5">
       {failed ? (
-        <span className="text-center text-sm font-bold text-[#061A33]">{client.name}</span>
+        <span className="text-center text-sm font-bold text-[#24303F]">{client.name}</span>
       ) : (
         <img
           alt={client.name}
@@ -177,7 +177,7 @@ export function PortalHomePage() {
     <main className="bg-white">
       {/* SECTION 1 — Hero premium (image + overlay uniquement) */}
       <section
-        className="relative min-h-[70vh] overflow-hidden bg-[#061A33] bg-cover bg-center lg:min-h-[80vh]"
+        className="relative min-h-[70vh] overflow-hidden bg-[#24303F] bg-cover bg-center lg:min-h-[80vh]"
         style={{ backgroundImage: "url('/images/portal-hero-corporate.jpg')" }}
       >
         <div className="absolute inset-0" style={{ backgroundColor: "rgba(6, 26, 51, 0.65)" }} />
@@ -193,7 +193,7 @@ export function PortalHomePage() {
             style={{ backgroundImage: "url('/images/portal-about-interview.jpg')" }}
           />
           <div>
-            <h2 className="text-3xl font-extrabold text-[#061A33] sm:text-4xl">Qui sommes-nous ?</h2>
+            <h2 className="text-3xl font-extrabold text-[#24303F] sm:text-4xl">Qui sommes-nous ?</h2>
             <span className="mt-5 block h-1 w-20 rounded-full bg-[#ff5a1f]" />
             <p className="mt-7 text-lg leading-8 text-slate-600">
               Talents Associate accompagne les candidats dans leur parcours professionnel en facilitant l'accès à des
@@ -208,7 +208,7 @@ export function PortalHomePage() {
         <div className="mx-auto max-w-[1360px] px-6 py-16 lg:px-12 lg:py-24">
           <div className="text-center">
             <span className="mx-auto block h-1 w-12 rounded-full bg-[#ff5a1f]" />
-            <h2 className="mt-6 text-3xl font-extrabold text-[#061A33] sm:text-4xl lg:text-[44px]">
+            <h2 className="mt-6 text-3xl font-extrabold text-[#24303F] sm:text-4xl lg:text-[44px]">
               Votre parcours candidat
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">
@@ -226,7 +226,7 @@ export function PortalHomePage() {
                   {step.icon}
                 </span>
                 <span className="mt-6 text-sm font-extrabold tracking-wider text-[#ff5a1f]">{step.number}</span>
-                <h3 className="mt-2 text-xl font-extrabold text-[#061A33]">{step.title}</h3>
+                <h3 className="mt-2 text-xl font-extrabold text-[#24303F]">{step.title}</h3>
                 <span className="mt-4 block h-0.5 w-10 bg-[#ff5a1f]/40" />
                 <p className="mt-5 text-sm leading-7 text-slate-600">{step.text}</p>
               </article>
@@ -240,7 +240,7 @@ export function PortalHomePage() {
         <div className="mx-auto max-w-[1360px] px-6 py-16 lg:px-12 lg:py-24">
           <div className="text-center">
             <span className="mx-auto block h-1 w-12 rounded-full bg-[#ff5a1f]" />
-            <h2 className="mt-6 text-3xl font-extrabold text-[#061A33] sm:text-4xl lg:text-[44px]">Nos références</h2>
+            <h2 className="mt-6 text-3xl font-extrabold text-[#24303F] sm:text-4xl lg:text-[44px]">Nos références</h2>
             <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">
               Ils nous font confiance pour les accompagner dans leurs recrutements et leur développement.
             </p>

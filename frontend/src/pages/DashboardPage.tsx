@@ -44,7 +44,7 @@ function PipelineTable({ pipeline }: { pipeline: JobPipeline }) {
       <div className="border-b border-slate-100 px-5 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold text-[#0B1F3A]">{pipeline.title}</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">{pipeline.title}</h3>
             <p className="mt-1 text-sm text-slate-600">
               {[pipeline.company_name, pipeline.location].filter(Boolean).join(" · ") || "Client et localisation non renseignés"}
             </p>
@@ -53,7 +53,7 @@ function PipelineTable({ pipeline }: { pipeline: JobPipeline }) {
             <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
               {jobStatusLabels[pipeline.status] ?? pipeline.status}
             </span>
-            <span className="rounded-full bg-[#1D6EEA]/10 px-2.5 py-1 font-medium text-[#1D6EEA]">
+            <span className="rounded-full bg-[#EE6C2F]/10 px-2.5 py-1 font-medium text-[#EE6C2F]">
               Ouvert le {formatDate(pipeline.opened_at)}
             </span>
           </div>
@@ -73,7 +73,7 @@ function PipelineTable({ pipeline }: { pipeline: JobPipeline }) {
                 <td className="px-5 py-3">
                   {stage.count > 0 ? (
                     <Link
-                      className="font-medium text-[#1D6EEA] hover:text-[#165AC0] hover:underline"
+                      className="font-medium text-[#EE6C2F] hover:text-[#D9551B] hover:underline"
                       to={buildCandidateLink(pipeline.job_id, stage.stage)}
                     >
                       {stage.label}
@@ -82,10 +82,10 @@ function PipelineTable({ pipeline }: { pipeline: JobPipeline }) {
                     <span className="text-slate-700">{stage.label}</span>
                   )}
                 </td>
-                <td className="px-5 py-3 text-right font-semibold text-[#0B1F3A]">
+                <td className="px-5 py-3 text-right font-semibold text-[#24303F]">
                   {stage.count > 0 ? (
                     <Link
-                      className="text-[#1D6EEA] hover:text-[#165AC0] hover:underline"
+                      className="text-[#EE6C2F] hover:text-[#D9551B] hover:underline"
                       to={buildCandidateLink(pipeline.job_id, stage.stage)}
                     >
                       {stage.count}
@@ -154,7 +154,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-[#0B1F3A]">Filtres</h2>
+        <h2 className="text-base font-semibold text-[#24303F]">Filtres</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-slate-700">Poste</span>
@@ -235,7 +235,7 @@ export function DashboardPage() {
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[#0B1F3A]">Pipeline des candidatures par poste</h2>
+          <h2 className="text-lg font-semibold text-[#24303F]">Pipeline des candidatures par poste</h2>
           {isLoading ? <span className="text-xs text-slate-500">Mise à jour...</span> : null}
         </div>
 

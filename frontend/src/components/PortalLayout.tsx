@@ -15,8 +15,8 @@ function navClass({ isActive }: { isActive: boolean }) {
   return [
     "relative px-2 py-2 text-sm font-bold transition",
     isActive
-      ? "text-[#ff3d00] after:absolute after:bottom-0 after:left-2 after:h-0.5 after:w-7 after:bg-[#ff3d00]"
-      : "text-[#061A33] hover:text-[#ff3d00]",
+      ? "text-[#EE6C2F] after:absolute after:bottom-0 after:left-2 after:h-0.5 after:w-7 after:bg-[#EE6C2F]"
+      : "text-[#24303F] hover:text-[#EE6C2F]",
   ].join(" ");
 }
 
@@ -52,7 +52,7 @@ export function PortalLayout() {
           <div className="flex items-center gap-3">
             {isCandidateLoggedIn ? (
               <button
-                className="rounded-lg border border-[#ff3d00] px-5 py-3 text-sm font-bold text-[#ff3d00] transition hover:bg-[#ff3d00]/5"
+                className="rounded-lg border border-[#EE6C2F] px-5 py-3 text-sm font-bold text-[#EE6C2F] transition hover:bg-[#EE6C2F]/5"
                 onClick={() => {
                   logoutCandidate();
                   window.location.href = "/portal/login";
@@ -64,13 +64,13 @@ export function PortalLayout() {
             ) : (
               <>
                 <Link
-                  className="hidden rounded-lg border border-[#ff3d00] px-5 py-3 text-sm font-bold text-[#ff3d00] transition hover:bg-[#ff3d00]/5 sm:inline-flex"
+                  className="hidden rounded-lg border border-[#EE6C2F] px-5 py-3 text-sm font-bold text-[#EE6C2F] transition hover:bg-[#EE6C2F]/5 sm:inline-flex"
                   to="/portal/login"
                 >
                   Se connecter
                 </Link>
                 <Link
-                  className="rounded-lg bg-[#ff3d00] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#e63600]"
+                  className="rounded-lg bg-[#EE6C2F] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#D9551B]"
                   to="/portal/register"
                 >
                   Créer un compte
@@ -98,7 +98,7 @@ export function PortalLayout() {
             </p>
             <div className="mt-5 flex gap-3">
               {["in", "f", "ig", "@"].map((item) => (
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-xs font-bold text-[#061A33]" key={item}>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-xs font-bold text-[#24303F]" key={item}>
                   {item}
                 </span>
               ))}
@@ -106,7 +106,7 @@ export function PortalLayout() {
           </div>
 
           <div>
-            <h3 className="font-bold text-[#061A33]">Liens rapides</h3>
+            <h3 className="font-bold text-[#24303F]">Liens rapides</h3>
             <div className="mt-4 grid gap-3 text-sm text-slate-600">
               <Link to="/portal">Accueil</Link>
               <Link to="/portal/jobs">Offres disponibles</Link>
@@ -118,7 +118,7 @@ export function PortalLayout() {
           </div>
 
           <div id="about">
-            <h3 className="font-bold text-[#061A33]">Nos services</h3>
+            <h3 className="font-bold text-[#24303F]">Nos services</h3>
             <div className="mt-4 grid gap-3 text-sm text-slate-600">
               <span>Recrutement</span>
               <span>Formation & Coaching</span>
@@ -128,7 +128,7 @@ export function PortalLayout() {
           </div>
 
           <div>
-            <h3 className="font-bold text-[#061A33]">Contact</h3>
+            <h3 className="font-bold text-[#24303F]">Contact</h3>
             <div className="mt-4 grid gap-3 text-sm leading-6 text-slate-600">
               <span>+212 (0) 6 88 12 88 13</span>
               <span>contact@talentsag.ma</span>
@@ -136,7 +136,7 @@ export function PortalLayout() {
             </div>
           </div>
         </div>
-        <div className="bg-[#061A33] px-4 py-4 text-center text-sm text-white">
+        <div className="bg-[#24303F] px-4 py-4 text-center text-sm text-white">
           © 2026 Talents Associate. Tous droits réservés.
         </div>
       </footer>

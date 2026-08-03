@@ -85,10 +85,10 @@ export function PortalAboutPage() {
     <main className="bg-white">
       {/* SECTION 1 — Titre + intro */}
       <section className="mx-auto max-w-[1360px] px-6 pb-4 pt-16 text-center lg:px-12 lg:pt-20">
-        <h1 className="text-4xl font-extrabold leading-tight text-[#061A33] sm:text-5xl lg:text-[52px]">
+        <h1 className="text-4xl font-extrabold leading-tight text-[#24303F] sm:text-5xl lg:text-[52px]">
           À propos de Talents Associate
         </h1>
-        <span className="mx-auto mt-6 block h-1 w-20 rounded-full bg-[#ff3d00]" />
+        <span className="mx-auto mt-6 block h-1 w-20 rounded-full bg-[#EE6C2F]" />
         <p className="mx-auto mt-7 max-w-3xl text-lg leading-8 text-slate-600">
           Talents Associate est une plateforme de recrutement intelligente qui met en relation les talents avec les
           bonnes opportunités. Notre mission est de simplifier le recrutement tout en offrant une expérience fluide et
@@ -104,10 +104,10 @@ export function PortalAboutPage() {
               className="group flex flex-col items-center rounded-[20px] border border-slate-100 bg-white px-7 py-9 text-center shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-orange-500/10"
               key={card.title}
             >
-              <span className="flex h-[88px] w-[88px] items-center justify-center rounded-full bg-[#ff3d00]/10 text-[#ff3d00] transition duration-300 group-hover:bg-[#ff3d00]/15">
+              <span className="flex h-[88px] w-[88px] items-center justify-center rounded-full bg-[#EE6C2F]/10 text-[#EE6C2F] transition duration-300 group-hover:bg-[#EE6C2F]/15">
                 {card.icon}
               </span>
-              <h2 className="mt-6 text-lg font-extrabold text-[#061A33]">{card.title}</h2>
+              <h2 className="mt-6 text-lg font-extrabold text-[#24303F]">{card.title}</h2>
               <p className="mt-3 text-sm leading-7 text-slate-600">{card.text}</p>
             </article>
           ))}
@@ -126,7 +126,7 @@ export function PortalAboutPage() {
           </div>
 
           <div className="text-center md:text-left">
-            <h2 className="text-2xl font-extrabold leading-snug text-[#061A33] sm:text-[28px]">
+            <h2 className="text-2xl font-extrabold leading-snug text-[#24303F] sm:text-[28px]">
               Prêt à trouver l'opportunité qui vous correspond ?
             </h2>
             <p className="mt-3 max-w-xl text-base leading-7 text-slate-600">
@@ -136,14 +136,14 @@ export function PortalAboutPage() {
 
           <div className="flex flex-col gap-3 sm:flex-row md:flex-col lg:flex-row">
             <Link
-              className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-lg bg-[#ff3d00] px-7 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#e63600]"
+              className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-lg bg-[#EE6C2F] px-7 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#D9551B]"
               to="/portal/jobs"
             >
               Voir les offres
               <span aria-hidden="true">→</span>
             </Link>
             <Link
-              className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-lg border border-[#ff3d00] bg-white px-7 text-sm font-bold text-[#ff3d00] transition hover:bg-[#ff3d00]/5"
+              className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-lg border border-[#EE6C2F] bg-white px-7 text-sm font-bold text-[#EE6C2F] transition hover:bg-[#EE6C2F]/5"
               to="/portal/profile"
             >
               <span aria-hidden="true">⌑</span>

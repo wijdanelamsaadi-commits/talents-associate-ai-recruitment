@@ -142,7 +142,7 @@ export function OutlookImportPage() {
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-[#0B1F3A]">Import local de CV</h2>
+            <h2 className="text-lg font-semibold text-[#24303F]">Import local de CV</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
               Importez une archive ZIP ou plusieurs fichiers PDF/DOCX. La plateforme extrait le texte, analyse les CV, crée ou met à jour les candidats et lance le matching IA automatiquement.
             </p>
@@ -155,7 +155,7 @@ export function OutlookImportPage() {
             <span className="text-sm font-medium text-slate-700">Fichiers ZIP, PDF ou DOCX</span>
             <input
               accept=".zip,.pdf,.docx,application/zip,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#1D6EEA]/10 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-[#1D6EEA]"
+              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#EE6C2F]/10 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-[#EE6C2F]"
               multiple
               onChange={(event) => setSelectedFiles(Array.from(event.target.files ?? []))}
               type="file"
@@ -163,7 +163,7 @@ export function OutlookImportPage() {
             {selectedFileNames ? <span className="mt-2 block truncate text-xs text-slate-500">{selectedFileNames}</span> : null}
           </label>
           <button
-            className="rounded-lg bg-[#1D6EEA] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#165AC0] disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="rounded-lg bg-[#EE6C2F] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:bg-slate-400"
             disabled={isUploading}
             type="submit"
           >
@@ -176,11 +176,11 @@ export function OutlookImportPage() {
 
         {latestFiles.length > 0 ? (
           <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-[#0B1F3A]">Dernier rapport d'import</p>
+            <p className="text-sm font-semibold text-[#24303F]">Dernier rapport d'import</p>
             <div className="mt-3 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white">
               {latestFiles.map((file, index) => (
                 <div className="grid gap-2 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0 md:grid-cols-[1fr_auto_auto]" key={`${String(file.file)}-${index}`}>
-                  <span className="font-medium text-[#0B1F3A]">{String(file.file ?? "Fichier CV")}</span>
+                  <span className="font-medium text-[#24303F]">{String(file.file ?? "Fichier CV")}</span>
                   <span className="capitalize text-slate-700">{formatImportStatus(file.status)}</span>
                   <span className="text-slate-500">{file.reason ? String(file.reason) : `${String(file.matching_results ?? 0)} résultat(s) de matching IA`}</span>
                 </div>
@@ -201,7 +201,7 @@ export function OutlookImportPage() {
         <ListSearch value={searchQuery} onChange={setSearchQuery} placeholder="Rechercher par lot, compteur ou date..." />
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Historique des imports de CV</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">Historique des imports de CV</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -218,7 +218,7 @@ export function OutlookImportPage() {
               <tbody className="divide-y divide-slate-100">
                 {filteredImports.map((importItem) => (
                   <tr className="hover:bg-slate-50" key={importItem.id}>
-                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{importItem.filename}</td>
+                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#24303F]">{importItem.filename}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{importItem.imported_count}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{importItem.updated_count}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{importItem.skipped_count}</td>

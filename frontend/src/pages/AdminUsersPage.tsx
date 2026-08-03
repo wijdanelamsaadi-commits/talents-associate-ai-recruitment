@@ -23,7 +23,6 @@ function formatRole(role: string) {
   const labels: Record<string, string> = {
     admin: "Administrateur",
     recruiter: "Recruteur",
-    candidate: "Candidat",
   };
   return labels[role] ?? role;
 }
@@ -33,11 +32,29 @@ function formatStatus(status: string) {
     active: "Actif",
     invited: "En attente d'activation",
     suspended: "Désactivé",
-    disabled: "Désactivé",
-    inactive: "Inactif",
     deleted: "Supprimé",
   };
   return labels[status] ?? status;
+}
+
+function statusClass(status: string) {
+  const classes: Record<string, string> = {
+    active: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    invited: "border-orange-200 bg-orange-50 text-[#D9551B]",
+    suspended: "border-slate-200 bg-slate-100 text-slate-700",
+  };
+  return classes[status] ?? "border-slate-200 bg-slate-100 text-slate-700";
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return "Jamais";
+  }
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 export function AdminUsersPage() {
@@ -46,14 +63,17 @@ export function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionUserId, setActionUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const visibleUsers = useMemo(() => users.filter((user) => user.status !== "deleted"), [users]);
 
   const filteredUsers = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     if (!normalizedQuery) {
-      return users;
+      return visibleUsers;
     }
-    return users.filter((user) =>
+    return visibleUsers.filter((user) =>
       [
         user.full_name,
         user.email,
@@ -67,12 +87,12 @@ export function AdminUsersPage() {
         .toLowerCase()
         .includes(normalizedQuery),
     );
-  }, [searchQuery, users]);
+  }, [searchQuery, visibleUsers]);
 
   const loadUsers = async () => {
     setError(null);
     try {
-      setUsers(await getAdminUsers());
+      setUsers((await getAdminUsers()).filter((user) => user.status !== "deleted"));
     } catch (loadError) {
       setError(getApiErrorMessage(loadError, "Impossible de charger les utilisateurs."));
     }
@@ -88,9 +108,13 @@ export function AdminUsersPage() {
     setError(null);
     setMessage(null);
     try {
-      await createUser(form);
+      await createUser({
+        ...form,
+        full_name: form.full_name.trim(),
+        email: form.email.trim(),
+      });
       setForm(initialForm);
-      setMessage("Un email d'activation a été envoyé à l'utilisateur afin qu'il définisse son mot de passe.");
+      setMessage("Invitation envoyée. L'utilisateur devra définir son mot de passe via le lien sécurisé.");
       await loadUsers();
     } catch (createError) {
       setError(getApiErrorMessage(createError, "Impossible de créer l'utilisateur."));
@@ -99,64 +123,98 @@ export function AdminUsersPage() {
     }
   };
 
-  const runAction = async (action: () => Promise<AdminUser>, successMessage: string) => {
+  const runAction = async (userId: string, action: () => Promise<AdminUser>, successMessage: string, remove = false) => {
+    setActionUserId(userId);
     setError(null);
     setMessage(null);
     try {
       await action();
       setMessage(successMessage);
-      await loadUsers();
+      if (remove) {
+        setUsers((current) => current.filter((user) => user.id !== userId));
+      } else {
+        await loadUsers();
+      }
     } catch (actionError) {
       setError(getApiErrorMessage(actionError, "Action impossible."));
+    } finally {
+      setActionUserId(null);
     }
   };
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-wide text-[#E8590C]">Administration</p>
-        <h2 className="mt-2 text-2xl font-semibold text-[#0B1F3A]">Utilisateurs et recruteurs</h2>
+      <section className="rounded-lg border border-orange-100 bg-white p-6 shadow-sm shadow-slate-900/5">
+        <p className="text-sm font-bold uppercase tracking-wide text-[#EE6C2F]">Administration</p>
+        <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-[#24303F]">Création profil</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Créez des accès recruteurs sans manipuler leurs mots de passe.
+            </p>
+          </div>
+          <div className="rounded-lg border border-orange-100 bg-orange-50 px-4 py-3 text-sm font-semibold text-[#D9551B]">
+            {visibleUsers.length} comptes système
+          </div>
+        </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="font-semibold text-[#0B1F3A]">Créer un utilisateur</h3>
-        <form className="mt-4 grid gap-4 md:grid-cols-3" onSubmit={handleCreate}>
-          <input
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C]"
-            onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))}
-            placeholder="Nom complet"
-            required
-            value={form.full_name}
-          />
-          <input
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C]"
-            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-            placeholder="Email"
-            required
-            type="email"
-            value={form.email}
-          />
-          <div className="flex gap-2">
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5">
+        <div className="flex flex-col gap-1">
+          <h3 className="font-bold text-[#24303F]">Nouvelle invitation</h3>
+          <p className="text-sm text-slate-500">
+            Le recruteur recevra un lien valable 48h pour définir son mot de passe.
+          </p>
+        </div>
+        <form className="mt-5 grid gap-4 xl:grid-cols-[1fr_1fr_220px_auto]" onSubmit={handleCreate}>
+          <label className="relative block">
+            <span className="mb-1 block text-sm font-semibold text-slate-700">Nom complet</span>
+            <span className="pointer-events-none absolute left-3 top-9 text-sm font-bold text-[#EE6C2F]">Aa</span>
+            <input
+              className="w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/15"
+              onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))}
+              placeholder="Nadia El Amrani"
+              required
+              value={form.full_name}
+            />
+          </label>
+          <label className="relative block">
+            <span className="mb-1 block text-sm font-semibold text-slate-700">Email</span>
+            <span className="pointer-events-none absolute left-3 top-9 text-sm font-bold text-[#EE6C2F]">@</span>
+            <input
+              className="w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/15"
+              onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+              placeholder="recruteur@talents-associate.com"
+              required
+              type="email"
+              value={form.email}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm font-semibold text-slate-700">Rôle</span>
             <select
-              className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C]"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/15"
               onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as "admin" | "recruiter" }))}
               value={form.role}
             >
-              <option value="administrateur" disabled hidden></option>
-              <option value="admin">Administrateur</option>
               <option value="recruiter">Recruteur</option>
+              <option value="admin">Administrateur</option>
             </select>
-            <button className="rounded-lg bg-[#E8590C] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={isSubmitting} type="submit">
-              Créer
-            </button>
-          </div>
+          </label>
+          <button
+            className="self-end rounded-lg bg-[#EE6C2F] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isSubmitting}
+            type="submit"
+          >
+            {isSubmitting ? "Envoi..." : "Envoyer"}
+          </button>
         </form>
       </section>
 
-      {message ? <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p> : null}
-      {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      {message ? <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p> : null}
+      {error ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
 
-      {users.length > 0 ? (
+      {visibleUsers.length > 0 ? (
         <ListSearch
           value={searchQuery}
           onChange={setSearchQuery}
@@ -164,50 +222,85 @@ export function AdminUsersPage() {
         />
       ) : null}
 
-      <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h3 className="font-semibold text-[#0B1F3A]">Comptes système</h3>
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-900/5">
+        <div className="flex flex-col gap-1 border-b border-slate-200 px-5 py-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="font-bold text-[#24303F]">Comptes système</h3>
+            <p className="text-sm text-slate-500">Les comptes supprimés ne sont plus affichés dans cette liste.</p>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <thead className="bg-[#FBF7F4] text-xs uppercase text-slate-500">
               <tr>
-                <th className="px-5 py-3">Nom</th>
-                <th className="px-5 py-3">Email</th>
+                <th className="px-5 py-3">Utilisateur</th>
                 <th className="px-5 py-3">Rôle</th>
                 <th className="px-5 py-3">Statut</th>
-                <th className="px-5 py-3">Actions</th>
+                <th className="px-5 py-3">Dernière connexion</th>
+                <th className="px-5 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredUsers.map((user) => (
-                <tr key={user.id}>
-                  <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{user.full_name}</td>
-                  <td className="whitespace-nowrap px-5 py-4 text-slate-700">{user.email}</td>
-                  <td className="whitespace-nowrap px-5 py-4 text-slate-700">{formatRole(user.role)}</td>
-                  <td className="whitespace-nowrap px-5 py-4">
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{formatStatus(user.status)}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-4">
-                    <div className="flex flex-wrap gap-2">
-                      <button className="rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-700" onClick={() => void runAction(() => disableAdminUser(user.id), "Utilisateur désactivé.")} type="button">
-                        Désactiver
-                      </button>
-                      <button className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700" onClick={() => void runAction(() => enableAdminUser(user.id), "Utilisateur réactivé.")} type="button">
-                        Réactiver
-                      </button>
-                      <button className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700" onClick={() => void runAction(() => deleteAdminUser(user.id), "Utilisateur supprimé en soft delete.")} type="button">
-                        Supprimer
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredUsers.map((user) => {
+                const isBusy = actionUserId === user.id;
+                return (
+                  <tr className="transition hover:bg-orange-50/40" key={user.id}>
+                    <td className="whitespace-nowrap px-5 py-4">
+                      <div className="font-bold text-[#24303F]">{user.full_name}</div>
+                      <div className="mt-0.5 text-sm text-slate-500">{user.email}</div>
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-700">{formatRole(user.role)}</td>
+                    <td className="whitespace-nowrap px-5 py-4">
+                      <span className={`rounded-full border px-3 py-1 text-xs font-bold ${statusClass(user.status)}`}>
+                        {formatStatus(user.status)}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-600">{formatDate(user.last_login_at)}</td>
+                    <td className="whitespace-nowrap px-5 py-4">
+                      <div className="flex justify-end gap-2">
+                        {user.status !== "suspended" ? (
+                          <button
+                            className="rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-50 disabled:opacity-60"
+                            disabled={isBusy}
+                            onClick={() => void runAction(user.id, () => disableAdminUser(user.id), "Utilisateur désactivé.")}
+                            type="button"
+                          >
+                            Désactiver
+                          </button>
+                        ) : (
+                          <button
+                            className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60"
+                            disabled={isBusy}
+                            onClick={() =>
+                              void runAction(
+                                user.id,
+                                () => enableAdminUser(user.id),
+                                "Nouvelle invitation envoyée. L'ancien lien est invalide.",
+                              )
+                            }
+                            type="button"
+                          >
+                            Réactiver
+                          </button>
+                        )}
+                        <button
+                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-60"
+                          disabled={isBusy}
+                          onClick={() => void runAction(user.id, () => deleteAdminUser(user.id), "Utilisateur retiré de la liste.", true)}
+                          type="button"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </section>
-      {users.length > 0 && filteredUsers.length === 0 ? (
+      {visibleUsers.length > 0 && filteredUsers.length === 0 ? (
         <p className="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
           Aucun utilisateur ne correspond à cette recherche.
         </p>

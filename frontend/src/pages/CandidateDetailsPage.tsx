@@ -299,8 +299,8 @@ export function CandidateDetailsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-wide text-[#E8590C]">Fiche candidat RH</p>
-        <h2 className="mt-2 text-2xl font-semibold text-[#0B1F3A]">{fullName}</h2>
+        <p className="text-sm font-semibold uppercase tracking-wide text-[#EE6C2F]">Fiche candidat RH</p>
+        <h2 className="mt-2 text-2xl font-semibold text-[#24303F]">{fullName}</h2>
         <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
           <p>
             <span className="block font-semibold text-slate-500">Nom</span>
@@ -343,7 +343,7 @@ export function CandidateDetailsPage() {
                 href={candidate.linkedin_url}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-1 inline-flex items-center gap-1.5 text-[#1D6EEA] hover:text-[#165AC0] font-semibold underline"
+                className="mt-1 inline-flex items-center gap-1.5 text-[#EE6C2F] hover:text-[#D9551B] font-semibold underline"
               >
                 Voir le profil LinkedIn ↗
               </a>
@@ -355,7 +355,7 @@ export function CandidateDetailsPage() {
             {sortedCVFiles.slice(0, 1).map((cv) => (
               <button
                 key={cv.id}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#165AC0]"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#D9551B]"
                 disabled={isCvDownloading === cv.id}
                 onClick={() => void handleDownloadCV(cv)}
                 type="button"
@@ -378,9 +378,9 @@ export function CandidateDetailsPage() {
       <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Historique synthétique candidat</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">Historique synthétique candidat</h3>
             <p className="mt-1 text-sm text-slate-600">
-              CV envoyés ou remplacés : <span className="font-semibold text-[#0B1F3A]">{history.cv_files.length}</span>
+              CV envoyés ou remplacés : <span className="font-semibold text-[#24303F]">{history.cv_files.length}</span>
             </p>
           </div>
         </div>
@@ -404,9 +404,9 @@ export function CandidateDetailsPage() {
                   <tr className="hover:bg-slate-50" key={row.id}>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{formatDate(row.date)}</td>
                     <td className="whitespace-nowrap px-5 py-4">
-                      <span className="rounded-full bg-[#1D6EEA]/10 px-3 py-1 text-xs font-semibold text-[#1D6EEA]">{row.category}</span>
+                      <span className="rounded-full bg-[#EE6C2F]/10 px-3 py-1 text-xs font-semibold text-[#EE6C2F]">{row.category}</span>
                     </td>
-                    <td className="px-5 py-4 font-semibold text-[#0B1F3A]">{row.title}</td>
+                    <td className="px-5 py-4 font-semibold text-[#24303F]">{row.title}</td>
                     <td className="px-5 py-4 text-slate-700">{row.details}</td>
                   </tr>
                 ))}
@@ -421,7 +421,7 @@ export function CandidateDetailsPage() {
 
       <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
-          <h3 className="text-base font-semibold text-[#0B1F3A]">Offres postulées et décisions RH</h3>
+          <h3 className="text-base font-semibold text-[#24303F]">Offres postulées et décisions RH</h3>
           <p className="mt-1 text-sm text-slate-600">Historique des candidatures, statuts, scores de matching et actions RH.</p>
         </div>
         {history.applications.length === 0 ? (
@@ -436,7 +436,7 @@ export function CandidateDetailsPage() {
                 <article className="space-y-4 p-5" key={application.id}>
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <h4 className="text-lg font-semibold text-[#0B1F3A]">{application.job_title}</h4>
+                      <h4 className="text-lg font-semibold text-[#24303F]">{application.job_title}</h4>
                       <p className="mt-1 text-sm text-slate-600">
                         {application.company_name ?? "Entreprise non renseignée"} - {formatLabel(application.source)}
                       </p>
@@ -462,7 +462,7 @@ export function CandidateDetailsPage() {
                         Refuser
                       </button>
                       <button
-                        className="rounded-lg border border-[#E8590C]/30 px-3 py-1.5 text-xs font-semibold text-[#E8590C] hover:bg-orange-50 disabled:opacity-50"
+                        className="rounded-lg border border-[#EE6C2F]/30 px-3 py-1.5 text-xs font-semibold text-[#EE6C2F] hover:bg-orange-50 disabled:opacity-50"
                         disabled={isDeciding !== null}
                         onClick={() => void handleDecision(application.id, "reactivate")}
                         type="button"
@@ -474,25 +474,25 @@ export function CandidateDetailsPage() {
                   <div className="grid gap-3 text-sm md:grid-cols-4">
                     <p className="rounded-lg bg-slate-50 p-3">
                       <span className="block text-xs font-semibold uppercase text-slate-500">Statut candidature</span>
-                      <span className="font-semibold capitalize text-[#0B1F3A]">{formatLabel(application.status)}</span>
+                      <span className="font-semibold capitalize text-[#24303F]">{formatLabel(application.status)}</span>
                     </p>
                     <p className="rounded-lg bg-slate-50 p-3">
                       <span className="block text-xs font-semibold uppercase text-slate-500">Étape RH</span>
-                      <span className="font-semibold capitalize text-[#0B1F3A]">{formatLabel(application.current_stage)}</span>
+                      <span className="font-semibold capitalize text-[#24303F]">{formatLabel(application.current_stage)}</span>
                     </p>
                     <p className="rounded-lg bg-slate-50 p-3">
                       <span className="block text-xs font-semibold uppercase text-slate-500">Score de matching</span>
-                      <span className="font-semibold text-[#0B1F3A]">{formatScore(match?.score)}</span>
+                      <span className="font-semibold text-[#24303F]">{formatScore(match?.score)}</span>
                     </p>
                     <p className="rounded-lg bg-slate-50 p-3">
                       <span className="block text-xs font-semibold uppercase text-slate-500">Score sémantique</span>
-                      <span className="font-semibold text-[#0B1F3A]">{match?.semantic_score ?? "-"}</span>
+                      <span className="font-semibold text-[#24303F]">{match?.semantic_score ?? "-"}</span>
                     </p>
                   </div>
                   {application.interviews.length > 0 || application.evaluations.length > 0 ? (
                     <div className="grid gap-4 md:grid-cols-2">
                       <div>
-                        <h5 className="text-sm font-semibold text-[#0B1F3A]">Entretiens</h5>
+                        <h5 className="text-sm font-semibold text-[#24303F]">Entretiens</h5>
                         <ul className="mt-2 space-y-2 text-sm text-slate-600">
                           {application.interviews.map((interview) => (
                             <li className="rounded-lg border border-slate-100 p-3" key={interview.id}>
@@ -502,7 +502,7 @@ export function CandidateDetailsPage() {
                         </ul>
                       </div>
                       <div>
-                        <h5 className="text-sm font-semibold text-[#0B1F3A]">Évaluations</h5>
+                        <h5 className="text-sm font-semibold text-[#24303F]">Évaluations</h5>
                         <ul className="mt-2 space-y-2 text-sm text-slate-600">
                           {application.evaluations.map((evaluation) => (
                             <li className="rounded-lg border border-slate-100 p-3" key={evaluation.id}>
@@ -523,7 +523,7 @@ export function CandidateDetailsPage() {
       <section className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">CV uploadés</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">CV uploadés</h3>
           </div>
           {sortedCVFiles.length === 0 ? (
             <div className="space-y-4 p-5">
@@ -533,14 +533,14 @@ export function CandidateDetailsPage() {
                   Ajouter un CV
                   <input
                     accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#1D6EEA] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
+                    className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#EE6C2F] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
                     disabled={isCvUploading}
                     onChange={(event) => setSelectedCVFile(event.target.files?.[0] ?? null)}
                     type="file"
                   />
                 </label>
                 <button
-                  className="mt-3 rounded-lg bg-[#E8590C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c94709] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-3 rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={isCvUploading || !selectedCVFile}
                   onClick={() => void handleUploadCandidateCV()}
                   type="button"
@@ -554,7 +554,7 @@ export function CandidateDetailsPage() {
               {sortedCVFiles.map((cv) => (
                 <li className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 text-sm" key={cv.id}>
                   <div>
-                    <p className="font-semibold text-[#0B1F3A]">{cv.original_filename}</p>
+                    <p className="font-semibold text-[#24303F]">{cv.original_filename}</p>
                     <p className="mt-1 text-slate-600">
                       Analyse du CV {formatLabel(cv.parsing_status)} - modèle {cv.parser_model ?? "-"} - {formatDate(cv.uploaded_at)}
                     </p>
@@ -574,14 +574,14 @@ export function CandidateDetailsPage() {
                   Remplacer CV
                   <input
                     accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#1D6EEA] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
+                    className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#EE6C2F] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
                     disabled={isCvUploading}
                     onChange={(event) => setSelectedCVFile(event.target.files?.[0] ?? null)}
                     type="file"
                   />
                 </label>
                 <button
-                  className="rounded-lg bg-[#E8590C] px-4 py-2 text-xs font-semibold text-white hover:bg-[#c94709] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-lg bg-[#EE6C2F] px-4 py-2 text-xs font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={isCvUploading || !selectedCVFile}
                   onClick={() => void handleUploadCandidateCV()}
                   type="button"
@@ -595,7 +595,7 @@ export function CandidateDetailsPage() {
 
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Timeline RH</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">Timeline RH</h3>
           </div>
           {history.timeline_events.length === 0 ? (
             <div className="p-5">
@@ -606,7 +606,7 @@ export function CandidateDetailsPage() {
               {history.timeline_events.map((event) => (
                 <li className="px-5 py-4 text-sm" key={event.id}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-semibold text-[#0B1F3A]">{event.title}</p>
+                    <p className="font-semibold text-[#24303F]">{event.title}</p>
                     <time className="text-xs text-slate-500">{formatDate(event.created_at)}</time>
                   </div>
                   <p className="mt-1 text-slate-600">{event.description ?? formatLabel(event.event_type)}</p>

@@ -29,8 +29,8 @@ export function PortalLoginPage() {
   return (
     <main className="mx-auto flex max-w-xl px-4 py-10 sm:px-6">
       <section className="w-full rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold uppercase text-[#E8590C]">Connexion candidat</p>
-        <h1 className="mt-2 text-3xl font-semibold text-[#0B1F3A]">Accédez à votre espace</h1>
+        <p className="text-sm font-semibold uppercase text-[#EE6C2F]">Connexion candidat</p>
+        <h1 className="mt-2 text-3xl font-semibold text-[#24303F]">Accédez à votre espace</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           Retrouvez votre profil, votre CV et le suivi de vos candidatures Talents Associate.
         </p>
@@ -39,7 +39,7 @@ export function PortalLoginPage() {
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Email</span>
             <input
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C] focus:ring-2 focus:ring-[#E8590C]/20"
+              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
               onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
               required
               type="email"
@@ -49,7 +49,7 @@ export function PortalLoginPage() {
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Mot de passe</span>
             <input
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C] focus:ring-2 focus:ring-[#E8590C]/20"
+              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
               onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
               required
               type="password"
@@ -59,14 +59,14 @@ export function PortalLoginPage() {
 
           {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
 
-          <button className="w-full rounded-lg bg-[#E8590C] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#c94b08] disabled:bg-slate-400" disabled={isSubmitting} type="submit">
+          <button className="w-full rounded-lg bg-[#EE6C2F] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:bg-slate-400" disabled={isSubmitting} type="submit">
             {isSubmitting ? "Connexion..." : "Se connecter"}
           </button>
         </form>
 
         <p className="mt-5 text-center text-sm text-slate-600">
           Nouveau candidat ?{" "}
-          <Link className="font-semibold text-[#E8590C] hover:text-[#c94b08]" to="/portal/register">
+          <Link className="font-semibold text-[#EE6C2F] hover:text-[#D9551B]" to="/portal/register">
             Créer un compte
           </Link>
         </p>

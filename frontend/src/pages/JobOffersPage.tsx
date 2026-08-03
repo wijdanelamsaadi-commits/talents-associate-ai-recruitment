@@ -281,11 +281,11 @@ export function JobOffersPage() {
     <div className="space-y-6">
       <section className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[#0B1F3A]">Offres d&apos;emploi</h2>
+          <h2 className="text-lg font-semibold text-[#24303F]">Offres d&apos;emploi</h2>
           <p className="mt-1 text-sm text-slate-600">Gérez les postes utilisés par le moteur de matching.</p>
         </div>
         <button
-          className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#165AC0]"
+          className="rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white hover:bg-[#D9551B]"
           onClick={openCreateModal}
           type="button"
         >
@@ -322,7 +322,7 @@ export function JobOffersPage() {
       {!isLoading && jobs.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Offres actives</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">Offres actives</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -340,13 +340,13 @@ export function JobOffersPage() {
               <tbody className="divide-y divide-slate-100">
                 {filteredJobs.map((job) => (
                   <tr key={job.id} className="hover:bg-slate-50">
-                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{job.title}</td>
+                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#24303F]">{job.title}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job.company_name ?? "—"}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job.sector ?? "—"}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job.location ?? "—"}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{job.contract_type ?? "—"}</td>
                     <td className="whitespace-nowrap px-5 py-4">
-                      <span className="rounded-full bg-[#1D6EEA]/10 px-3 py-1 text-xs font-semibold text-[#1D6EEA]">
+                      <span className="rounded-full bg-[#EE6C2F]/10 px-3 py-1 text-xs font-semibold text-[#EE6C2F]">
                         {statusOptions.find((option) => option.value === job.status)?.label ?? job.status}
                       </span>
                     </td>
@@ -360,7 +360,7 @@ export function JobOffersPage() {
                           Modifier
                         </button>
                         <button
-                          className="rounded-lg border border-[#1D6EEA]/30 px-3 py-1.5 text-xs font-semibold text-[#1D6EEA] hover:bg-blue-50"
+                          className="rounded-lg border border-[#EE6C2F]/30 px-3 py-1.5 text-xs font-semibold text-[#EE6C2F] hover:bg-orange-50"
                           onClick={() => setSharingJob(job)}
                           type="button"
                         >
@@ -388,10 +388,10 @@ export function JobOffersPage() {
       ) : null}
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#0B1F3A]/40 px-4 py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#24303F]/40 px-4 py-6">
           <section className="w-full max-w-4xl rounded-lg bg-white shadow-xl">
             <div className="border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-[#0B1F3A]">
+              <h3 className="text-lg font-semibold text-[#24303F]">
                 {editingJob ? "Modifier l'offre d'emploi" : "Créer une offre d'emploi"}
               </h3>
               <p className="mt-1 text-sm text-slate-600">
@@ -403,7 +403,7 @@ export function JobOffersPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Poste</span>
                   <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, title: event.target.value }))}
                     required
                     value={formState.title}
@@ -420,7 +420,7 @@ export function JobOffersPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Client</span>
                   <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, company_name: event.target.value }))}
                     value={formState.company_name}
                   />
@@ -429,7 +429,7 @@ export function JobOffersPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Secteur d&apos;activité</span>
                   <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, sector: event.target.value }))}
                     value={formState.sector}
                   >
@@ -445,7 +445,7 @@ export function JobOffersPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Localisation</span>
                   <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, location: event.target.value }))}
                     value={formState.location}
                   />
@@ -454,7 +454,7 @@ export function JobOffersPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Type de contrat</span>
                   <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, contract_type: event.target.value }))}
                     value={formState.contract_type}
                   >
@@ -470,7 +470,7 @@ export function JobOffersPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Niveau d&apos;expérience</span>
                   <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, experience_level: event.target.value }))}
                     value={formState.experience_level}
                   >
@@ -486,7 +486,7 @@ export function JobOffersPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Niveau d&apos;études</span>
                   <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, education_level: event.target.value }))}
                     value={formState.education_level}
                   >
@@ -502,7 +502,7 @@ export function JobOffersPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Statut</span>
                   <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, status: event.target.value }))}
                     value={formState.status}
                   >
@@ -518,7 +518,7 @@ export function JobOffersPage() {
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">Compétences techniques</span>
                 <input
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                   onChange={(event) => setFormState((current) => ({ ...current, required_skills: event.target.value }))}
                   placeholder="React; TypeScript; FastAPI"
                   value={formState.required_skills}
@@ -528,7 +528,7 @@ export function JobOffersPage() {
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">Compétences comportementales</span>
                 <input
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                   onChange={(event) => setFormState((current) => ({ ...current, soft_skills: event.target.value }))}
                   placeholder="Communication; Esprit d'équipe; Autonomie"
                   value={formState.soft_skills}
@@ -539,7 +539,7 @@ export function JobOffersPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-700">Langues</span>
                   <button
-                    className="text-sm font-semibold text-[#1D6EEA] hover:text-[#165AC0]"
+                    className="text-sm font-semibold text-[#EE6C2F] hover:text-[#D9551B]"
                     onClick={addLanguage}
                     type="button"
                   >
@@ -549,7 +549,7 @@ export function JobOffersPage() {
                 {formState.languages.map((entry, index) => (
                   <div key={`${entry.language}-${index}`} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
                     <select
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                       onChange={(event) => updateLanguage(index, "language", event.target.value)}
                       value={entry.language}
                     >
@@ -560,7 +560,7 @@ export function JobOffersPage() {
                       ))}
                     </select>
                     <select
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                       onChange={(event) => updateLanguage(index, "level", event.target.value)}
                       value={entry.level}
                     >
@@ -585,7 +585,7 @@ export function JobOffersPage() {
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">Description</span>
                 <textarea
-                  className="mt-2 min-h-28 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                  className="mt-2 min-h-28 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                   onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))}
                   required
                   value={formState.description}
@@ -601,7 +601,7 @@ export function JobOffersPage() {
                   Annuler
                 </button>
                 <button
-                  className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#165AC0] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={isSubmitting}
                   type="submit"
                 >
@@ -614,21 +614,21 @@ export function JobOffersPage() {
       ) : null}
 
       {sharingJob ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#0B1F3A]/40 px-4 py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#24303F]/40 px-4 py-6">
           <section className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
             <div className="border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-[#0B1F3A]">Partager l'offre</h3>
+              <h3 className="text-lg font-semibold text-[#24303F]">Partager l'offre</h3>
               <p className="mt-1 text-sm text-slate-600">Modèle prêt à publier sur les réseaux sociaux.</p>
             </div>
             <div className="space-y-4 p-6">
               <textarea
-                className="min-h-56 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                className="min-h-56 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                 readOnly
                 value={buildShareText(sharingJob)}
               />
               <div className="flex flex-wrap justify-end gap-3">
                 <a
-                  className="rounded-lg border border-[#1D6EEA]/30 px-4 py-2 text-sm font-semibold text-[#1D6EEA] hover:bg-blue-50"
+                  className="rounded-lg border border-[#EE6C2F]/30 px-4 py-2 text-sm font-semibold text-[#EE6C2F] hover:bg-orange-50"
                   href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(buildShareUrl(sharingJob))}`}
                   rel="noreferrer"
                   target="_blank"
@@ -636,7 +636,7 @@ export function JobOffersPage() {
                   LinkedIn
                 </a>
                 <a
-                  className="rounded-lg border border-[#1D6EEA]/30 px-4 py-2 text-sm font-semibold text-[#1D6EEA] hover:bg-blue-50"
+                  className="rounded-lg border border-[#EE6C2F]/30 px-4 py-2 text-sm font-semibold text-[#EE6C2F] hover:bg-orange-50"
                   href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(buildShareUrl(sharingJob))}`}
                   rel="noreferrer"
                   target="_blank"
@@ -644,7 +644,7 @@ export function JobOffersPage() {
                   Facebook
                 </a>
                 <button
-                  className="rounded-lg bg-[#E8590C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c94709]"
+                  className="rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white hover:bg-[#D9551B]"
                   onClick={() => void handleCopyShareText()}
                   type="button"
                 >

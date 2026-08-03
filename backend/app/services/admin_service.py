@@ -1,35 +1,72 @@
-import secrets
 from datetime import datetime, timedelta, timezone
+import secrets
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.security import hash_password
+from app.core.config import settings
 from app.models import Application, Candidate, EmailLog, JobOffer, SystemSetting, User
 from app.schemas.admin import AdminSettingsUpdate, AdminUserCreate, AdminUserUpdate
+from app.services.email_service import send_user_activation_email
 
 
 class AdminServiceError(ValueError):
     pass
 
 
+INVITATION_EXPIRES_IN_HOURS = 48
+
+
 def list_users(db: Session) -> list[User]:
-    return list(db.scalars(select(User).order_by(User.created_at.desc(), User.email.asc())).all())
+    repaired = _repair_passwordless_active_users(db)
+    if repaired:
+        db.commit()
+    statement = select(User).where(User.status != "deleted").order_by(User.created_at.desc(), User.email.asc())
+    return list(db.scalars(statement).all())
+
+
+def _new_activation_token() -> tuple[str, datetime]:
+    return secrets.token_urlsafe(32), datetime.now(timezone.utc) + timedelta(hours=INVITATION_EXPIRES_IN_HOURS)
+
+
+def _prepare_activation(user: User) -> str:
+    token, expires_at = _new_activation_token()
+    user.password_hash = None
+    user.status = "invited"
+    user.activation_token = token
+    user.token_expires_at = expires_at
+    return token
+
+
+def _repair_passwordless_active_users(db: Session) -> int:
+    users = db.scalars(
+        select(User).where(User.status == "active", User.password_hash.is_(None), User.role.in_(["admin", "recruiter"]))
+    ).all()
+    for user in users:
+        _prepare_activation(user)
+    return len(users)
 
 
 def create_user(db: Session, payload: AdminUserCreate) -> User:
-    token = secrets.token_urlsafe(32)
+    email = str(payload.email).lower().strip()
+    existing = db.scalar(select(User).where(User.email == email))
+    if existing is not None:
+        if existing.status == "deleted":
+            db.delete(existing)
+            db.flush()
+        else:
+            raise AdminServiceError("Un utilisateur actif ou en attente existe déjà avec cet email.")
+
     user = User(
-        full_name=payload.full_name,
-        email=payload.email.lower(),
-        password_hash=None,  # l'user ghadi y5tar password dyalo
+        full_name=payload.full_name.strip(),
+        email=email,
+        password_hash=None,
         role=payload.role,
-        status="invited",  # machi actif 7etta y3ber l'email
-        activation_token=token,
-        token_expires_at=datetime.now(timezone.utc) + timedelta(hours=48),
+        status="invited",
     )
+    token = _prepare_activation(user)
     db.add(user)
     try:
         db.commit()
@@ -42,28 +79,14 @@ def create_user(db: Session, payload: AdminUserCreate) -> User:
 
 
 def _send_activation_email(db: Session, user: User, token: str) -> None:
-    import os
-
-    base = os.getenv("FRONTEND_URL", "http://127.0.0.1:5173")
-    link = f"{base}/activate/{token}"
-    subject = "Activez votre compte Talents Associate"
-    body = (
-        f"Bonjour {user.full_name},\n\n"
-        "Un compte vient d'être créé pour vous. Cliquez sur le lien ci-dessous "
-        "pour définir votre mot de passe :\n\n"
-        f"{link}\n\n"
-        "Ce lien expire dans 48 heures."
+    activation_link = f"{settings.FRONTEND_URL.rstrip('/')}/activate/{token}"
+    send_user_activation_email(
+        db,
+        to_email=user.email,
+        full_name=user.full_name,
+        activation_link=activation_link,
+        expires_in_hours=INVITATION_EXPIRES_IN_HOURS,
     )
-
-    # mode console : l'lien kيبان f l'terminal dyal backend (zéro config)
-    print("=" * 70)
-    print("EMAIL D'ACTIVATION")
-    print("À      :", user.email)
-    print("Lien   :", link)
-    print("=" * 70)
-
-    # n sجّlo f l'جدول EmailLog
-    db.add(EmailLog(to_email=user.email, subject=subject, body=body, status="sent"))
     db.commit()
 
 
@@ -74,9 +97,9 @@ def get_user(db: Session, user_id: UUID) -> User | None:
 def update_user(db: Session, user: User, payload: AdminUserUpdate) -> User:
     data = payload.model_dump(exclude_unset=True)
     if "email" in data and data["email"] is not None:
-        user.email = str(data.pop("email")).lower()
-    if "password" in data and data["password"] is not None:
-        user.password_hash = hash_password(data.pop("password"))
+        user.email = str(data.pop("email")).lower().strip()
+    if "full_name" in data and data["full_name"] is not None:
+        data["full_name"] = str(data["full_name"]).strip()
     for field, value in data.items():
         setattr(user, field, value)
     try:
@@ -90,20 +113,26 @@ def update_user(db: Session, user: User, payload: AdminUserUpdate) -> User:
 
 def disable_user(db: Session, user: User) -> User:
     user.status = "suspended"
+    user.activation_token = None
+    user.token_expires_at = None
     db.commit()
     db.refresh(user)
     return user
 
 
 def enable_user(db: Session, user: User) -> User:
-    user.status = "active"
+    token = _prepare_activation(user)
     db.commit()
     db.refresh(user)
+    _send_activation_email(db, user, token)
     return user
 
 
 def soft_delete_user(db: Session, user: User) -> User:
     user.status = "deleted"
+    user.activation_token = None
+    user.token_expires_at = None
+    user.password_hash = None
     db.commit()
     db.refresh(user)
     return user

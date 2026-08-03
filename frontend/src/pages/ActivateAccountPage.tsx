@@ -60,10 +60,15 @@ export function ActivateAccountPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-wide text-[#E8590C]">Talents Associate</p>
-        <h1 className="mt-2 text-2xl font-semibold text-[#0B1F3A]">Activez votre compte</h1>
+    <div className="flex min-h-screen items-center justify-center bg-[#fff7f2] p-4">
+      <div className="w-full max-w-md rounded-lg border border-orange-100 bg-white p-8 shadow-sm shadow-slate-900/5">
+        <img
+          alt="Talents Associate"
+          className="mx-auto h-20 w-auto object-contain"
+          src="/talents-associate-logo-official.png"
+        />
+        <p className="mt-5 text-center text-sm font-semibold uppercase tracking-wide text-[#EE6C2F]">Talents Associate</p>
+        <h1 className="mt-2 text-center text-2xl font-bold text-[#24303F]">Activez votre compte</h1>
 
         {loading ? (
           <p className="mt-6 text-sm text-slate-500">Vérification du lien…</p>
@@ -71,7 +76,7 @@ export function ActivateAccountPage() {
           <div className="mt-6 space-y-4">
             <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{tokenError}</p>
             <button
-              className="text-sm font-semibold text-[#E8590C]"
+              className="text-sm font-semibold text-[#EE6C2F]"
               onClick={() => navigate("/login")}
               type="button"
             >
@@ -87,7 +92,7 @@ export function ActivateAccountPage() {
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Mot de passe</label>
               <input
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C]"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F]"
                 minLength={8}
                 onChange={(event) => setPassword(event.target.value)}
                 required
@@ -98,7 +103,7 @@ export function ActivateAccountPage() {
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Confirmer le mot de passe</label>
               <input
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C]"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F]"
                 minLength={8}
                 onChange={(event) => setConfirm(event.target.value)}
                 required
@@ -108,7 +113,7 @@ export function ActivateAccountPage() {
             </div>
             {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
             <button
-              className="w-full rounded-lg bg-[#E8590C] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              className="w-full rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
               disabled={isSubmitting}
               type="submit"
             >

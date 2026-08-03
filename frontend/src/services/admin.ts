@@ -32,8 +32,6 @@ export type UpdateUserPayload = Partial<{
   full_name: string;
   email: string;
   role: "admin" | "recruiter";
-  status: "active" | "invited" | "suspended" | "deleted";
-  password: string;
 }>;
 
 export type AdminSettings = {

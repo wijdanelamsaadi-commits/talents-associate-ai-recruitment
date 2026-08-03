@@ -5,7 +5,7 @@ import { Sidebar } from "./Sidebar";
 
 export function AppLayout() {
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-[#fff7f2] text-slate-900">
       <Sidebar />
       <div className="min-h-screen lg:pl-72">
         <Header />

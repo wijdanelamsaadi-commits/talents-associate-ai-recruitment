@@ -33,7 +33,7 @@ def get_current_user(
         ) from exc
 
     user = db.get(User, user_id)
-    if user is None or user.status != "active":
+    if user is None or user.status != "active" or not user.password_hash:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Le compte recruteur n'est pas actif.",

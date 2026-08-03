@@ -31,8 +31,8 @@ export function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-wide text-[#E8590C]">Espace administrateur</p>
-        <h2 className="mt-2 text-2xl font-semibold text-[#0B1F3A]">Pilotage système</h2>
+        <p className="text-sm font-semibold uppercase tracking-wide text-[#EE6C2F]">Espace administrateur</p>
+        <h2 className="mt-2 text-2xl font-semibold text-[#24303F]">Pilotage système</h2>
         <p className="mt-2 text-sm text-slate-600">Vue globale des volumes et de l'activité plateforme.</p>
       </section>
 
@@ -50,12 +50,12 @@ export function AdminDashboardPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <Link className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#E8590C]" to="/admin/users">
-          <h3 className="font-semibold text-[#0B1F3A]">Gestion utilisateurs</h3>
+        <Link className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#EE6C2F]" to="/admin/users">
+          <h3 className="font-semibold text-[#24303F]">Gestion utilisateurs</h3>
           <p className="mt-2 text-sm text-slate-600">Créer, désactiver, réactiver ou supprimer soft les comptes recruteurs.</p>
         </Link>
-        <Link className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#E8590C]" to="/admin/settings">
-          <h3 className="font-semibold text-[#0B1F3A]">Paramètres système</h3>
+        <Link className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#EE6C2F]" to="/admin/settings">
+          <h3 className="font-semibold text-[#24303F]">Paramètres système</h3>
           <p className="mt-2 text-sm text-slate-600">Gérer les paramètres applicatifs stockés côté backend.</p>
         </Link>
       </section>
