@@ -1,6 +1,6 @@
 const sourceStyles: Record<string, string> = {
   cv_upload: "bg-sky-50 text-sky-700 ring-sky-200",
-  linkedin_csv: "bg-blue-50 text-blue-700 ring-blue-200",
+  linkedin_csv: "bg-orange-50 text-orange-700 ring-orange-200",
   candidate_portal: "bg-emerald-50 text-emerald-700 ring-emerald-200",
 };
 

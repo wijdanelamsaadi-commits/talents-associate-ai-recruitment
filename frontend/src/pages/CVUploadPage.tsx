@@ -304,12 +304,12 @@ export function CVUploadPage() {
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-[#0B1F3A]">Importer un CV candidat</h2>
+            <h2 className="text-lg font-semibold text-[#24303F]">Importer un CV candidat</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Importez un fichier PDF/DOCX ou un fichier ZIP contenant plusieurs CV. La plateforme crée ou met à jour automatiquement les profils candidats, extrait le texte, analyse les CV et lance le matching IA.
             </p>
           </div>
-          <Link className="text-sm font-semibold text-[#1D6EEA] hover:text-[#165AC0]" to="/candidates">
+          <Link className="text-sm font-semibold text-[#EE6C2F] hover:text-[#D9551B]" to="/candidates">
             Gérer les candidats
           </Link>
         </div>
@@ -319,7 +319,7 @@ export function CVUploadPage() {
             <span className="text-sm font-medium text-slate-700">Fichier CV ou lot ZIP</span>
             <input
               accept=".pdf,.doc,.docx,.zip,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/zip"
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#1D6EEA] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
+              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#EE6C2F] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
               onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
               type="file"
             />
@@ -328,7 +328,7 @@ export function CVUploadPage() {
 
           <div className="flex items-end">
             <button
-              className="h-10 w-full rounded-lg bg-[#1D6EEA] px-4 text-sm font-semibold text-white hover:bg-[#165AC0] disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
+              className="h-10 w-full rounded-lg bg-[#EE6C2F] px-4 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
               disabled={isUploading || isLoadingPage}
               type="submit"
             >
@@ -340,7 +340,7 @@ export function CVUploadPage() {
         {(isUploading || processingStage === "completed") && processingStage !== "idle" ? (
           <div className="mt-5">
             <div className="h-2 rounded-full bg-slate-100">
-              <div className="h-2 rounded-full bg-[#1D6EEA]" style={{ width: `${uploadProgress}%` }} />
+              <div className="h-2 rounded-full bg-[#EE6C2F]" style={{ width: `${uploadProgress}%` }} />
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-4">
               {processingSteps.map((step, index) => {
@@ -349,7 +349,7 @@ export function CVUploadPage() {
                   <div
                     className={[
                       "rounded-lg border px-3 py-2 text-xs font-semibold",
-                      isDone ? "border-[#1D6EEA] bg-[#1D6EEA]/10 text-[#1D6EEA]" : "border-slate-200 bg-white text-slate-500",
+                      isDone ? "border-[#EE6C2F] bg-[#EE6C2F]/10 text-[#EE6C2F]" : "border-slate-200 bg-white text-slate-500",
                     ].join(" ")}
                     key={step.key}
                   >
@@ -395,7 +395,7 @@ export function CVUploadPage() {
       {cvFiles.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Fichiers CV importés</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">Fichiers CV importés</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -413,8 +413,8 @@ export function CVUploadPage() {
                 {filteredCVFiles.map((cvFile) => {
                   const candidate = candidates.find((item) => item.id === cvFile.candidate_id);
                   return (
-                    <tr key={cvFile.id} className={selectedCVId === cvFile.id ? "bg-blue-50/60" : "hover:bg-slate-50"}>
-                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">
+                    <tr key={cvFile.id} className={selectedCVId === cvFile.id ? "bg-orange-50/60" : "hover:bg-slate-50"}>
+                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#24303F]">
                         {cvFile.original_filename}
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
@@ -422,7 +422,7 @@ export function CVUploadPage() {
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">{formatBytes(cvFile.file_size_bytes)}</td>
                       <td className="whitespace-nowrap px-5 py-4">
-                        <span className="rounded-full bg-[#1D6EEA]/10 px-3 py-1 text-xs font-semibold capitalize text-[#1D6EEA]">
+                        <span className="rounded-full bg-[#EE6C2F]/10 px-3 py-1 text-xs font-semibold capitalize text-[#EE6C2F]">
                           {formatParsingStatus(cvFile.parsing_status)}
                         </span>
                       </td>
@@ -456,7 +456,7 @@ export function CVUploadPage() {
 
       {cvFiles.length > 0 ? (
         <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <summary className="cursor-pointer text-sm font-semibold text-[#0B1F3A]">Actions de diagnostic administrateur</summary>
+          <summary className="cursor-pointer text-sm font-semibold text-[#24303F]">Actions de diagnostic administrateur</summary>
           <p className="mt-2 text-sm text-slate-600">
             L'analyse manuelle est conservée uniquement pour le diagnostic. Les imports de CV déclenchent déjà l'analyse et le matching IA automatiquement.
           </p>
@@ -479,7 +479,7 @@ export function CVUploadPage() {
       {extractedText ? (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Texte brut extrait</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">Texte brut extrait</h3>
             <p className="mt-1 text-sm text-slate-600">Statut : {formatParsingStatus(extractedText.parsing_status)}</p>
           </div>
           <pre className="max-h-96 overflow-auto whitespace-pre-wrap px-5 py-4 text-sm leading-6 text-slate-700">
@@ -492,7 +492,7 @@ export function CVUploadPage() {
         <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-semibold text-[#0B1F3A]">JSON structuré analysé</h3>
+              <h3 className="text-base font-semibold text-[#24303F]">JSON structuré analysé</h3>
               <p className="mt-1 text-sm text-slate-600">{parserResultLabel} enregistré par le backend.</p>
             </div>
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
@@ -503,19 +503,19 @@ export function CVUploadPage() {
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             <article className="rounded-lg border border-slate-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Prénom</p>
-              <p className="mt-2 text-sm font-semibold text-[#0B1F3A]">{selectedParsedJson.first_name || "-"}</p>
+              <p className="mt-2 text-sm font-semibold text-[#24303F]">{selectedParsedJson.first_name || "-"}</p>
             </article>
             <article className="rounded-lg border border-slate-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Nom</p>
-              <p className="mt-2 text-sm font-semibold text-[#0B1F3A]">{selectedParsedJson.last_name || "-"}</p>
+              <p className="mt-2 text-sm font-semibold text-[#24303F]">{selectedParsedJson.last_name || "-"}</p>
             </article>
             <article className="rounded-lg border border-slate-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</p>
-              <p className="mt-2 text-sm font-semibold text-[#0B1F3A]">{selectedParsedJson.email || "-"}</p>
+              <p className="mt-2 text-sm font-semibold text-[#24303F]">{selectedParsedJson.email || "-"}</p>
             </article>
             <article className="rounded-lg border border-slate-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Téléphone</p>
-              <p className="mt-2 text-sm font-semibold text-[#0B1F3A]">{selectedParsedJson.phone || "-"}</p>
+              <p className="mt-2 text-sm font-semibold text-[#24303F]">{selectedParsedJson.phone || "-"}</p>
             </article>
             <article className="rounded-lg border border-slate-200 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Compétences</p>

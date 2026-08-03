@@ -59,45 +59,45 @@ export function PortalJobDetailsPage() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold uppercase text-[#E8590C]">Détail de l'offre</p>
-            <h1 className="mt-2 text-3xl font-semibold text-[#0B1F3A]">{job.title}</h1>
+            <p className="text-sm font-semibold uppercase text-[#EE6C2F]">Détail de l'offre</p>
+            <h1 className="mt-2 text-3xl font-semibold text-[#24303F]">{job.title}</h1>
             <p className="mt-2 text-sm text-slate-600">
               {splitLabel(job.company_name)} - {splitLabel(job.location)} - {splitLabel(job.contract_type)}
             </p>
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <div className="rounded-lg bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">Expérience</p>
-                <p className="mt-2 text-sm font-semibold text-[#0B1F3A]">{job.required_experience_years ?? 0}+ ans</p>
+                <p className="mt-2 text-sm font-semibold text-[#24303F]">{job.required_experience_years ?? 0}+ ans</p>
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">Diplôme</p>
-                <p className="mt-2 text-sm font-semibold text-[#0B1F3A]">{splitLabel(job.education_level)}</p>
+                <p className="mt-2 text-sm font-semibold text-[#24303F]">{splitLabel(job.education_level)}</p>
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">Statut</p>
-                <p className="mt-2 text-sm font-semibold capitalize text-[#0B1F3A]">{job.status}</p>
+                <p className="mt-2 text-sm font-semibold capitalize text-[#24303F]">{job.status}</p>
               </div>
             </div>
             <div className="mt-6 space-y-5 text-sm leading-6 text-slate-700">
               <p>{job.description}</p>
               <p>
-                <span className="font-semibold text-[#0B1F3A]">Compétences requises :</span>{" "}
+                <span className="font-semibold text-[#24303F]">Compétences requises :</span>{" "}
                 {job.required_skills.length > 0 ? job.required_skills.join(", ") : "Profil ouvert"}
               </p>
               <p>
-                <span className="font-semibold text-[#0B1F3A]">Compétences souhaitées :</span>{" "}
+                <span className="font-semibold text-[#24303F]">Compétences souhaitées :</span>{" "}
                 {job.preferred_skills.length > 0 ? job.preferred_skills.join(", ") : "Non renseigné"}
               </p>
             </div>
           </article>
           <aside className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-[#0B1F3A]">Prêt à postuler ?</h2>
+            <h2 className="text-xl font-semibold text-[#24303F]">Prêt à postuler ?</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Connectez-vous à votre espace candidat, vérifiez votre CV, puis postulez en un clic.
             </p>
             {isCandidateLoggedIn ? (
               <button
-                className="mt-5 inline-flex w-full justify-center rounded-lg bg-[#E8590C] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#c94b08] disabled:bg-slate-400"
+                className="mt-5 inline-flex w-full justify-center rounded-lg bg-[#EE6C2F] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:bg-slate-400"
                 disabled={isApplying}
                 onClick={async () => {
                   setIsApplying(true);
@@ -118,14 +118,14 @@ export function PortalJobDetailsPage() {
               </button>
             ) : (
               <Link
-                className="mt-5 inline-flex w-full justify-center rounded-lg bg-[#E8590C] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#c94b08]"
+                className="mt-5 inline-flex w-full justify-center rounded-lg bg-[#EE6C2F] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#D9551B]"
                 to="/portal/register"
               >
                 Créer mon espace candidat
               </Link>
             )}
             <Link
-              className="mt-3 inline-flex w-full justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-[#E8590C] hover:text-[#E8590C]"
+              className="mt-3 inline-flex w-full justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-[#EE6C2F] hover:text-[#EE6C2F]"
               to={`/portal/apply/${job.id}`}
             >
               Formulaire simple sans compte
@@ -133,7 +133,7 @@ export function PortalJobDetailsPage() {
             {applyMessage ? <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{applyMessage}</div> : null}
             {error ? <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
             <Link
-              className="mt-3 inline-flex w-full justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-[#E8590C] hover:text-[#E8590C]"
+              className="mt-3 inline-flex w-full justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-[#EE6C2F] hover:text-[#EE6C2F]"
               to="/portal/jobs"
             >
               Retour aux offres

@@ -19,8 +19,16 @@ class Settings(BaseSettings):
     DATABASE_URL: str | None = None
 
     CORS_ORIGINS: list[str] = Field(
-        default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
+        default_factory=lambda: [
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://localhost:5175",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+            "http://127.0.0.1:5175",
+        ]
     )
+    FRONTEND_URL: str = "http://localhost:5173"
     JWT_SECRET_KEY: str = "change-this-secret-key"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
@@ -43,6 +51,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = None
     SMTP_FROM_EMAIL: str | None = None
     SMTP_FROM_NAME: str = "Talents Associate"
+    SMTP_TIMEOUT_SECONDS: int = 30
     EMAIL_ENABLED: bool = False
 
     model_config = SettingsConfigDict(

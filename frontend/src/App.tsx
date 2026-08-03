@@ -31,6 +31,7 @@ import { PortalProfilePage } from "./pages/PortalProfilePage";
 import { PortalRegisterPage } from "./pages/PortalRegisterPage";
 import { PortalSpontaneousApplicationPage } from "./pages/PortalSpontaneousApplicationPage";
 import { PortalStatusPage } from "./pages/PortalStatusPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
 export default function App() {
   return (
@@ -55,6 +56,7 @@ export default function App() {
       </Route>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/activate/:token" element={<ActivateAccountPage />} />
+      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />

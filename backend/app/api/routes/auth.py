@@ -5,7 +5,7 @@ from app.api.dependencies import require_recruiter_or_admin
 from app.core.database import get_db
 from app.models import User
 from app.schemas import RecruiterLogin, RecruiterRegister, TokenResponse, UserRead
-from app.schemas.auth import ActivationInfo, ActivationSetPassword
+from app.schemas.auth import ActivationInfo, ActivationSetPassword, ForgotPasswordRequest, MessageResponse
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -51,6 +51,38 @@ def set_password_with_token(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Lien d'activation invalide ou expiré.",
+        )
+    return auth_service.create_token_response(user)
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)) -> MessageResponse:
+    auth_service.request_password_reset(db, payload.email)
+    return MessageResponse(
+        message="Si un compte actif correspond à cet email, un lien de réinitialisation vient d'être envoyé.",
+    )
+
+
+@router.get("/reset-password/{token}", response_model=ActivationInfo)
+def verify_password_reset_token(token: str, db: Session = Depends(get_db)) -> ActivationInfo:
+    user = auth_service.get_user_by_password_reset_token(db, token)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lien de réinitialisation invalide ou expiré.",
+        )
+    return ActivationInfo(email=user.email, full_name=user.full_name)
+
+
+@router.post("/reset-password/{token}", response_model=TokenResponse)
+def reset_password_with_token(
+    token: str, payload: ActivationSetPassword, db: Session = Depends(get_db)
+) -> TokenResponse:
+    user = auth_service.reset_password_with_token(db, token, payload.password)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lien de réinitialisation invalide ou expiré.",
         )
     return auth_service.create_token_response(user)
 

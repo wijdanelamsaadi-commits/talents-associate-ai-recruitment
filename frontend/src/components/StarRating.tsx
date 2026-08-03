@@ -14,7 +14,7 @@ export function StarRating({ value, onChange, size = "sm", readOnly = false }: S
         const isActive = star <= value;
         if (readOnly || !onChange) {
           return (
-            <span key={star} className={isActive ? "text-[#E8590C]" : "text-slate-300"} aria-hidden="true">
+            <span key={star} className={isActive ? "text-[#EE6C2F]" : "text-slate-300"} aria-hidden="true">
               ★
             </span>
           );
@@ -23,7 +23,7 @@ export function StarRating({ value, onChange, size = "sm", readOnly = false }: S
           <button
             key={star}
             type="button"
-            className={`${starSize} transition ${isActive ? "text-[#E8590C]" : "text-slate-300 hover:text-[#F97316]"}`}
+            className={`${starSize} transition ${isActive ? "text-[#EE6C2F]" : "text-slate-300 hover:text-[#F97316]"}`}
             onClick={() => onChange(star)}
             aria-label={`${star} étoile${star > 1 ? "s" : ""}`}
           >

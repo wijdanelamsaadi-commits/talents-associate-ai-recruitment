@@ -26,3 +26,7 @@ backend/uploads/cvs/*
 node_modules/
 dist/
 build/
+
+backend/talents.db
+backend/*.log
+frontend/*.log

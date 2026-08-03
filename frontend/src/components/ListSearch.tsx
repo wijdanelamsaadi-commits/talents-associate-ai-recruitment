@@ -11,7 +11,7 @@ export function ListSearch({ value, onChange, placeholder, label = "Recherche" }
       <label className="block">
         <span className="text-sm font-medium text-slate-700">{label}</span>
         <input
-          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           type="search"

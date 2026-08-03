@@ -38,19 +38,19 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-16 z-20 border-b border-slate-200 bg-white/95 backdrop-blur lg:top-0">
+    <header className="sticky top-16 z-20 border-b border-orange-100 bg-white/95 backdrop-blur lg:top-0">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#E8590C]">{spaceLabel}</p>
-          <h1 className="truncate text-xl font-semibold text-[#0B1F3A]">{title}</h1>
+          <p className="text-xs font-bold uppercase tracking-wide text-[#EE6C2F]">{spaceLabel}</p>
+          <h1 className="truncate text-xl font-bold text-[#24303F]">{title}</h1>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600 sm:inline">
+          <span className="hidden rounded-full bg-orange-50 px-3 py-1 text-sm font-semibold text-[#EE6C2F] sm:inline">
             {user?.full_name ?? (isAdmin ? "Administrateur" : "Recruteur")}
           </span>
           <button
             onClick={handleLogout}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#E8590C] hover:text-[#E8590C]"
+            className="rounded-lg border border-orange-200 px-4 py-2 text-sm font-bold text-[#EE6C2F] hover:bg-orange-50"
             type="button"
           >
             Déconnexion

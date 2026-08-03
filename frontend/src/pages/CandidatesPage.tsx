@@ -287,14 +287,14 @@ export function CandidatesPage() {
   return (
     <div className="space-y-6">
       {pipelineJobId || pipelineStage ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#1D6EEA]/20 bg-[#1D6EEA]/5 px-4 py-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#EE6C2F]/20 bg-[#EE6C2F]/5 px-4 py-3 text-sm">
           <p className="text-slate-700">
             Filtre pipeline actif
             {pipelineStage ? ` — ${pipelineStageLabels[pipelineStage] ?? pipelineStage}` : ""}
           </p>
           <button
             type="button"
-            className="font-semibold text-[#1D6EEA] hover:text-[#165AC0]"
+            className="font-semibold text-[#EE6C2F] hover:text-[#D9551B]"
             onClick={() => setSearchParams({})}
           >
             Effacer le filtre
@@ -310,16 +310,16 @@ export function CandidatesPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[#0B1F3A]">Vivier des candidats</h2>
+          <h2 className="text-lg font-semibold text-[#24303F]">Vivier des candidats</h2>
           <p className="mt-1 text-sm text-slate-600">
             Les candidats sont ajoutés via l&apos;import de CV, l&apos;import LinkedIn ou le profilage manuel.
           </p>
         </div>
         <div className="flex gap-3 text-sm font-semibold">
-          <Link className="text-[#1D6EEA] hover:text-[#165AC0]" to="/cv-upload">
+          <Link className="text-[#EE6C2F] hover:text-[#D9551B]" to="/cv-upload">
             Import de CV
           </Link>
-          <Link className="text-[#1D6EEA] hover:text-[#165AC0]" to="/imports">
+          <Link className="text-[#EE6C2F] hover:text-[#D9551B]" to="/imports">
             Import LinkedIn
           </Link>
         </div>
@@ -333,8 +333,8 @@ export function CandidatesPage() {
               <button
                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                   candidateFilter === option.value
-                    ? "border-[#FF3D00] bg-[#FF3D00] text-white"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-[#FF3D00]/60 hover:text-[#FF3D00]"
+                    ? "border-[#EE6C2F] bg-[#EE6C2F] text-white"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-[#EE6C2F]/60 hover:text-[#EE6C2F]"
                 }`}
                 key={option.value}
                 onClick={() => {
@@ -351,7 +351,7 @@ export function CandidatesPage() {
         <label className="block w-full lg:w-64">
           <span className="text-sm font-medium text-slate-700">Source</span>
           <select
-            className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm capitalize outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+            className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm capitalize outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
             onChange={(event) => {
               setSourceFilter(event.target.value);
               setPage(1);
@@ -395,7 +395,7 @@ export function CandidatesPage() {
       {!isLoading && !error && candidates.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Liste des candidats</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">Liste des candidats</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -419,7 +419,7 @@ export function CandidatesPage() {
                     className="hover:bg-slate-50 cursor-pointer"
                     onClick={() => navigate(`/candidates/${candidate.id}`)}
                   >
-                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#1D6EEA] hover:text-[#165AC0]">
+                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#EE6C2F] hover:text-[#D9551B]">
                       {candidate.last_name}
                     </td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{candidate.first_name}</td>
@@ -493,10 +493,10 @@ export function CandidatesPage() {
       ) : null}
 
       {isModalOpen && editingCandidate ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#0B1F3A]/40 px-4 py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#24303F]/40 px-4 py-6">
           <section className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
             <div className="border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-[#0B1F3A]">Modifier le candidat</h3>
+              <h3 className="text-lg font-semibold text-[#24303F]">Modifier le candidat</h3>
               <p className="mt-1 text-sm text-slate-600">L&apos;email est l&apos;identifiant unique du candidat.</p>
             </div>
             <form className="space-y-5 p-6" onSubmit={handleSubmit}>
@@ -504,7 +504,7 @@ export function CandidatesPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Prénom</span>
                   <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, first_name: event.target.value }))}
                     required
                     value={formState.first_name}
@@ -513,7 +513,7 @@ export function CandidatesPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Nom</span>
                   <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, last_name: event.target.value }))}
                     required
                     value={formState.last_name}
@@ -522,7 +522,7 @@ export function CandidatesPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Email (identifiant unique)</span>
                   <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, email: event.target.value }))}
                     required
                     type="email"
@@ -532,7 +532,7 @@ export function CandidatesPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Téléphone</span>
                   <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, phone: event.target.value }))}
                     value={formState.phone}
                   />
@@ -540,7 +540,7 @@ export function CandidatesPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Ville</span>
                   <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, city: event.target.value }))}
                     value={formState.city}
                   />
@@ -548,7 +548,7 @@ export function CandidatesPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Poste actuel</span>
                   <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, current_title: event.target.value }))}
                     value={formState.current_title}
                   />
@@ -556,7 +556,7 @@ export function CandidatesPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Secteur</span>
                   <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, sector: event.target.value }))}
                     value={formState.sector}
                   >
@@ -571,7 +571,7 @@ export function CandidatesPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Source</span>
                   <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm capitalize outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm capitalize outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, source: event.target.value }))}
                     value={formState.source}
                   >
@@ -585,7 +585,7 @@ export function CandidatesPage() {
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Statut</span>
                   <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm capitalize outline-none focus:border-[#1D6EEA] focus:ring-2 focus:ring-[#1D6EEA]/20"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm capitalize outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                     onChange={(event) => setFormState((current) => ({ ...current, status: event.target.value }))}
                     value={formState.status}
                   >
@@ -609,7 +609,7 @@ export function CandidatesPage() {
                   Annuler
                 </button>
                 <button
-                  className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#165AC0] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={isSubmitting}
                   type="submit"
                 >

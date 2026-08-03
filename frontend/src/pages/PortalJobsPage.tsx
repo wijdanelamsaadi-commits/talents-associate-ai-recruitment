@@ -132,7 +132,7 @@ function matchesExperience(years: number | null, selected: string) {
 function companyMark(companyName: string | null) {
   const name = companyName ?? "Talents Associate";
   if (name.toLowerCase().includes("orange")) {
-    return { label: "orange", className: "bg-[#ff3d00] text-white text-sm" };
+    return { label: "orange", className: "bg-[#EE6C2F] text-white text-sm" };
   }
   if (name.toLowerCase().includes("axa")) {
     return { label: "AXA", className: "bg-[#0711a8] text-white text-2xl" };
@@ -140,7 +140,7 @@ function companyMark(companyName: string | null) {
   if (name.toLowerCase().includes("telecom")) {
     return { label: "Maroc\nTelecom", className: "bg-white text-[#178bd3] text-[10px] border border-slate-200" };
   }
-  return { label: "TA", className: "bg-[#061A33] text-white text-lg" };
+  return { label: "TA", className: "bg-[#24303F] text-white text-lg" };
 }
 
 async function getPublicJobsWithTimeout() {
@@ -223,26 +223,26 @@ export function PortalJobsPage() {
       <section className="relative overflow-hidden bg-gradient-to-b from-white via-white to-[#fff6f1]">
         <div className="mx-auto grid max-w-[1360px] items-center gap-10 px-6 pb-12 pt-12 lg:grid-cols-[0.9fr_1.1fr] lg:px-12 lg:pb-20 lg:pt-16">
           <div className="relative z-10">
-            <h1 className="text-4xl font-extrabold leading-tight text-[#061A33] sm:text-5xl lg:text-[56px]">Offres disponibles</h1>
-            <div className="mt-5 h-0.5 w-16 bg-[#ff3d00]" />
+            <h1 className="text-4xl font-extrabold leading-tight text-[#24303F] sm:text-5xl lg:text-[56px]">Offres disponibles</h1>
+            <div className="mt-5 h-0.5 w-16 bg-[#EE6C2F]" />
             <p className="mt-7 max-w-lg text-lg leading-8 text-[#253858]">
               Découvrez les opportunités ouvertes et postulez avec votre profil candidat.
             </p>
-            <div className="mt-9 inline-flex items-center gap-4 rounded-full bg-white px-1 py-1 text-sm font-extrabold text-[#061A33]">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#ff3d00]/10 text-[#ff3d00]">▣</span>
+            <div className="mt-9 inline-flex items-center gap-4 rounded-full bg-white px-1 py-1 text-sm font-extrabold text-[#24303F]">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EE6C2F]/10 text-[#EE6C2F]">▣</span>
               <span>128 offres disponibles</span>
             </div>
           </div>
 
           <div className="relative min-h-[300px] lg:min-h-[380px]">
             <div className="absolute -left-16 top-0 hidden h-[440px] w-[440px] rounded-full bg-slate-100/60 lg:block" />
-            <div className="absolute right-0 top-14 h-64 w-36 rounded-l-[4rem] bg-[#ff3d00]/10" />
+            <div className="absolute right-0 top-14 h-64 w-36 rounded-l-[4rem] bg-[#EE6C2F]/10" />
             <div className="absolute left-14 top-24 z-10 hidden grid-cols-6 gap-3 lg:grid">
               {Array.from({ length: 30 }).map((_, index) => (
-                <span className="h-1.5 w-1.5 rounded-full bg-[#ff3d00]" key={index} />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#EE6C2F]" key={index} />
               ))}
             </div>
-            <div className="absolute -right-20 bottom-0 hidden h-72 w-72 rounded-full border-l-4 border-[#ff3d00]/70 lg:block" />
+            <div className="absolute -right-20 bottom-0 hidden h-72 w-72 rounded-full border-l-4 border-[#EE6C2F]/70 lg:block" />
             <img
               alt="Candidate professionnelle travaillant sur ordinateur"
               className="relative z-0 ml-auto h-[320px] w-full rounded-bl-[5rem] object-cover object-center shadow-2xl shadow-slate-900/10 lg:h-[390px] lg:w-[760px]"
@@ -255,11 +255,11 @@ export function PortalJobsPage() {
       <section className="relative z-20 mx-auto -mt-10 max-w-[1260px] px-6">
         <form className="grid gap-5 rounded-2xl border border-slate-100 bg-white p-5 shadow-2xl shadow-slate-900/10 lg:grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr_auto]" onSubmit={handleSearch}>
           <label className="block">
-            <span className="flex items-center gap-2 text-sm font-bold text-[#061A33]">
+            <span className="flex items-center gap-2 text-sm font-bold text-[#24303F]">
               <span className="text-lg">⌕</span> Recherche par mot-clé
             </span>
             <input
-              className="mt-3 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#ff3d00] focus:ring-2 focus:ring-[#ff3d00]/10"
+              className="mt-3 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/10"
               onChange={(event) => setKeyword(event.target.value)}
               placeholder="Ex: Développeur, Marketing..."
               value={keyword}
@@ -267,10 +267,10 @@ export function PortalJobsPage() {
           </label>
 
           <label className="block">
-            <span className="flex items-center gap-2 text-sm font-bold text-[#061A33]">
+            <span className="flex items-center gap-2 text-sm font-bold text-[#24303F]">
               <span className="text-lg">⌖</span> Localisation
             </span>
-            <select className="mt-3 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm text-slate-600 outline-none focus:border-[#ff3d00] focus:ring-2 focus:ring-[#ff3d00]/10" onChange={(event) => setLocation(event.target.value)} value={location}>
+            <select className="mt-3 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm text-slate-600 outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/10" onChange={(event) => setLocation(event.target.value)} value={location}>
               <option value="all">Toutes les villes</option>
               {locations.map((item) => (
                 <option key={item} value={item}>
@@ -281,10 +281,10 @@ export function PortalJobsPage() {
           </label>
 
           <label className="block">
-            <span className="flex items-center gap-2 text-sm font-bold text-[#061A33]">
+            <span className="flex items-center gap-2 text-sm font-bold text-[#24303F]">
               <span className="text-lg">▤</span> Type de contrat
             </span>
-            <select className="mt-3 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm text-slate-600 outline-none focus:border-[#ff3d00] focus:ring-2 focus:ring-[#ff3d00]/10" onChange={(event) => setContractType(event.target.value)} value={contractType}>
+            <select className="mt-3 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm text-slate-600 outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/10" onChange={(event) => setContractType(event.target.value)} value={contractType}>
               <option value="all">Tous les contrats</option>
               {contractTypes.map((item) => (
                 <option key={item} value={item}>
@@ -295,10 +295,10 @@ export function PortalJobsPage() {
           </label>
 
           <label className="block">
-            <span className="flex items-center gap-2 text-sm font-bold text-[#061A33]">
+            <span className="flex items-center gap-2 text-sm font-bold text-[#24303F]">
               <span className="text-lg">▥</span> Niveau d'expérience
             </span>
-            <select className="mt-3 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm text-slate-600 outline-none focus:border-[#ff3d00] focus:ring-2 focus:ring-[#ff3d00]/10" onChange={(event) => setExperience(event.target.value)} value={experience}>
+            <select className="mt-3 h-12 w-full rounded-lg border border-slate-200 px-4 text-sm text-slate-600 outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/10" onChange={(event) => setExperience(event.target.value)} value={experience}>
               {experienceOptions.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
@@ -307,7 +307,7 @@ export function PortalJobsPage() {
             </select>
           </label>
 
-          <button className="mt-auto h-12 rounded-lg bg-[#ff3d00] px-7 text-sm font-extrabold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#e63600]" type="submit">
+          <button className="mt-auto h-12 rounded-lg bg-[#EE6C2F] px-7 text-sm font-extrabold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#D9551B]" type="submit">
             Rechercher
           </button>
         </form>
@@ -331,7 +331,7 @@ export function PortalJobsPage() {
                           {mark.label}
                         </div>
                         <div>
-                          <h2 className="text-xl font-extrabold text-[#061A33]">{job.title}</h2>
+                          <h2 className="text-xl font-extrabold text-[#24303F]">{job.title}</h2>
                           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-slate-600">
                             <span>◉ {job.contract_type || "Ouvert"}</span>
                             <span>⌖ {job.location || "Flexible"}</span>
@@ -339,7 +339,7 @@ export function PortalJobsPage() {
                           </div>
                         </div>
                       </div>
-                      <button className="rounded-lg border border-slate-200 px-2 py-1 text-xl text-[#061A33] transition hover:border-[#ff3d00] hover:text-[#ff3d00]" type="button" aria-label="Sauvegarder l'offre">
+                      <button className="rounded-lg border border-slate-200 px-2 py-1 text-xl text-[#24303F] transition hover:border-[#EE6C2F] hover:text-[#EE6C2F]" type="button" aria-label="Sauvegarder l'offre">
                         ♡
                       </button>
                     </div>
@@ -348,7 +348,7 @@ export function PortalJobsPage() {
 
                     <div className="mt-5 flex flex-wrap gap-3">
                       {(job.required_skills.length > 0 ? job.required_skills : ["Profil ouvert"]).slice(0, 4).map((skill) => (
-                        <span className="rounded-xl bg-[#eef2ff] px-4 py-2 text-xs font-bold text-[#061A33]" key={skill}>
+                        <span className="rounded-xl bg-[#eef2ff] px-4 py-2 text-xs font-bold text-[#24303F]" key={skill}>
                           {skill}
                         </span>
                       ))}
@@ -356,13 +356,13 @@ export function PortalJobsPage() {
 
                     <div className="mt-6 grid gap-4 sm:grid-cols-2">
                       <Link
-                        className="inline-flex h-12 items-center justify-center rounded-lg border border-[#ff3d00] text-sm font-extrabold text-[#061A33] transition hover:bg-[#ff3d00]/5 hover:text-[#ff3d00]"
+                        className="inline-flex h-12 items-center justify-center rounded-lg border border-[#EE6C2F] text-sm font-extrabold text-[#24303F] transition hover:bg-[#EE6C2F]/5 hover:text-[#EE6C2F]"
                         to={`/portal/jobs/${job.id}`}
                       >
                         Voir détails
                       </Link>
                       <Link
-                        className="inline-flex h-12 items-center justify-center rounded-lg bg-[#ff3d00] text-sm font-extrabold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#e63600]"
+                        className="inline-flex h-12 items-center justify-center rounded-lg bg-[#EE6C2F] text-sm font-extrabold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#D9551B]"
                         to={`/portal/apply/${job.id}`}
                       >
                         Postuler ↗
@@ -375,10 +375,10 @@ export function PortalJobsPage() {
           </>
         )}
 
-        <div className="mt-10 flex items-center justify-center gap-4 text-sm font-bold text-[#061A33]">
+        <div className="mt-10 flex items-center justify-center gap-4 text-sm font-bold text-[#24303F]">
           <button className="h-10 w-10 rounded-lg border border-slate-200 bg-white shadow-sm" type="button">‹</button>
           {[1, 2, 3, 4].map((page) => (
-            <button className={page === 1 ? "h-10 w-10 rounded-lg bg-[#ff3d00] text-white shadow-lg shadow-orange-500/20" : "h-10 w-10 rounded-lg bg-white"} key={page} type="button">
+            <button className={page === 1 ? "h-10 w-10 rounded-lg bg-[#EE6C2F] text-white shadow-lg shadow-orange-500/20" : "h-10 w-10 rounded-lg bg-white"} key={page} type="button">
               {page}
             </button>
           ))}
@@ -388,15 +388,15 @@ export function PortalJobsPage() {
         </div>
 
         <div className="mt-9 grid items-center gap-6 rounded-2xl bg-white px-8 py-8 shadow-2xl shadow-slate-900/8 md:grid-cols-[auto_1fr_auto]">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#ff3d00]/10 text-4xl text-[#ff3d00]">□</div>
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#EE6C2F]/10 text-4xl text-[#EE6C2F]">□</div>
           <div>
-            <h2 className="text-lg font-extrabold text-[#061A33]">Vous ne trouvez pas l'offre qui vous correspond ?</h2>
+            <h2 className="text-lg font-extrabold text-[#24303F]">Vous ne trouvez pas l'offre qui vous correspond ?</h2>
             <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
               Déposez votre CV spontanément et nous vous recontacterons dès qu'une opportunité adaptée se présente.
             </p>
           </div>
           <Link
-            className="inline-flex h-12 items-center justify-center rounded-lg border border-[#ff3d00] px-8 text-sm font-extrabold text-[#ff3d00] transition hover:bg-[#ff3d00]/5"
+            className="inline-flex h-12 items-center justify-center rounded-lg border border-[#EE6C2F] px-8 text-sm font-extrabold text-[#EE6C2F] transition hover:bg-[#EE6C2F]/5"
             to="/portal/profile"
           >
             Déposer mon CV

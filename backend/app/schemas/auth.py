@@ -39,3 +39,11 @@ class ActivationInfo(BaseModel):
 
 class ActivationSetPassword(BaseModel):
     password: str = Field(min_length=8, max_length=128)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class MessageResponse(BaseModel):
+    message: str

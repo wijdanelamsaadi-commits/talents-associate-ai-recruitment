@@ -54,7 +54,7 @@ class User(TimestampMixin, Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     role: Mapped[str] = mapped_column(String(30), default="recruiter", nullable=False)
-    status: Mapped[str] = mapped_column(String(30), default="active", index=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(30), default="invited", index=True, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     activation_token: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

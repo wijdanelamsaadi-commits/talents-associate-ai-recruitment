@@ -1,12 +1,15 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from secrets import token_urlsafe
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models import User
 from app.schemas import RecruiterRegister, TokenResponse
+from app.services.email_service import send_password_reset_email
 
 
 def get_user_by_email(db: Session, email: str) -> User | None:
@@ -15,21 +18,7 @@ def get_user_by_email(db: Session, email: str) -> User | None:
 
 
 def register_recruiter(db: Session, recruiter_in: RecruiterRegister) -> User:
-    user = User(
-        full_name=recruiter_in.full_name,
-        email=recruiter_in.email.lower(),
-        password_hash=hash_password(recruiter_in.password),
-        role="recruiter",
-        status="active",
-    )
-    db.add(user)
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise
-    db.refresh(user)
-    return user
+    raise ValueError("La création d'un compte recruteur est réservée aux administrateurs.")
 
 
 def authenticate_recruiter(db: Session, email: str, password: str) -> User | None:
@@ -53,8 +42,58 @@ def get_user_by_activation_token(db: Session, token: str) -> User | None:
     user = db.scalar(select(User).where(User.activation_token == token))
     if user is None or user.token_expires_at is None:
         return None
-    if user.token_expires_at < datetime.now(timezone.utc):
+    expires_at = user.token_expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if user.status != "invited" or expires_at < datetime.now(timezone.utc):
         return None
+    return user
+
+
+def request_password_reset(db: Session, email: str) -> None:
+    user = get_user_by_email(db, email)
+    if user is None or user.role not in {"admin", "recruiter"} or user.status != "active" or not user.password_hash:
+        return
+
+    token = token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+    user.activation_token = token
+    user.token_expires_at = expires_at
+    db.flush()
+    reset_link = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password/{token}"
+    send_password_reset_email(
+        db,
+        to_email=user.email,
+        full_name=user.full_name,
+        reset_link=reset_link,
+        expires_in_hours=24,
+    )
+    db.commit()
+
+
+def get_user_by_password_reset_token(db: Session, token: str) -> User | None:
+    if not token:
+        return None
+    user = db.scalar(select(User).where(User.activation_token == token))
+    if user is None or user.token_expires_at is None:
+        return None
+    expires_at = user.token_expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if user.status != "active" or not user.password_hash or expires_at < datetime.now(timezone.utc):
+        return None
+    return user
+
+
+def reset_password_with_token(db: Session, token: str, password: str) -> User | None:
+    user = get_user_by_password_reset_token(db, token)
+    if user is None:
+        return None
+    user.password_hash = hash_password(password)
+    user.activation_token = None
+    user.token_expires_at = None
+    db.commit()
+    db.refresh(user)
     return user
 
 
@@ -64,7 +103,7 @@ def activate_user(db: Session, token: str, password: str) -> User | None:
         return None
     user.password_hash = hash_password(password)
     user.status = "active"
-    user.activation_token = None  # l'token ma y3awedch yۆستعمل
+    user.activation_token = None
     user.token_expires_at = None
     db.commit()
     db.refresh(user)

@@ -102,7 +102,7 @@ export function ImportsPage() {
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-[#0B1F3A]">Import CSV LinkedIn</h2>
+            <h2 className="text-lg font-semibold text-[#24303F]">Import CSV LinkedIn</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Importez un export CSV LinkedIn. Les candidats sont dédupliqués par email ou URL LinkedIn et enregistrés avec la source Import LinkedIn.
             </p>
@@ -114,13 +114,13 @@ export function ImportsPage() {
             <span className="text-sm font-medium text-slate-700">Fichier CSV</span>
             <input
               accept=".csv,text/csv"
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#1D6EEA]/10 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-[#1D6EEA]"
+              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#EE6C2F]/10 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-[#EE6C2F]"
               onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
               type="file"
             />
           </label>
           <button
-            className="rounded-lg bg-[#1D6EEA] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#165AC0] disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="rounded-lg bg-[#EE6C2F] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:bg-slate-400"
             disabled={isUploading}
             type="submit"
           >
@@ -133,7 +133,7 @@ export function ImportsPage() {
 
         {latestImport?.report?.rows ? (
           <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-[#0B1F3A]">Dernier rapport d'import</p>
+            <p className="text-sm font-semibold text-[#24303F]">Dernier rapport d'import</p>
             <p className="mt-1 text-sm text-slate-600">
               Lignes traitées : {latestImport.report.rows.length}. Consultez l'historique ci-dessous pour le rapport enregistré.
             </p>
@@ -152,7 +152,7 @@ export function ImportsPage() {
         <ListSearch value={searchQuery} onChange={setSearchQuery} placeholder="Rechercher par fichier, compteur ou date..." />
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-[#0B1F3A]">Historique des imports</h3>
+            <h3 className="text-base font-semibold text-[#24303F]">Historique des imports</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -168,7 +168,7 @@ export function ImportsPage() {
               <tbody className="divide-y divide-slate-100">
                 {filteredImports.map((importItem) => (
                   <tr className="hover:bg-slate-50" key={importItem.id}>
-                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#0B1F3A]">{importItem.filename}</td>
+                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#24303F]">{importItem.filename}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{importItem.imported_count}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{importItem.updated_count}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{importItem.skipped_count}</td>

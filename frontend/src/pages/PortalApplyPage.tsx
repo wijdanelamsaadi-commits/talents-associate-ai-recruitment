@@ -88,14 +88,14 @@ export function PortalApplyPage() {
   return (
     <main className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.85fr_1.15fr]">
       <aside className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold uppercase text-[#E8590C]">Formulaire candidat</p>
-        <h1 className="mt-2 text-2xl font-semibold text-[#0B1F3A]">{job?.title ?? "Postuler à cette offre"}</h1>
+        <p className="text-sm font-semibold uppercase text-[#EE6C2F]">Formulaire candidat</p>
+        <h1 className="mt-2 text-2xl font-semibold text-[#24303F]">{job?.title ?? "Postuler à cette offre"}</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           Déposez votre CV : la plateforme prépare votre profil et crée le suivi de candidature.
         </p>
         {isLoading ? <p className="mt-4 text-sm text-slate-500">Chargement de l'offre...</p> : null}
         {job ? (
-          <Link className="mt-5 inline-flex text-sm font-semibold text-[#E8590C]" to={`/portal/jobs/${job.id}`}>
+          <Link className="mt-5 inline-flex text-sm font-semibold text-[#EE6C2F]" to={`/portal/jobs/${job.id}`}>
             Revoir le détail de l'offre
           </Link>
         ) : null}
@@ -115,7 +115,7 @@ export function PortalApplyPage() {
                 }[field]}
               </span>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#E8590C] focus:ring-2 focus:ring-[#E8590C]/20"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                 onChange={(event) => setFormState((current) => ({ ...current, [field]: event.target.value }))}
                 required={field === "first_name" || field === "last_name" || field === "email"}
                 type={field === "email" ? "email" : "text"}
@@ -128,7 +128,7 @@ export function PortalApplyPage() {
             <span className="text-sm font-medium text-slate-700">Fichier CV</span>
             <input
               accept=".pdf,.docx"
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#E8590C]/10 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-[#E8590C]"
+              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#EE6C2F]/10 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-[#EE6C2F]"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
               required
               type="file"
@@ -147,7 +147,7 @@ export function PortalApplyPage() {
                   className={[
                     "rounded-lg border px-3 py-2 text-xs font-semibold",
                     processingStep === key || processingStep === "completed"
-                      ? "border-[#E8590C] bg-[#E8590C]/10 text-[#E8590C]"
+                      ? "border-[#EE6C2F] bg-[#EE6C2F]/10 text-[#EE6C2F]"
                       : "border-slate-200 text-slate-500",
                   ].join(" ")}
                   key={key}
@@ -166,7 +166,7 @@ export function PortalApplyPage() {
           ) : null}
 
           <button
-            className="w-full rounded-lg bg-[#E8590C] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#c94b08] disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="w-full rounded-lg bg-[#EE6C2F] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:bg-slate-400"
             disabled={isSubmitting || isLoading || !job}
             type="submit"
           >

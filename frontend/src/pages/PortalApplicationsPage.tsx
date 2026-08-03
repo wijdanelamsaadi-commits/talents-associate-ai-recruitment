@@ -72,7 +72,7 @@ function formatDate(value: string) {
 function companyMark(companyName: string | null) {
   const name = companyName ?? "Talents Associate";
   if (name.toLowerCase().includes("orange")) {
-    return { label: "orange", className: "bg-[#ff3d00] text-white text-lg" };
+    return { label: "orange", className: "bg-[#EE6C2F] text-white text-lg" };
   }
   if (name.toLowerCase().includes("axa")) {
     return { label: "AXA", className: "bg-[#0711a8] text-white text-3xl" };
@@ -81,9 +81,9 @@ function companyMark(companyName: string | null) {
     return { label: "Maroc\nTelecom", className: "bg-white text-[#178bd3] text-xs border border-slate-200" };
   }
   if (name.toLowerCase().includes("bmce")) {
-    return { label: "BMCE\nBANK", className: "bg-white text-[#061A33] text-[10px] border border-slate-200" };
+    return { label: "BMCE\nBANK", className: "bg-white text-[#24303F] text-[10px] border border-slate-200" };
   }
-  return { label: "TA", className: "bg-[#061A33] text-white text-xl" };
+  return { label: "TA", className: "bg-[#24303F] text-white text-xl" };
 }
 
 function getContract(application: DisplayApplication) {
@@ -144,22 +144,22 @@ export function PortalApplicationsPage() {
       <section className="relative overflow-hidden bg-gradient-to-b from-white via-white to-[#fff8f4]">
         <div className="mx-auto grid max-w-[1260px] items-center gap-10 px-6 py-16 lg:grid-cols-[1fr_auto] lg:py-20">
           <div>
-            <h1 className="text-4xl font-extrabold leading-tight text-[#061A33] sm:text-5xl">Mes candidatures</h1>
-            <div className="mt-5 h-0.5 w-16 bg-[#ff3d00]" />
+            <h1 className="text-4xl font-extrabold leading-tight text-[#24303F] sm:text-5xl">Mes candidatures</h1>
+            <div className="mt-5 h-0.5 w-16 bg-[#EE6C2F]" />
             <p className="mt-7 text-xl text-[#53627c]">Suivez l'état de vos candidatures.</p>
           </div>
 
           <div className="relative hidden h-40 w-80 items-center justify-center lg:flex">
-            <div className="absolute right-28 h-36 w-36 rounded-full bg-[#ff3d00]/10" />
+            <div className="absolute right-28 h-36 w-36 rounded-full bg-[#EE6C2F]/10" />
             <div className="absolute right-0 grid grid-cols-6 gap-3">
               {Array.from({ length: 30 }).map((_, index) => (
-                <span className="h-1.5 w-1.5 rounded-full bg-[#ff3d00]/20" key={index} />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#EE6C2F]/20" key={index} />
               ))}
             </div>
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-[#ff3d00]/40 bg-white text-5xl text-[#ff3d00] shadow-xl shadow-slate-900/5">
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-[#EE6C2F]/40 bg-white text-5xl text-[#EE6C2F] shadow-xl shadow-slate-900/5">
               □
             </div>
-            <div className="relative -ml-6 mt-12 flex h-14 w-16 items-center justify-center rounded-lg bg-[#ff3d00] text-2xl text-white shadow-lg shadow-orange-500/20">
+            <div className="relative -ml-6 mt-12 flex h-14 w-16 items-center justify-center rounded-lg bg-[#EE6C2F] text-2xl text-white shadow-lg shadow-orange-500/20">
               ▣
             </div>
           </div>
@@ -171,7 +171,7 @@ export function PortalApplicationsPage() {
           <label className="relative block max-w-3xl">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-slate-400">⌕</span>
             <input
-              className="h-12 w-full rounded-lg border border-slate-200 pl-12 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#ff3d00] focus:ring-2 focus:ring-[#ff3d00]/10"
+              className="h-12 w-full rounded-lg border border-slate-200 pl-12 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/10"
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Rechercher une offre, une entreprise..."
               value={search}
@@ -207,20 +207,20 @@ export function PortalApplicationsPage() {
                     </div>
 
                     <div>
-                      <h2 className="text-xl font-extrabold text-[#061A33]">{application.job_title}</h2>
-                      <div className="mt-4 flex flex-wrap gap-x-7 gap-y-2 text-sm font-medium text-[#061A33]">
+                      <h2 className="text-xl font-extrabold text-[#24303F]">{application.job_title}</h2>
+                      <div className="mt-4 flex flex-wrap gap-x-7 gap-y-2 text-sm font-medium text-[#24303F]">
                         <span>▣ {getContract(application)}</span>
                         <span>⌖ {getLocation(application)}</span>
                       </div>
                     </div>
 
-                    <div className="text-sm leading-7 text-[#061A33]">
+                    <div className="text-sm leading-7 text-[#24303F]">
                       <p>Candidature envoyée le</p>
                       <p className="font-bold">{formatDate(application.applied_at)}</p>
                     </div>
 
                     <Link
-                      className="inline-flex items-center justify-start gap-4 text-sm font-extrabold text-[#ff3d00] transition hover:text-[#e63600] md:justify-center"
+                      className="inline-flex items-center justify-start gap-4 text-sm font-extrabold text-[#EE6C2F] transition hover:text-[#D9551B] md:justify-center"
                       to={`/portal/jobs/${application.job_offer_id}`}
                     >
                       Voir détail <span className="text-xl">›</span>

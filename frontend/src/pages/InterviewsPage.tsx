@@ -416,7 +416,7 @@ export function InterviewsPage() {
           className={[
             "border-b-2 px-4 py-2 text-sm font-semibold transition",
             activeTab === "interviews"
-              ? "border-[#1D6EEA] text-[#1D6EEA]"
+              ? "border-[#EE6C2F] text-[#EE6C2F]"
               : "border-transparent text-slate-500 hover:text-slate-700",
           ].join(" ")}
           onClick={() => setSearchParams({})}
@@ -428,7 +428,7 @@ export function InterviewsPage() {
           className={[
             "border-b-2 px-4 py-2 text-sm font-semibold transition",
             activeTab === "evaluations"
-              ? "border-[#1D6EEA] text-[#1D6EEA]"
+              ? "border-[#EE6C2F] text-[#EE6C2F]"
               : "border-transparent text-slate-500 hover:text-slate-700",
           ].join(" ")}
           onClick={() => setSearchParams({ tab: "evaluations" })}
@@ -451,13 +451,13 @@ export function InterviewsPage() {
 
           <section className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-[#0B1F3A]">Entretiens planifiés</h2>
+              <h2 className="text-lg font-semibold text-[#24303F]">Entretiens planifiés</h2>
               <p className="mt-1 text-sm text-slate-600">
                 Planifiez les entretiens et mettez à jour le statut pipeline du candidat.
               </p>
             </div>
             <button
-              className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#165AC0] disabled:opacity-60"
+              className="rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:opacity-60"
               disabled={candidates.length === 0 || jobs.length === 0}
               onClick={openCreateInterviewModal}
               type="button"
@@ -514,7 +514,7 @@ export function InterviewsPage() {
                       return (
                         <tr key={interview.id} className="hover:bg-slate-50">
                           <td className="whitespace-nowrap px-5 py-4">
-                            <Link className="font-semibold text-[#1D6EEA] hover:text-[#165AC0]" to={`/candidates/${interview.candidate_id}`}>
+                            <Link className="font-semibold text-[#EE6C2F] hover:text-[#D9551B]" to={`/candidates/${interview.candidate_id}`}>
                               {candidateName(candidate)}
                             </Link>
                           </td>
@@ -537,7 +537,7 @@ export function InterviewsPage() {
                           <td className="whitespace-nowrap px-5 py-4">
                             <div className="flex gap-2">
                               <button
-                                className="rounded-lg bg-[#1D6EEA] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#165AC0]"
+                                className="rounded-lg bg-[#EE6C2F] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#D9551B]"
                                 onClick={() => {
                                   setSearchParams({ tab: "evaluations", interviewId: interview.id });
                                   openCreateEvaluationModal(interview.id);
@@ -587,11 +587,11 @@ export function InterviewsPage() {
 
           <section className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-[#0B1F3A]">Évaluations d&apos;entretien</h2>
+              <h2 className="text-lg font-semibold text-[#24303F]">Évaluations d&apos;entretien</h2>
               <p className="mt-1 text-sm text-slate-600">Complétez l&apos;évaluation pendant ou après l&apos;entretien.</p>
             </div>
             <button
-              className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#165AC0] disabled:opacity-60"
+              className="rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:opacity-60"
               disabled={interviews.length === 0}
               onClick={() => openCreateEvaluationModal()}
               type="button"
@@ -642,7 +642,7 @@ export function InterviewsPage() {
                       return (
                         <tr key={evaluation.id} className="hover:bg-slate-50">
                           <td className="whitespace-nowrap px-5 py-4">
-                            <Link className="font-semibold text-[#1D6EEA] hover:text-[#165AC0]" to={`/candidates/${evaluation.candidate_id}`}>
+                            <Link className="font-semibold text-[#EE6C2F] hover:text-[#D9551B]" to={`/candidates/${evaluation.candidate_id}`}>
                               {candidateName(candidate)}
                             </Link>
                           </td>
@@ -687,10 +687,10 @@ export function InterviewsPage() {
       ) : null}
 
       {isInterviewModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#0B1F3A]/40 px-4 py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#24303F]/40 px-4 py-6">
           <section className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
             <div className="border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-[#0B1F3A]">
+              <h3 className="text-lg font-semibold text-[#24303F]">
                 {editingInterview ? "Modifier l'entretien" : "Nouvel entretien"}
               </h3>
             </div>
@@ -778,7 +778,7 @@ export function InterviewsPage() {
                 <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700" onClick={() => setIsInterviewModalOpen(false)} type="button">
                   Annuler
                 </button>
-                <button className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={isSubmitting} type="submit">
+                <button className="rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={isSubmitting} type="submit">
                   {isSubmitting ? "Enregistrement..." : "Enregistrer"}
                 </button>
               </div>
@@ -788,10 +788,10 @@ export function InterviewsPage() {
       ) : null}
 
       {isEvaluationModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#0B1F3A]/40 px-4 py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#24303F]/40 px-4 py-6">
           <section className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
             <div className="border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-[#0B1F3A]">
+              <h3 className="text-lg font-semibold text-[#24303F]">
                 {editingEvaluation ? "Modifier l'évaluation" : "Nouvelle évaluation"}
               </h3>
               <p className="mt-1 text-sm text-slate-600">L&apos;évaluation est liée à un entretien et met à jour le pipeline.</p>
@@ -872,7 +872,7 @@ export function InterviewsPage() {
                 <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700" onClick={() => setIsEvaluationModalOpen(false)} type="button">
                   Annuler
                 </button>
-                <button className="rounded-lg bg-[#1D6EEA] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={isSubmitting} type="submit">
+                <button className="rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={isSubmitting} type="submit">
                   {isSubmitting ? "Enregistrement..." : "Enregistrer l'évaluation"}
                 </button>
               </div>
