@@ -158,7 +158,7 @@ export function CandidatesPage() {
       setTotalCandidates(response.total);
       setNextCursor(response.next_cursor);
     } catch (loadError) {
-      setError(getApiErrorMessage(loadError, "Impossible de charger les candidats. Vérifiez que le backend est démarré sur localhost:8001."));
+      setError(getApiErrorMessage(loadError, "Impossible de charger les candidats. Vérifiez que le backend est accessible."));
     } finally {
       setIsLoading(false);
     }

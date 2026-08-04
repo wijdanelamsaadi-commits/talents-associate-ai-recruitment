@@ -2,8 +2,17 @@ import axios from "axios";
 
 import { getStoredToken } from "./authStorage";
 
+const getDefaultApiBaseUrl = () => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return `${window.location.protocol}//${window.location.hostname}:8001`;
+};
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? getDefaultApiBaseUrl();
+
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8001",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

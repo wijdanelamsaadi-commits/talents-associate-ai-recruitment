@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { apiClient } from "../lib/api";
+import { API_BASE_URL, apiClient } from "../lib/api";
 import {
   clearStoredCandidateAuth,
   getStoredCandidateToken,
@@ -10,7 +10,7 @@ import {
 import { JobOffer } from "./jobs";
 
 const portalApiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8001",
+  baseURL: API_BASE_URL,
 });
 
 portalApiClient.interceptors.request.use((config) => {
