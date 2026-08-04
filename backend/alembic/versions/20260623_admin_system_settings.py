@@ -19,9 +19,12 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    if sa.inspect(op.get_bind()).has_table("system_settings"):
+        return
+
     op.create_table(
         "system_settings",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("key", sa.String(length=120), nullable=False),
         sa.Column("value", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("description", sa.Text(), nullable=True),

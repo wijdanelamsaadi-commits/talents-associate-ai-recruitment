@@ -19,12 +19,20 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column("job_offers", sa.Column("sector", sa.String(length=150), nullable=True))
-    op.add_column("job_offers", sa.Column("soft_skills", postgresql.JSONB(astext_type=sa.Text()), nullable=True))
-    op.add_column("job_offers", sa.Column("languages", postgresql.JSONB(astext_type=sa.Text()), nullable=True))
+    columns = {column["name"] for column in sa.inspect(op.get_bind()).get_columns("job_offers")}
+    if "sector" not in columns:
+        op.add_column("job_offers", sa.Column("sector", sa.String(length=150), nullable=True))
+    if "soft_skills" not in columns:
+        op.add_column("job_offers", sa.Column("soft_skills", postgresql.JSONB(astext_type=sa.Text()), nullable=True))
+    if "languages" not in columns:
+        op.add_column("job_offers", sa.Column("languages", postgresql.JSONB(astext_type=sa.Text()), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("job_offers", "languages")
-    op.drop_column("job_offers", "soft_skills")
-    op.drop_column("job_offers", "sector")
+    columns = {column["name"] for column in sa.inspect(op.get_bind()).get_columns("job_offers")}
+    if "languages" in columns:
+        op.drop_column("job_offers", "languages")
+    if "soft_skills" in columns:
+        op.drop_column("job_offers", "soft_skills")
+    if "sector" in columns:
+        op.drop_column("job_offers", "sector")

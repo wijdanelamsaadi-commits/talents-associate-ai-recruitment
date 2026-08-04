@@ -18,9 +18,12 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    if sa.inspect(op.get_bind()).has_table("linkedin_csv_imports"):
+        return
+
     op.create_table(
         "linkedin_csv_imports",
-        sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("filename", sa.String(length=255), nullable=False),
         sa.Column("imported_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("updated_count", sa.Integer(), nullable=False, server_default="0"),

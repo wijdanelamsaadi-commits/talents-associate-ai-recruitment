@@ -18,8 +18,12 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column("candidates", sa.Column("sector", sa.String(length=150), nullable=True))
+    columns = {column["name"] for column in sa.inspect(op.get_bind()).get_columns("candidates")}
+    if "sector" not in columns:
+        op.add_column("candidates", sa.Column("sector", sa.String(length=150), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("candidates", "sector")
+    columns = {column["name"] for column in sa.inspect(op.get_bind()).get_columns("candidates")}
+    if "sector" in columns:
+        op.drop_column("candidates", "sector")
