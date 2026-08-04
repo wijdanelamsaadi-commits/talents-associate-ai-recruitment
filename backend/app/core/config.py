@@ -1,8 +1,36 @@
+import ast
 from functools import lru_cache
+from typing import Annotated, Any
 
 from pydantic import Field
+from pydantic import field_validator
 from pydantic import model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+]
+
+
+def _clean_cors_origins(values: Any) -> list[str]:
+    if isinstance(values, str):
+        values = [values]
+
+    if not isinstance(values, (list, tuple, set)):
+        values = [values]
+
+    origins: list[str] = []
+    for value in values:
+        origin = str(value).strip()
+        if origin:
+            origins.append(origin)
+    return origins
 
 
 class Settings(BaseSettings):
@@ -18,15 +46,8 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "postgres"
     DATABASE_URL: str | None = None
 
-    CORS_ORIGINS: list[str] = Field(
-        default_factory=lambda: [
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:5175",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:5174",
-            "http://127.0.0.1:5175",
-        ]
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: DEFAULT_CORS_ORIGINS.copy()
     )
     FRONTEND_URL: str = "http://localhost:5173"
     JWT_SECRET_KEY: str = "change-this-secret-key"
@@ -77,6 +98,29 @@ class Settings(BaseSettings):
     @property
     def effective_embedding_api_key(self) -> str | None:
         return self.EMBEDDING_API_KEY or self.OPENAI_API_KEY
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: Any) -> list[str]:
+        if value is None:
+            return DEFAULT_CORS_ORIGINS.copy()
+
+        if isinstance(value, str):
+            raw_value = value.strip()
+            if not raw_value:
+                return []
+
+            if raw_value.startswith("[") and raw_value.endswith("]"):
+                try:
+                    parsed_value = ast.literal_eval(raw_value)
+                except (ValueError, SyntaxError):
+                    parsed_value = None
+                if isinstance(parsed_value, (list, tuple, set)):
+                    return _clean_cors_origins(parsed_value)
+
+            return _clean_cors_origins(raw_value.split(","))
+
+        return _clean_cors_origins(value)
 
     @model_validator(mode="after")
     def normalize_openai_embedding_model(self) -> "Settings":
