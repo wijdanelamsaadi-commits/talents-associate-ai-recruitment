@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
@@ -8,10 +8,12 @@ import { getApiErrorMessage } from "../lib/errors";
 import {
   CandidateHistory,
   CandidateHistoryApplication,
+  CandidateUpdatePayload,
   acceptApplication,
   getCandidateHistory,
   reactivateApplication,
   rejectApplication,
+  updateCandidate,
 } from "../services/candidates";
 import { CandidateHistoryCVFile } from "../services/candidates";
 import { downloadCVFile, uploadCV } from "../services/cv";
@@ -62,7 +64,7 @@ function formatScore(value: string | number | null | undefined) {
   if (value === null || value === undefined) return "-";
   const numeric = Number(value);
   if (Number.isNaN(numeric)) return String(value);
-  return `${Math.round(numeric * 100)}%`;
+  return `${Math.round(numeric <= 1 ? numeric * 100 : numeric)}%`;
 }
 
 function latestMatch(application: CandidateHistoryApplication) {
@@ -78,7 +80,82 @@ function getDateTime(value: string | null | undefined) {
 }
 
 function sortCVFilesByUploadDate(cvFiles: CandidateHistoryCVFile[]) {
-  return [...cvFiles].sort((a, b) => getDateTime(b.uploaded_at) - getDateTime(a.uploaded_at));
+  return [...cvFiles].sort((a, b) => {
+    const aIsCurrent = Boolean(a.is_current ?? a.current ?? a.latest);
+    const bIsCurrent = Boolean(b.is_current ?? b.current ?? b.latest);
+    if (aIsCurrent !== bIsCurrent) {
+      return aIsCurrent ? -1 : 1;
+    }
+    return getDateTime(b.uploaded_at) - getDateTime(a.uploaded_at);
+  });
+}
+
+type CandidateFormState = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  location: string;
+  current_title: string;
+  current_company: string;
+  sector: string;
+  linkedin_url: string;
+  portfolio_url: string;
+  gender: "" | "M" | "F";
+};
+
+const candidateEditableFields: Array<{
+  field: keyof Omit<CandidateFormState, "gender">;
+  label: string;
+  required?: boolean;
+}> = [
+  { field: "last_name", label: "Nom", required: true },
+  { field: "first_name", label: "Prénom", required: true },
+  { field: "email", label: "Email" },
+  { field: "phone", label: "Téléphone" },
+  { field: "location", label: "Ville" },
+  { field: "current_title", label: "Poste actuel" },
+  { field: "current_company", label: "Entreprise actuelle" },
+  { field: "sector", label: "Secteur" },
+  { field: "linkedin_url", label: "Profil LinkedIn" },
+  { field: "portfolio_url", label: "Portfolio" },
+];
+
+function toCandidateFormState(candidate: CandidateHistory["candidate"]): CandidateFormState {
+  return {
+    first_name: candidate.first_name,
+    last_name: candidate.last_name,
+    email: candidate.email ?? "",
+    phone: candidate.phone ?? "",
+    location: candidate.location ?? "",
+    current_title: candidate.current_title ?? "",
+    current_company: candidate.current_company ?? "",
+    sector: candidate.sector ?? "",
+    linkedin_url: candidate.linkedin_url ?? "",
+    portfolio_url: candidate.portfolio_url ?? "",
+    gender: candidate.gender ?? "",
+  };
+}
+
+function trimOrUndefined(value: string) {
+  const normalized = value.trim();
+  return normalized === "" ? undefined : normalized;
+}
+
+function buildCandidateUpdatePayload(formState: CandidateFormState): CandidateUpdatePayload {
+  return {
+    first_name: formState.first_name.trim(),
+    last_name: formState.last_name.trim(),
+    email: trimOrUndefined(formState.email),
+    phone: trimOrUndefined(formState.phone),
+    location: trimOrUndefined(formState.location),
+    current_title: trimOrUndefined(formState.current_title),
+    current_company: trimOrUndefined(formState.current_company),
+    sector: trimOrUndefined(formState.sector),
+    linkedin_url: trimOrUndefined(formState.linkedin_url),
+    portfolio_url: trimOrUndefined(formState.portfolio_url),
+    gender: formState.gender || undefined,
+  };
 }
 
 type CandidateHistoryRow = {
@@ -96,6 +173,9 @@ export function CandidateDetailsPage() {
   const [isDeciding, setIsDeciding] = useState<string | null>(null);
   const [isCvUploading, setIsCvUploading] = useState(false);
   const [isCvDownloading, setIsCvDownloading] = useState<string | null>(null);
+  const [isEditingCandidate, setIsEditingCandidate] = useState(false);
+  const [isSavingCandidate, setIsSavingCandidate] = useState(false);
+  const [candidateForm, setCandidateForm] = useState<CandidateFormState | null>(null);
   const [selectedCVFile, setSelectedCVFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -110,7 +190,9 @@ export function CandidateDetailsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      setHistory(await getCandidateHistory(candidateId));
+      const candidateHistory = await getCandidateHistory(candidateId);
+      setHistory(candidateHistory);
+      setCandidateForm(toCandidateFormState(candidateHistory.candidate));
     } catch (loadError) {
       setError(getApiErrorMessage(loadError, "Impossible de charger l'historique du candidat."));
     } finally {
@@ -142,6 +224,32 @@ export function CandidateDetailsPage() {
       setError(getApiErrorMessage(decisionError, "La décision RH n'a pas pu être enregistrée."));
     } finally {
       setIsDeciding(null);
+    }
+  };
+
+  const handleCandidateUpdate = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!candidateId || !candidateForm) {
+      setError("L'identifiant du candidat est manquant.");
+      return;
+    }
+    if (!candidateForm.first_name.trim() || !candidateForm.last_name.trim()) {
+      setError("Le nom et le prénom sont obligatoires.");
+      return;
+    }
+
+    setIsSavingCandidate(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await updateCandidate(candidateId, buildCandidateUpdatePayload(candidateForm));
+      setMessage("Profil candidat mis à jour.");
+      setIsEditingCandidate(false);
+      await loadHistory();
+    } catch (updateError) {
+      setError(getApiErrorMessage(updateError, "Le profil candidat n'a pas pu être mis à jour."));
+    } finally {
+      setIsSavingCandidate(false);
     }
   };
 
@@ -294,62 +402,152 @@ export function CandidateDetailsPage() {
   }
 
   const candidate = history.candidate;
-  const fullName = `${candidate.first_name} ${candidate.last_name}`;
+  const fullName = `${candidate.first_name} ${candidate.last_name}`.trim() || "Candidat sans nom";
 
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-wide text-[#EE6C2F]">Fiche candidat RH</p>
-        <h2 className="mt-2 text-2xl font-semibold text-[#24303F]">{fullName}</h2>
-        <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
-          <p>
-            <span className="block font-semibold text-slate-500">Nom</span>
-            {candidate.last_name}
-          </p>
-          <p>
-            <span className="block font-semibold text-slate-500">Prénom</span>
-            {candidate.first_name}
-          </p>
-          <p>
-            <span className="block font-semibold text-slate-500">Email (identifiant unique)</span>
-            {candidate.email ?? "-"}
-          </p>
-          <p>
-            <span className="block font-semibold text-slate-500">Téléphone</span>
-            {candidate.phone ?? "-"}
-          </p>
-          <p>
-            <span className="block font-semibold text-slate-500">Ville</span>
-            {candidate.location ?? "-"}
-          </p>
-          <p>
-            <span className="block font-semibold text-slate-500">Poste actuel</span>
-            {candidate.current_title ?? "-"}
-          </p>
-          <p>
-            <span className="block font-semibold text-slate-500">Secteur</span>
-            {candidate.sector ?? "-"}
-          </p>
-          <p>
-            <span className="block font-semibold text-slate-500">Source</span>
-            <span className="mt-1 inline-block">
-              <SourceBadge source={candidate.source} />
-            </span>
-          </p>
-          {candidate.source === "linkedin_csv" && candidate.linkedin_url ? (
-            <p>
-              <span className="block font-semibold text-slate-500">Profil LinkedIn</span>
-              <a
-                href={candidate.linkedin_url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1 inline-flex items-center gap-1.5 text-[#EE6C2F] hover:text-[#D9551B] font-semibold underline"
-              >
-                Voir le profil LinkedIn ↗
-              </a>
-            </p>
-          ) : null}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-[#EE6C2F]">Fiche candidat RH</p>
+            <h2 className="mt-2 text-2xl font-semibold text-[#24303F]">{fullName}</h2>
+          </div>
+          <button
+            className="rounded-lg border border-[#EE6C2F]/30 px-4 py-2 text-sm font-semibold text-[#EE6C2F] hover:bg-orange-50"
+            onClick={() => {
+              setCandidateForm(toCandidateFormState(candidate));
+              setIsEditingCandidate((current) => !current);
+            }}
+            type="button"
+          >
+            {isEditingCandidate ? "Annuler" : "Modifier le profil"}
+          </button>
         </div>
+
+        {isEditingCandidate && candidateForm ? (
+          <form className="mt-5 space-y-4 rounded-lg border border-orange-100 bg-orange-50/30 p-4" onSubmit={handleCandidateUpdate}>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {candidateEditableFields.map(({ field, label, required }) => (
+                <label className="block text-sm font-medium text-slate-700" key={field}>
+                  {label}
+                  <input
+                    className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                    onChange={(event) =>
+                      setCandidateForm((current) => (current ? { ...current, [field]: event.target.value } : current))
+                    }
+                    required={Boolean(required)}
+                    type={field === "email" ? "email" : "text"}
+                    value={String(candidateForm[field] ?? "")}
+                  />
+                </label>
+              ))}
+              <label className="block text-sm font-medium text-slate-700">
+                Sexe
+                <select
+                  className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                  onChange={(event) =>
+                    setCandidateForm((current) =>
+                      current ? { ...current, gender: event.target.value as CandidateFormState["gender"] } : current,
+                    )
+                  }
+                  value={candidateForm.gender}
+                >
+                  <option value="">Non renseign?</option>
+                  <option value="F">Femme</option>
+                  <option value="M">Homme</option>
+                </select>
+              </label>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
+                onClick={() => {
+                  setCandidateForm(toCandidateFormState(candidate));
+                  setIsEditingCandidate(false);
+                }}
+                type="button"
+              >
+                Annuler
+              </button>
+              <button
+                className="rounded-lg bg-[#EE6C2F] px-4 py-2 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:opacity-60"
+                disabled={isSavingCandidate}
+                type="submit"
+              >
+                {isSavingCandidate ? "Enregistrement..." : "Enregistrer le profil"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
+            <p>
+              <span className="block font-semibold text-slate-500">Nom</span>
+              {candidate.last_name}
+            </p>
+            <p>
+              <span className="block font-semibold text-slate-500">Prénom</span>
+              {candidate.first_name}
+            </p>
+            <p>
+              <span className="block font-semibold text-slate-500">Email (identifiant unique)</span>
+              {candidate.email ?? "-"}
+            </p>
+            <p>
+              <span className="block font-semibold text-slate-500">Téléphone</span>
+              {candidate.phone ?? "-"}
+            </p>
+            <p>
+              <span className="block font-semibold text-slate-500">Ville</span>
+              {candidate.location ?? "-"}
+            </p>
+            <p>
+              <span className="block font-semibold text-slate-500">Poste actuel</span>
+              {candidate.current_title ?? "-"}
+            </p>
+            <p>
+              <span className="block font-semibold text-slate-500">Profil métier identifié</span>
+              {candidate.identified_job_profile ? (
+                <>
+                  {candidate.identified_job_profile}
+                  {typeof candidate.job_profile_confidence === "number" ? (
+                    <span className="mt-1 block text-xs text-slate-500">
+                      Confiance : {Math.round(candidate.job_profile_confidence * 100)} %
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                "-"
+              )}
+            </p>
+            <p>
+              <span className="block font-semibold text-slate-500">Entreprise actuelle</span>
+              {candidate.current_company ?? "-"}
+            </p>
+            <p>
+              <span className="block font-semibold text-slate-500">Secteur</span>
+              {candidate.sector ?? "-"}
+            </p>
+            <p>
+              <span className="block font-semibold text-slate-500">Source</span>
+              <span className="mt-1 inline-block">
+                <SourceBadge source={candidate.source} />
+              </span>
+            </p>
+            {candidate.linkedin_url ? (
+              <p>
+                <span className="block font-semibold text-slate-500">Profil LinkedIn</span>
+                <a
+                  href={candidate.linkedin_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 inline-flex items-center gap-1.5 text-[#EE6C2F] hover:text-[#D9551B] font-semibold underline"
+                >
+                  Voir le profil LinkedIn ?
+                </a>
+              </p>
+            ) : null}
+          </div>
+        )}
         {sortedCVFiles.length > 0 ? (
           <div className="mt-5 flex flex-wrap gap-3">
             {sortedCVFiles.slice(0, 1).map((cv) => (

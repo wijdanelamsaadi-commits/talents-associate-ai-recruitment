@@ -34,6 +34,16 @@ COMPANY_COLUMNS = ("company", "current company", "organization", "organisation",
 LOCATION_COLUMNS = ("location", "city", "address")
 PHONE_COLUMNS = ("phone", "phone number", "mobile")
 OUTLOOK_SUPPORTED_EXTENSIONS = {".pdf", ".docx"}
+LINKEDIN_IMPORT_BATCH_SIZE = 500
+LINKEDIN_FIELD_LIMITS = {
+    "first_name": 100,
+    "last_name": 100,
+    "email": 255,
+    "phone": 50,
+    "location": 255,
+    "current_title": 150,
+    "current_company": 150,
+}
 logger = logging.getLogger(__name__)
 
 
@@ -44,86 +54,35 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
 
     content = await upload_file.read()
     if not content:
-        raise ImportError("Le fichier CSV importé est vide.")
+        raise ImportError("Le fichier CSV importe est vide.")
 
     reader = _build_csv_reader(content)
     if not reader.fieldnames:
-        raise ImportError("Le fichier CSV ne contient pas de ligne d'en-tête.")
+        raise ImportError("Le fichier CSV ne contient pas de ligne d'en-tete.")
 
     imported = 0
     updated = 0
     skipped = 0
     rows_report: list[dict[str, Any]] = []
+    pending_rows: list[dict[str, Any]] = []
 
     for row_number, row in enumerate(reader, start=2):
         normalized_row = {_normalize_key(key): (value or "").strip() for key, value in row.items() if key is not None}
-        email = _get_first(normalized_row, EMAIL_COLUMNS).lower()
-        linkedin_url = _get_first(normalized_row, LINKEDIN_COLUMNS)
-        first_name = _get_first(normalized_row, FIRST_NAME_COLUMNS)
-        last_name = _get_first(normalized_row, LAST_NAME_COLUMNS)
-        current_company = _get_first(normalized_row, COMPANY_COLUMNS)
+        pending_rows.append({"row_number": row_number, "row": normalized_row})
+        if len(pending_rows) >= LINKEDIN_IMPORT_BATCH_SIZE:
+            batch_stats = _process_linkedin_csv_batch(db, pending_rows, filename)
+            imported += batch_stats["imported"]
+            updated += batch_stats["updated"]
+            skipped += batch_stats["skipped"]
+            rows_report.extend(batch_stats["rows"])
+            pending_rows = []
 
-        if not email and not linkedin_url and not (first_name and last_name and current_company):
-            skipped += 1
-            rows_report.append({
-                "row": row_number,
-                "status": "skipped",
-                "reason": "Email, URL LinkedIn et clés nom/entreprise manquants.",
-            })
-            continue
-
-        candidate = _find_linkedin_csv_candidate(
-            db,
-            email=email,
-            linkedin_url=linkedin_url,
-            first_name=first_name,
-            last_name=last_name,
-            current_company=current_company,
-        )
-        if candidate is None and (not first_name or not last_name):
-            skipped += 1
-            rows_report.append({"row": row_number, "status": "skipped", "reason": "Nom du candidat manquant pour un nouveau profil."})
-            continue
-
-        if candidate is None:
-            candidate = Candidate(
-                first_name=first_name,
-                last_name=last_name,
-                email=email or None,
-                linkedin_url=linkedin_url or None,
-                phone=_get_first(normalized_row, PHONE_COLUMNS) or None,
-                location=_get_first(normalized_row, LOCATION_COLUMNS) or None,
-                current_title=_get_first(normalized_row, TITLE_COLUMNS) or None,
-                current_company=current_company or None,
-                source="linkedin_csv",
-                status="active",
-            )
-            db.add(candidate)
-            db.flush()
-            create_timeline_event(
-                db,
-                candidate_id=candidate.id,
-                event_type="linkedin_csv_imported",
-                title="Candidat importé depuis un CSV LinkedIn",
-                description=f"{candidate.first_name} {candidate.last_name} a été importé depuis un fichier CSV LinkedIn.",
-                metadata={"source": "linkedin_csv", "filename": filename, "row": row_number},
-            )
-            imported += 1
-            rows_report.append({"row": row_number, "status": "imported", "candidate_id": str(candidate.id)})
-            continue
-
-        changed_fields = _update_candidate_from_row(candidate, normalized_row)
-        if changed_fields:
-            create_timeline_event(
-                db,
-                candidate_id=candidate.id,
-                event_type="linkedin_csv_imported",
-                title="Candidat mis à jour depuis un CSV LinkedIn",
-                description="Le profil candidat a été mis à jour pendant l'import CSV LinkedIn.",
-                metadata={"source": "linkedin_csv", "filename": filename, "row": row_number, "updated_fields": changed_fields},
-            )
-        updated += 1
-        rows_report.append({"row": row_number, "status": "updated", "candidate_id": str(candidate.id), "updated_fields": changed_fields})
+    if pending_rows:
+        batch_stats = _process_linkedin_csv_batch(db, pending_rows, filename)
+        imported += batch_stats["imported"]
+        updated += batch_stats["updated"]
+        skipped += batch_stats["skipped"]
+        rows_report.extend(batch_stats["rows"])
 
     import_record = LinkedInCSVImport(
         filename=filename,
@@ -137,6 +96,107 @@ async def import_linkedin_csv(db: Session, upload_file: UploadFile) -> LinkedInC
     db.refresh(import_record)
     return import_record
 
+
+def _process_linkedin_csv_batch(db: Session, rows: list[dict[str, Any]], filename: str) -> dict[str, Any]:
+    pending_results: list[dict[str, Any]] = []
+    try:
+        for item in rows:
+            row_number = int(item["row_number"])
+            normalized_row = item["row"]
+            pending_results.append(_process_linkedin_csv_row(db, normalized_row, row_number, filename))
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        first_row = rows[0]["row_number"] if rows else None
+        last_row = rows[-1]["row_number"] if rows else None
+        logger.exception(
+            "LinkedIn CSV import batch failed stage=batch_commit exception_type=%s rows=%s-%s",
+            type(exc).__name__,
+            first_row,
+            last_row,
+        )
+        raise
+
+    return {
+        "imported": sum(1 for result in pending_results if result.get("status") == "imported"),
+        "updated": sum(1 for result in pending_results if result.get("status") == "updated"),
+        "skipped": sum(1 for result in pending_results if result.get("status") == "skipped"),
+        "rows": pending_results,
+    }
+
+
+def _process_linkedin_csv_row(db: Session, normalized_row: dict[str, str], row_number: int, filename: str) -> dict[str, Any]:
+    try:
+        parsed_row = _extract_linkedin_candidate_fields(normalized_row)
+        email = parsed_row["email"]
+        linkedin_url = parsed_row["linkedin_url"]
+        first_name = parsed_row["first_name"]
+        last_name = parsed_row["last_name"]
+        current_company = parsed_row["current_company"]
+
+        if not email and not linkedin_url and not (first_name and last_name and current_company):
+            return {
+                "row": row_number,
+                "status": "skipped",
+                "reason": "Email, URL LinkedIn et cles nom/entreprise manquants.",
+            }
+
+        candidate = _find_linkedin_csv_candidate(
+            db,
+            email=email,
+            linkedin_url=linkedin_url,
+            first_name=first_name,
+            last_name=last_name,
+            current_company=current_company,
+        )
+        if candidate is None and (not first_name or not last_name):
+            return {"row": row_number, "status": "skipped", "reason": "Nom du candidat manquant pour un nouveau profil."}
+
+        if candidate is None:
+            candidate = Candidate(
+                first_name=first_name,
+                last_name=last_name,
+                email=email or None,
+                linkedin_url=linkedin_url or None,
+                phone=parsed_row["phone"] or None,
+                location=parsed_row["location"] or None,
+                current_title=parsed_row["current_title"] or None,
+                current_company=current_company or None,
+                source="linkedin_csv",
+                status="active",
+            )
+            db.add(candidate)
+            db.flush()
+            create_timeline_event(
+                db,
+                candidate_id=candidate.id,
+                event_type="linkedin_csv_imported",
+                title="Candidat importe depuis un CSV LinkedIn",
+                description=f"{candidate.first_name} {candidate.last_name} a ete importe depuis un fichier CSV LinkedIn.",
+                metadata={"source": "linkedin_csv", "filename": filename, "row": row_number},
+            )
+            db.flush()
+            return {"row": row_number, "status": "imported", "candidate_id": str(candidate.id)}
+
+        changed_fields = _update_candidate_from_row(candidate, normalized_row)
+        if changed_fields:
+            create_timeline_event(
+                db,
+                candidate_id=candidate.id,
+                event_type="linkedin_csv_imported",
+                title="Candidat mis a jour depuis un CSV LinkedIn",
+                description="Le profil candidat a ete mis a jour pendant l'import CSV LinkedIn.",
+                metadata={"source": "linkedin_csv", "filename": filename, "row": row_number, "updated_fields": changed_fields},
+            )
+        db.flush()
+        return {"row": row_number, "status": "updated", "candidate_id": str(candidate.id), "updated_fields": changed_fields}
+    except Exception as exc:
+        logger.exception(
+            "LinkedIn CSV import row failed stage=row_processing exception_type=%s row=%s",
+            type(exc).__name__,
+            row_number,
+        )
+        raise
 
 def list_linkedin_imports(db: Session, skip: int = 0, limit: int = 50) -> list[LinkedInCSVImport]:
     statement = select(LinkedInCSVImport).order_by(LinkedInCSVImport.created_at.desc()).offset(skip).limit(limit)
@@ -280,6 +340,7 @@ def _find_linkedin_csv_candidate(
     last_name: str,
     current_company: str,
 ) -> Candidate | None:
+    linkedin_url = _normalize_linkedin_url(linkedin_url)
     if email:
         candidate = db.scalar(select(Candidate).where(Candidate.email == email))
         if candidate is not None:
@@ -476,15 +537,16 @@ def _guess_mime_type(extension: str) -> str:
 
 
 def _update_candidate_from_row(candidate: Candidate, row: dict[str, str]) -> list[str]:
+    parsed_row = _extract_linkedin_candidate_fields(row)
     mapping = {
-        "first_name": _get_first(row, FIRST_NAME_COLUMNS),
-        "last_name": _get_first(row, LAST_NAME_COLUMNS),
-        "email": _get_first(row, EMAIL_COLUMNS).lower(),
-        "linkedin_url": _get_first(row, LINKEDIN_COLUMNS),
-        "phone": _get_first(row, PHONE_COLUMNS),
-        "location": _get_first(row, LOCATION_COLUMNS),
-        "current_title": _get_first(row, TITLE_COLUMNS),
-        "current_company": _get_first(row, COMPANY_COLUMNS),
+        "first_name": parsed_row["first_name"],
+        "last_name": parsed_row["last_name"],
+        "email": parsed_row["email"],
+        "linkedin_url": parsed_row["linkedin_url"],
+        "phone": parsed_row["phone"],
+        "location": parsed_row["location"],
+        "current_title": parsed_row["current_title"],
+        "current_company": parsed_row["current_company"],
     }
     changed_fields = []
     for field, value in mapping.items():
@@ -501,8 +563,55 @@ def _get_first(row: dict[str, str], keys: tuple[str, ...]) -> str:
     return ""
 
 
+def _extract_linkedin_candidate_fields(row: dict[str, str]) -> dict[str, str]:
+    linkedin_url = _normalize_linkedin_url(_get_first(row, LINKEDIN_COLUMNS))
+    current_title = _get_first(row, TITLE_COLUMNS)
+
+    # Some LinkedIn exports contain unquoted commas/semicolons in names or titles,
+    # which can shift the real profile URL into the Position column. Recover it
+    # before applying database length limits.
+    title_as_url = _normalize_linkedin_url(current_title)
+    if not _is_linkedin_url(linkedin_url) and _is_linkedin_url(title_as_url):
+        linkedin_url = title_as_url
+        current_title = ""
+    elif not _is_linkedin_url(linkedin_url):
+        linkedin_url = ""
+
+    return {
+        "first_name": _truncate_linkedin_field(_get_first(row, FIRST_NAME_COLUMNS), "first_name"),
+        "last_name": _truncate_linkedin_field(_get_first(row, LAST_NAME_COLUMNS), "last_name"),
+        "email": _truncate_linkedin_field(_get_first(row, EMAIL_COLUMNS).lower(), "email"),
+        "linkedin_url": linkedin_url,
+        "phone": _truncate_linkedin_field(_get_first(row, PHONE_COLUMNS), "phone"),
+        "location": _truncate_linkedin_field(_get_first(row, LOCATION_COLUMNS), "location"),
+        "current_title": _truncate_linkedin_field(current_title, "current_title"),
+        "current_company": _truncate_linkedin_field(_get_first(row, COMPANY_COLUMNS), "current_company"),
+    }
+
+
 def _normalize_key(key: str) -> str:
     return key.strip().lower().replace("\ufeff", "")
+
+
+def _normalize_linkedin_url(value: str) -> str:
+    url = (value or "").strip()
+    if not url:
+        return ""
+    if url.lower().startswith("linkedin.com/") or url.lower().startswith("www.linkedin.com/"):
+        url = f"https://{url}"
+    return url.rstrip("/")
+
+
+def _is_linkedin_url(value: str) -> bool:
+    return "linkedin.com/" in (value or "").lower()
+
+
+def _truncate_linkedin_field(value: str, field: str) -> str:
+    clean_value = (value or "").strip()
+    limit = LINKEDIN_FIELD_LIMITS.get(field)
+    if not limit or len(clean_value) <= limit:
+        return clean_value
+    return clean_value[:limit].rstrip()
 
 
 def _parser_model(parsed_data: dict) -> str:

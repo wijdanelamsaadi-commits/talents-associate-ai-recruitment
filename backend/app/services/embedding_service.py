@@ -40,6 +40,7 @@ def cosine_similarity(vector_a: list[float], vector_b: list[float]) -> float:
 def build_candidate_embedding_text(extracted_data: ExtractedCVData) -> str:
     data = extracted_data.ai_output or extracted_data.parsed_json or {}
     parts = [
+        _string_value(data.get("identified_job_profile") or data.get("current_title") or data.get("poste_actuel")),
         _string_value(data.get("summary") or extracted_data.summary),
         _join_items(data.get("skills") or data.get("competences")),
         _join_items(data.get("experience") or data.get("detailed_experience") or data.get("experiences_detaillees")),

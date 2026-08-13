@@ -579,7 +579,7 @@ def _split_inline_items(section_text: str) -> set[str]:
 
 
 def _clean_extracted_item(value: str) -> str:
-    return re.sub(r"\s+", " ", value).strip(" \n\t-â€¢•")
+    return re.sub(r"\s+", " ", value).strip(" \n\t-•")
 
 
 def _title_preserving_items(items: set[str]) -> set[str]:

@@ -24,7 +24,7 @@ def test_public_recruiter_registration_is_blocked():
     )
 
     assert response.status_code == 403
-    assert "reserved for administrators" in response.json()["detail"]
+    assert "réservée aux administrateurs" in response.json()["detail"]
 
 
 def test_candidate_token_cannot_access_recruiter_routes():

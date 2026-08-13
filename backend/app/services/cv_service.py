@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models import CVFile, Candidate, ExtractedCVData
 from app.services.embedding_service import build_candidate_embedding_text, generate_embedding
+from app.services.job_profile_service import enrich_parsed_data_with_profile
 from app.services.llm_cv_parser_service import parse_cv_text_configurable
 from app.services.matching_service import auto_match_candidate
 from app.services.text_extraction import TextExtractionError, extract_text_from_file
@@ -79,6 +80,7 @@ def upload_cv(
 
         parsed_cv = parse_cv_text_configurable(raw_text)
         parsed_data = parsed_cv.data or {}
+        profile_classification = enrich_parsed_data_with_profile(parsed_data, raw_text)
 
         if candidate_id is None:
             email = parsed_data.get("email")
@@ -210,6 +212,8 @@ def upload_cv(
                 "confidence_score": float(parsed_cv.confidence_score) if parsed_cv.confidence_score is not None else None,
                 "parser_used": parsed_data.get("parser_used", "llm"),
                 "parser_model": extracted_data.parser_model,
+                "identified_job_profile": profile_classification.title,
+                "job_profile_confidence": profile_classification.confidence,
                 "replaced_existing_cv": replaces_existing_cv,
             },
         )
@@ -261,6 +265,7 @@ def parse_extracted_cv(db: Session, cv_file_id: UUID) -> ExtractedCVData:
         raise CVUploadError("Impossible d'analyser le CV car le texte extrait est vide.")
 
     parsed_cv = parse_cv_text_configurable(extracted_data.raw_text)
+    enrich_parsed_data_with_profile(parsed_cv.data, extracted_data.raw_text)
     extracted_data.ai_output = parsed_cv.data
     extracted_data.summary = _optional_string(parsed_cv.data.get("summary"))
     extracted_data.total_years_experience = _optional_non_negative_number(
@@ -329,6 +334,14 @@ def update_candidate_profile_from_parsed_cv(db: Session, extracted_data: Extract
                 continue
         if parsed_value and (not current_value or is_placeholder_name):
             updates[candidate_field] = parsed_value
+
+    profile_classification = enrich_parsed_data_with_profile(parsed_data, extracted_data.raw_text)
+    if profile_classification.title:
+        candidate.identified_job_profile = profile_classification.title
+        candidate.job_profile_confidence = profile_classification.confidence
+        candidate.job_profile_matched_terms = profile_classification.matched_terms
+        extracted_data.ai_output = parsed_data
+        updates["identified_job_profile"] = profile_classification.title
 
     for field, value in updates.items():
         setattr(candidate, field, value)

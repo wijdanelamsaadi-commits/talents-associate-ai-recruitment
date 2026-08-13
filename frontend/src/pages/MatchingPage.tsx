@@ -9,7 +9,8 @@ import { getApiErrorMessage } from "../lib/errors";
 import { Candidate, VivierSearchResult, getCandidates, searchCandidatesVivier } from "../services/candidates";
 import { downloadCVFile } from "../services/cv";
 import { JobOffer, getJobOffers } from "../services/jobs";
-import { MatchingResult, deleteMatchingResult, getMatchingResults, runMatching } from "../services/matching";
+import { MatchingResult, deleteMatchingResult, getMatchingResults } from "../services/matching";
+import { getJobReferenceTitles } from "../services/references";
 
 type VivierSearchForm = {
   poste: string;
@@ -57,23 +58,6 @@ function formatRecommendation(value: string | null) {
   return value ? value.replaceAll("_", " ") : "Aucune recommandation";
 }
 
-function DetailedScores({ scores }: { scores: MatchingResult["detailed_scores"] }) {
-  if (!scores) {
-    return <p className="text-sm text-slate-500">Aucun score détaillé disponible.</p>;
-  }
-
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {Object.entries(scores).map(([label, value]) => (
-        <article key={label} className="rounded-lg border border-slate-200 bg-white p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label.replaceAll("_", " ")}</p>
-          <p className="mt-2 text-2xl font-semibold text-[#24303F]">{Number(value).toFixed(0)}%</p>
-        </article>
-      ))}
-    </div>
-  );
-}
-
 function getScoreValue(scores: MatchingResult["detailed_scores"], key: string) {
   const value = scores?.[key];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -96,55 +80,16 @@ function formatScore(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value)}%` : "-";
 }
 
-const matchingScoreLabels = [
-  ["business_score", "Score métier"],
-  ["semantic_score", "Similarité sémantique"],
-  ["skill_score", "Compétences"],
-  ["experience_score", "Expérience"],
-  ["education_score", "Formation"],
-  ["language_score", "Langues"],
-] as const;
-
-function MatchingScoreBreakdown({ result }: { result: MatchingResult }) {
-  const scores = result.detailed_scores;
-  if (!scores) {
-    return <p className="text-sm text-slate-500">Aucun score détaillé disponible.</p>;
-  }
-
-  const scoreValues = {
-    business_score: getBusinessScore(scores),
-    semantic_score: result.semantic_score ?? getScoreValue(scores, "semantic_score"),
-    skill_score: getScoreValue(scores, "skill_score"),
-    experience_score: getScoreValue(scores, "experience_score"),
-    education_score: getScoreValue(scores, "education_score"),
-    language_score: getScoreValue(scores, "language_score"),
-  };
-
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {matchingScoreLabels.map(([key, label]) => (
-        <article key={key} className="rounded-lg border border-slate-200 bg-white p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-          <p className="mt-2 text-2xl font-semibold text-[#24303F]">{formatScore(scoreValues[key])}</p>
-        </article>
-      ))}
-    </div>
-  );
-}
-
 export function MatchingPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [jobs, setJobs] = useState<JobOffer[]>([]);
   const [results, setResults] = useState<MatchingResult[]>([]);
   const [vivierResults, setVivierResults] = useState<VivierSearchResult[]>([]);
+  const [jobReferenceTitles, setJobReferenceTitles] = useState<string[]>([]);
   const [searchForm, setSearchForm] = useState<VivierSearchForm>(initialSearchForm);
   const [selectedJobId, setSelectedJobId] = useState("");
-  const [selectedCandidateId, setSelectedCandidateId] = useState("");
-  const [selectedDebugJobId, setSelectedDebugJobId] = useState("");
-  const [currentResult, setCurrentResult] = useState<MatchingResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -156,16 +101,16 @@ export function MatchingPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [candidateData, jobData, resultData] = await Promise.all([getCandidates(), getJobOffers(), getMatchingResults()]);
+      const [candidateData, jobData, resultData, referenceTitles] = await Promise.all([
+        getCandidates(),
+        getJobOffers(),
+        getMatchingResults(),
+        getJobReferenceTitles(),
+      ]);
       setCandidates(candidateData);
       setJobs(jobData);
       setResults(resultData);
-      if (!selectedCandidateId && candidateData.length > 0) {
-        setSelectedCandidateId(candidateData[0].id);
-      }
-      if (!selectedDebugJobId && jobData.length > 0) {
-        setSelectedDebugJobId(jobData[0].id);
-      }
+      setJobReferenceTitles(referenceTitles);
     } catch (loadError) {
       setError(getApiErrorMessage(loadError, "Impossible de charger le moteur de matching. Vérifiez que le backend est démarré."));
     } finally {
@@ -186,11 +131,6 @@ export function MatchingPage() {
 
   const strongMatches = useMemo(() => results.filter((result) => result.score >= 80).length, [results]);
 
-  const selectedCandidate = findCandidate(candidates, selectedCandidateId);
-  const selectedDebugJob = findJob(jobs, selectedDebugJobId);
-  const matchedSkills = skillList(currentResult?.matched_skills ?? null);
-  const missingSkills = skillList(currentResult?.missing_skills ?? null);
-
   const filteredVivierResults = useMemo(() => {
     const normalizedQuery = vivierSearchQuery.trim().toLowerCase();
     if (!normalizedQuery) {
@@ -202,6 +142,7 @@ export function MatchingPage() {
         result.candidate.last_name,
         result.candidate.email,
         result.candidate.current_title,
+        result.candidate.identified_job_profile,
         result.candidate.current_company,
         result.candidate.sector,
         result.score,
@@ -265,6 +206,12 @@ export function MatchingPage() {
     const params = Object.fromEntries(
       Object.entries(searchForm).filter(([, value]) => value.trim() !== ""),
     ) as VivierSearchForm;
+    if (Object.keys(params).length === 0) {
+      setVivierResults([]);
+      setMessage("Saisissez au moins un critère pour calculer une pertinence vivier.");
+      setIsSearching(false);
+      return;
+    }
 
     try {
       const data = await searchCandidatesVivier(params);
@@ -278,34 +225,6 @@ export function MatchingPage() {
     }
   };
 
-  const handleRunMatching = async () => {
-    setError(null);
-    setMessage(null);
-
-    if (!selectedCandidateId || !selectedDebugJobId) {
-      setError("Sélectionnez un candidat et une offre avant de lancer le matching.");
-      return;
-    }
-
-    setIsRunning(true);
-    try {
-      const result = await runMatching(selectedCandidateId, selectedDebugJobId);
-      setCurrentResult(result);
-      setMessage("Résultat de matching généré et enregistré.");
-      const updatedResults = await getMatchingResults();
-      setResults(updatedResults);
-    } catch (matchingError) {
-      setError(
-        getApiErrorMessage(
-          matchingError,
-          "Le matching a échoué. Vérifiez que le candidat possède un CV parsé et que l'offre existe.",
-        ),
-      );
-    } finally {
-      setIsRunning(false);
-    }
-  };
-
   const handleDeleteResult = async (result: MatchingResult) => {
     const shouldDelete = window.confirm(`Supprimer le résultat de matching avec un score de ${result.score}% ?`);
     if (!shouldDelete) {
@@ -316,9 +235,6 @@ export function MatchingPage() {
     setMessage(null);
     try {
       await deleteMatchingResult(result.id);
-      if (currentResult?.id === result.id) {
-        setCurrentResult(null);
-      }
       setMessage("Résultat de matching supprimé.");
       setResults(await getMatchingResults());
     } catch (deleteError) {
@@ -371,6 +287,9 @@ export function MatchingPage() {
                 value={searchForm.poste}
               />
               <datalist id="job-titles">
+                {jobReferenceTitles.map((title) => (
+                  <option key={`reference-${title}`} value={title} />
+                ))}
                 {jobs.map((job) => (
                   <option key={job.id} value={job.title}>
                     {job.company_name ? `${job.title} — ${job.company_name}` : job.title}
@@ -527,6 +446,7 @@ export function MatchingPage() {
                     <th className="px-5 py-3 font-semibold">Candidat</th>
                     <th className="px-5 py-3 font-semibold">Email</th>
                     <th className="px-5 py-3 font-semibold">Poste actuel</th>
+                    <th className="px-5 py-3 font-semibold">Profil identifié</th>
                     <th className="px-5 py-3 font-semibold">Secteur</th>
                     <th className="px-5 py-3 font-semibold">Pertinence vivier</th>
                     <th className="px-5 py-3 font-semibold">CV</th>
@@ -546,6 +466,20 @@ export function MatchingPage() {
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">{result.candidate.email ?? "-"}</td>
                       <td className="px-5 py-4 text-slate-700">{result.candidate.current_title ?? "-"}</td>
+                      <td className="px-5 py-4 text-slate-700">
+                        {result.candidate.identified_job_profile ? (
+                          <>
+                            {result.candidate.identified_job_profile}
+                            {typeof result.candidate.job_profile_confidence === "number" ? (
+                              <span className="mt-1 block text-xs text-slate-500">
+                                {Math.round(result.candidate.job_profile_confidence * 100)} %
+                              </span>
+                            ) : null}
+                          </>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
                       <td className="px-5 py-4 text-slate-700">{result.candidate.sector ?? "-"}</td>
                       <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#24303F]">{Math.round(result.score)}%</td>
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
@@ -581,133 +515,8 @@ export function MatchingPage() {
         </>
       ) : null}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-[#24303F]">Matching IA persistant</h2>
-            <p className="mt-1 text-sm font-semibold text-[#EE6C2F]">
-              Endpoint : POST /api/matching/candidate/{"{candidate_id}"}/job/{"{job_id}"}
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
-              Sélectionnez un candidat et une offre pour générer et enregistrer le score hybride final.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_1fr_auto]">
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Candidat</span>
-            <select
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
-              disabled={isLoading || candidates.length === 0}
-              onChange={(event) => setSelectedCandidateId(event.target.value)}
-              value={selectedCandidateId}
-            >
-              {candidates.length === 0 ? <option value="">Aucun candidat disponible</option> : null}
-              {candidates.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.first_name} {candidate.last_name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Offre d&apos;emploi</span>
-            <select
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
-              disabled={isLoading || jobs.length === 0}
-              onChange={(event) => setSelectedDebugJobId(event.target.value)}
-              value={selectedDebugJobId}
-            >
-              {jobs.length === 0 ? <option value="">Aucune offre disponible</option> : null}
-              {jobs.map((job) => (
-                <option key={job.id} value={job.id}>
-                  {job.title} {job.company_name ? `- ${job.company_name}` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="flex items-end">
-            <button
-              className="h-10 w-full rounded-lg bg-[#EE6C2F] px-4 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
-              disabled={isLoading || isRunning || !selectedCandidateId || !selectedDebugJobId}
-              onClick={() => void handleRunMatching()}
-              type="button"
-            >
-              {isRunning ? "En cours..." : "Lancer le Matching IA"}
-            </button>
-          </div>
-        </div>
-
-        {selectedCandidate || selectedDebugJob ? (
-          <p className="mt-4 text-sm text-slate-600">
-            Sélection actuelle : <span className="font-semibold">{candidateName(selectedCandidate)}</span> pour{" "}
-            <span className="font-semibold">{selectedDebugJob?.title ?? "aucune offre"}</span>.
-          </p>
-        ) : null}
-      </section>
-
       {message ? <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p> : null}
       {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
-
-      {currentResult ? (
-        <section className="space-y-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-base font-semibold text-[#24303F]">Dernier résultat de Matching IA</h3>
-              <p className="mt-1 text-sm text-slate-600">{currentResult.explanation ?? "Aucune explication fournie."}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score de Matching IA</p>
-              <p className="text-3xl font-semibold text-[#24303F]">{currentResult.score}%</p>
-              <p className="text-sm font-semibold capitalize text-[#EE6C2F]">
-                {formatRecommendation(currentResult.recommendation)}
-              </p>
-            </div>
-          </div>
-
-          <MatchingScoreBreakdown result={currentResult} />
-          <p className="text-sm text-slate-600">
-            Modèle d’embedding :{" "}
-            <span className="font-semibold text-[#24303F]">
-              {currentResult.embedding_version ?? (currentResult.used_semantic_embedding ? "text-embedding-3-small" : "Non utilisé")}
-            </span>
-          </p>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <article className="rounded-lg border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-[#24303F]">Compétences correspondantes</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {matchedSkills.length > 0 ? (
-                  matchedSkills.map((skill) => (
-                    <span key={skill} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      {skill}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-sm text-slate-500">Aucune compétence correspondante détectée.</span>
-                )}
-              </div>
-            </article>
-            <article className="rounded-lg border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-[#24303F]">Compétences manquantes</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {missingSkills.length > 0 ? (
-                  missingSkills.map((skill) => (
-                    <span key={skill} className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-                      {skill}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-sm text-slate-500">Aucune compétence manquante détectée.</span>
-                )}
-              </div>
-            </article>
-          </div>
-        </section>
-      ) : null}
 
       {isLoading ? (
         <section className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import func as sa_func, select, tuple_
+from sqlalchemy import case, func as sa_func, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -52,6 +52,7 @@ def _apply_candidate_filter(
     candidate_filter: CandidateFilter = "all",
     job_offer_id: UUID | None = None,
     pipeline_stage: str | None = None,
+    search_query: str | None = None,
 ):
     if candidate_filter == "active":
         statement = statement.where(Candidate.status == "active")
@@ -72,7 +73,54 @@ def _apply_candidate_filter(
     if pipeline_stage and pipeline_stage != "recu":
         statement = statement.where(Candidate.status == pipeline_stage)
 
+    normalized_query = (search_query or "").strip().lower()
+    if normalized_query:
+        like_value = f"%{normalized_query}%"
+        full_name = sa_func.lower(sa_func.concat(Candidate.first_name, " ", Candidate.last_name))
+        statement = statement.where(
+            full_name.like(like_value)
+            | sa_func.lower(Candidate.first_name).like(like_value)
+            | sa_func.lower(Candidate.last_name).like(like_value)
+            | sa_func.lower(sa_func.coalesce(Candidate.email, "")).like(like_value)
+            | sa_func.lower(sa_func.coalesce(Candidate.current_title, "")).like(like_value)
+            | sa_func.lower(sa_func.coalesce(Candidate.identified_job_profile, "")).like(like_value)
+            | sa_func.lower(sa_func.coalesce(Candidate.current_company, "")).like(like_value)
+            | sa_func.lower(sa_func.coalesce(Candidate.linkedin_url, "")).like(like_value)
+        )
+
     return statement
+
+
+def _candidate_search_order(search_query: str | None):
+    normalized_query = (search_query or "").strip().lower()
+    if not normalized_query:
+        return None
+
+    like_value = f"%{normalized_query}%"
+    starts_with_value = f"{normalized_query}%"
+    full_name = sa_func.lower(sa_func.concat(Candidate.first_name, " ", Candidate.last_name))
+    first_name = sa_func.lower(Candidate.first_name)
+    last_name = sa_func.lower(Candidate.last_name)
+    email = sa_func.lower(sa_func.coalesce(Candidate.email, ""))
+    current_title = sa_func.lower(sa_func.coalesce(Candidate.current_title, ""))
+    identified_job_profile = sa_func.lower(sa_func.coalesce(Candidate.identified_job_profile, ""))
+    current_company = sa_func.lower(sa_func.coalesce(Candidate.current_company, ""))
+    linkedin_url = sa_func.lower(sa_func.coalesce(Candidate.linkedin_url, ""))
+
+    return case(
+        (full_name == normalized_query, 0),
+        (last_name == normalized_query, 1),
+        (first_name == normalized_query, 2),
+        (full_name.like(starts_with_value), 2),
+        (last_name.like(starts_with_value), 3),
+        (first_name.like(starts_with_value), 4),
+        (email.like(like_value), 4),
+        (current_title.like(like_value), 5),
+        (identified_job_profile.like(like_value), 5),
+        (current_company.like(like_value), 6),
+        (linkedin_url.like(like_value), 7),
+        else_=9,
+    )
 
 
 def count_candidates(
@@ -80,12 +128,14 @@ def count_candidates(
     candidate_filter: CandidateFilter = "all",
     job_offer_id: UUID | None = None,
     pipeline_stage: str | None = None,
+    search_query: str | None = None,
 ) -> int:
     statement = _apply_candidate_filter(
         select(sa_func.count()).select_from(Candidate),
         candidate_filter,
         job_offer_id=job_offer_id,
         pipeline_stage=pipeline_stage,
+        search_query=search_query,
     )
     return db.scalar(statement) or 0
 
@@ -98,13 +148,30 @@ def list_candidates(
     candidate_filter: CandidateFilter = "all",
     job_offer_id: UUID | None = None,
     pipeline_stage: str | None = None,
+    search_query: str | None = None,
 ) -> list[Candidate]:
     base_statement = _apply_candidate_filter(
         select(Candidate),
         candidate_filter,
         job_offer_id=job_offer_id,
         pipeline_stage=pipeline_stage,
+        search_query=search_query,
     )
+    search_order = _candidate_search_order(search_query)
+    if search_order is not None:
+        statement = (
+            base_statement.order_by(
+                search_order.asc(),
+                sa_func.lower(Candidate.last_name).asc(),
+                sa_func.lower(Candidate.first_name).asc(),
+                Candidate.created_at.desc(),
+                Candidate.id.desc(),
+            )
+            .offset(skip)
+            .limit(limit)
+        )
+        return list(db.scalars(statement).all())
+
     if after_id is not None:
         cursor_row = db.get(Candidate, after_id)
         if cursor_row is None:

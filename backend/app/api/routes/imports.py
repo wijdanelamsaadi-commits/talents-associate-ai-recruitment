@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -15,6 +17,7 @@ from app.services.import_service import (
 )
 
 router = APIRouter(prefix="/imports", tags=["imports"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/linkedin-csv", response_model=LinkedInImportRead, status_code=status.HTTP_201_CREATED)
@@ -27,6 +30,10 @@ async def upload_linkedin_csv(file: UploadFile = File(...), db: Session = Depend
         db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="L'import CSV LinkedIn n'a pas pu être enregistré.") from exc
 
+    except Exception as exc:
+        db.rollback()
+        logger.exception("LinkedIn CSV upload failed stage=route exception_type=%s", type(exc).__name__)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="L'import CSV LinkedIn a echoue cote serveur.") from exc
 
 @router.get("/linkedin-csv", response_model=list[LinkedInImportRead])
 def get_linkedin_imports(

@@ -24,6 +24,28 @@ SEMANTIC_SCORE_WEIGHT = 0.3
 MATCHING_MODEL_NAME = "hybrid-heuristic-embedding-v1"
 LIGHTWEIGHT_MODEL_NAME = "lightweight-title-match-v1"
 MIN_VIVIER_MATCH_SCORE = 20
+SECTOR_KEYWORDS = {
+    "finance": {
+        "finance", "financial", "financier", "financiere", "financieres", "comptable", "comptabilite",
+        "accounting", "audit", "auditeur", "controleur", "controle", "gestion", "treasury", "tresorerie",
+        "responsable financier", "daf",
+    },
+    "informatique": {
+        "developpeur", "developpeuse", "developer", "software", "full", "stack", "backend", "frontend",
+        "php", "python", "java", "javascript", "react", "node", "sql", "n8n", "ia", "ai", "data",
+        "devops", "cloud", "informatique", "it", "cyber", "security", "securite", "reseau",
+    },
+    "marketing": {
+        "marketing", "communication", "digital", "brand", "marque", "seo", "social", "media",
+        "content", "contenu", "commercial", "vente", "sales",
+    },
+    "ressources humaines": {
+        "rh", "hr", "recrutement", "recruitment", "talent", "paie", "formation", "human", "resources",
+    },
+    "logistique": {
+        "logistique", "logistics", "supply", "chain", "achat", "achats", "stock", "transport",
+    },
+}
 
 
 def match_candidate_to_job(db: Session, candidate_id: UUID, job_id: UUID, application_id: UUID | None = None) -> AIMatchingResult:
@@ -190,15 +212,22 @@ def calculate_lightweight_match(candidate: Candidate, job: JobOffer) -> Matching
 
 
 def _title_keyword_score(candidate_title: str, job_title: str, required_skills: list[str]) -> int:
-    candidate_tokens = _tokenize_title(candidate_title)
+    candidate_tokens = _canonical_role_tokens(_tokenize_title(candidate_title))
     if not candidate_tokens:
         return 0
-    target_tokens = _tokenize_title(job_title)
+    target_tokens = _canonical_role_tokens(_tokenize_title(job_title))
     for skill in required_skills:
-        target_tokens |= _tokenize_title(skill)
+        target_tokens |= _canonical_role_tokens(_tokenize_title(skill))
     if not target_tokens:
         return 100
-    return _ratio_score(len(candidate_tokens & target_tokens), len(target_tokens))
+    direct_score = _ratio_score(len(candidate_tokens & target_tokens), len(target_tokens))
+    if direct_score:
+        return direct_score
+
+    expanded_candidate_tokens = _expand_role_tokens(candidate_tokens)
+    expanded_target_tokens = _expand_role_tokens(target_tokens)
+    expanded_score = _ratio_score(len(expanded_candidate_tokens & expanded_target_tokens), len(expanded_target_tokens))
+    return min(expanded_score, 70)
 
 
 def _company_match_score(candidate_company: str | None, job_company: str | None) -> int:
@@ -648,17 +677,15 @@ def _score_vivier_candidate(
     candidate_languages = _extract_list_values(parsed_candidate, "languages", "langues", "language_codes")
 
     if poste:
-        candidate_title = _string_value(candidate.current_title or parsed_candidate.get("current_title") or parsed_candidate.get("poste_actuel")) or ""
-        poste_score = _role_match_score(candidate_title, _string_value(parsed_candidate.get("__raw_text")) or "", poste)
+        candidate_profile = _candidate_profile_text(candidate, parsed_candidate)
+        poste_score = _role_match_score(candidate_profile, _string_value(parsed_candidate.get("__raw_text")) or "", poste)
         criteria.append(("poste", 20, poste_score))
         debug_details["poste_score"] = poste_score
+        debug_details["profile_source"] = _candidate_profile_source(candidate, parsed_candidate)
 
     if secteur:
         sector_score = _candidate_sector_score_from_payload(candidate, parsed_candidate, secteur, candidate_skills)
         debug_details["secteur_score"] = sector_score
-        if sector_score == 0:
-            debug_details["rejection_reason"] = "sector does not match"
-            return 0.0, debug_details
         criteria.append(("secteur", 20, sector_score))
 
     if technical_skills:
@@ -667,9 +694,6 @@ def _score_vivier_candidate(
         skill_score = _ratio_score(len(matched_skills), len(required_skill_set))
         debug_details["technical_skill_score"] = skill_score
         debug_details["matched_technical_skills"] = matched_skills
-        if skill_score == 0:
-            debug_details["rejection_reason"] = "no technical skill matched"
-            return 0.0, debug_details
         criteria.append(("technical_skills", 35, skill_score))
 
     if soft_skills:
@@ -678,9 +702,6 @@ def _score_vivier_candidate(
         soft_score = _ratio_score(len(matched_soft_skills), len(required_soft_set))
         debug_details["soft_skill_score"] = soft_score
         debug_details["matched_soft_skills"] = matched_soft_skills
-        if soft_score == 0:
-            debug_details["rejection_reason"] = "no soft skill matched"
-            return 0.0, debug_details
         criteria.append(("soft_skills", 10, soft_score))
 
     if required_experience_years is not None:
@@ -707,9 +728,6 @@ def _score_vivier_candidate(
     if languages:
         language_score = _language_match_score(candidate_languages, languages)
         debug_details["language_score"] = language_score
-        if language_score == 0:
-            debug_details["rejection_reason"] = "no language matched"
-            return 0.0, debug_details
         criteria.append(("languages", 10, language_score))
 
     if not criteria:
@@ -727,17 +745,23 @@ def _candidate_sector_score_from_payload(candidate: Candidate, parsed_candidate:
     expected_sector = _strip_accents(secteur.lower())
     explicit_sector = _string_value(candidate.sector or parsed_candidate.get("sector") or parsed_candidate.get("secteur"))
     if explicit_sector:
-        return 100 if _strip_accents(explicit_sector.lower()) == expected_sector else 0
+        normalized_explicit_sector = _strip_accents(explicit_sector.lower())
+        if normalized_explicit_sector == expected_sector or expected_sector in normalized_explicit_sector:
+            return 100
 
-    if expected_sector == "informatique":
-        it_terms = {
-            "developpeur", "developer", "dev", "software", "full", "stack", "backend", "frontend",
-            "php", "python", "java", "javascript", "react", "node", "sql", "n8n", "ia", "ai",
-            "data", "devops", "cloud", "informatique", "it",
-        }
-        title_tokens = _tokenize_title(candidate.current_title or "")
-        if candidate_skills & it_terms or title_tokens & it_terms:
-            return 70
+    candidate_text = " ".join(
+        value
+        for value in (
+            _candidate_profile_text(candidate, parsed_candidate),
+            _string_value(candidate.current_company),
+            (_string_value(parsed_candidate.get("__raw_text")) or "")[:2500],
+        )
+        if value
+    )
+    candidate_tokens = _expand_role_tokens(_tokenize_title(candidate_text)) | candidate_skills
+    expected_tokens = _expand_sector_tokens(expected_sector)
+    if expected_tokens and candidate_tokens & expected_tokens:
+        return 75 if not explicit_sector else 60
     return 0
 
 
@@ -781,6 +805,33 @@ def _expand_role_tokens(tokens: set[str]) -> set[str]:
     return expanded
 
 
+def _canonical_role_tokens(tokens: set[str]) -> set[str]:
+    aliases = {
+        "financial": "finance",
+        "financier": "finance",
+        "financiere": "finance",
+        "financieres": "finance",
+        "analyste": "analyst",
+        "analytics": "analyst",
+        "analyse": "analyst",
+        "developpeur": "developer",
+        "developpeuse": "developer",
+        "developpement": "developer",
+        "ingenieur": "engineer",
+    }
+    return {aliases.get(token, token) for token in tokens}
+
+
+def _expand_sector_tokens(sector: str) -> set[str]:
+    normalized_sector = _strip_accents(sector.lower())
+    tokens = _tokenize_title(normalized_sector)
+    for sector_name, keywords in SECTOR_KEYWORDS.items():
+        sector_tokens = _tokenize_title(sector_name)
+        if normalized_sector == sector_name or tokens & sector_tokens or normalized_sector in sector_name:
+            return {_strip_accents(keyword.lower()) for keyword in keywords} | sector_tokens
+    return tokens
+
+
 def _candidate_skill_set(candidate: Candidate, parsed_candidate: dict, *, include_title_tokens: bool = False) -> set[str]:
     skills = _extract_list_values(
         parsed_candidate,
@@ -796,7 +847,33 @@ def _candidate_skill_set(candidate: Candidate, parsed_candidate: dict, *, includ
         normalized |= _extract_known_skill_tokens(raw_text)
     if include_title_tokens and candidate.current_title:
         normalized |= _tokenize_title(candidate.current_title)
+    identified_profile = getattr(candidate, "identified_job_profile", None)
+    if include_title_tokens and identified_profile:
+        normalized |= _tokenize_title(identified_profile)
     return normalized
+
+
+def _candidate_profile_text(candidate: Candidate, parsed_candidate: dict) -> str:
+    values = [
+        getattr(candidate, "identified_job_profile", None),
+        parsed_candidate.get("identified_job_profile"),
+        candidate.current_title,
+        parsed_candidate.get("current_title"),
+        parsed_candidate.get("poste_actuel"),
+    ]
+    return " ".join(str(value).strip() for value in values if str(value or "").strip())
+
+
+def _candidate_profile_source(candidate: Candidate, parsed_candidate: dict) -> str:
+    if getattr(candidate, "identified_job_profile", None):
+        return "candidate.identified_job_profile"
+    if parsed_candidate.get("identified_job_profile"):
+        return "ai_output.identified_job_profile"
+    if candidate.current_title:
+        return "candidate.current_title"
+    if parsed_candidate.get("current_title") or parsed_candidate.get("poste_actuel"):
+        return "ai_output.current_title"
+    return "raw_text"
 
 
 def _extract_known_skill_tokens(text: str) -> set[str]:

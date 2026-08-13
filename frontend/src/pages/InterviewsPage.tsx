@@ -13,7 +13,7 @@ import {
   pipelineStageLabel,
 } from "../constants/pipeline";
 import { getApiErrorMessage } from "../lib/errors";
-import { Candidate, getCandidates } from "../services/candidates";
+import { Candidate, getCandidateById, getCandidates } from "../services/candidates";
 import {
   Evaluation,
   EvaluationPayload,
@@ -73,6 +73,10 @@ const initialEvaluationForm: EvaluationFormState = {
 
 function candidateName(candidate?: Candidate) {
   return candidate ? `${candidate.first_name} ${candidate.last_name}` : "Candidat inconnu";
+}
+
+function candidateSuggestionLabel(candidate: Candidate) {
+  return `${candidate.first_name} ${candidate.last_name} — ${candidate.current_title ?? "Poste actuel non renseigné"}`;
 }
 
 function formatDateTime(value: string) {
@@ -161,6 +165,9 @@ export function InterviewsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [interviewSearchQuery, setInterviewSearchQuery] = useState("");
   const [evaluationSearchQuery, setEvaluationSearchQuery] = useState("");
+  const [candidateSearchQuery, setCandidateSearchQuery] = useState("");
+  const [candidateSuggestions, setCandidateSuggestions] = useState<Candidate[]>([]);
+  const [isSearchingCandidates, setIsSearchingCandidates] = useState(false);
 
   const interviewsArray = Array.isArray(interviews) ? interviews : [];
 
@@ -241,6 +248,49 @@ export function InterviewsPage() {
   }, []);
 
   useEffect(() => {
+    if (!isInterviewModalOpen) {
+      return;
+    }
+
+    const normalizedQuery = candidateSearchQuery.trim();
+    const selectedCandidate = candidates.find((candidate) => candidate.id === interviewForm.candidate_id);
+    if (selectedCandidate && normalizedQuery === candidateSuggestionLabel(selectedCandidate)) {
+      setCandidateSuggestions([]);
+      return;
+    }
+    if (normalizedQuery.length < 2) {
+      setCandidateSuggestions([]);
+      return;
+    }
+
+    let isCancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      setIsSearchingCandidates(true);
+      getCandidates({ q: normalizedQuery, limit: 10 })
+        .then((items) => {
+          if (!isCancelled) {
+            setCandidateSuggestions(items);
+          }
+        })
+        .catch(() => {
+          if (!isCancelled) {
+            setCandidateSuggestions([]);
+          }
+        })
+        .finally(() => {
+          if (!isCancelled) {
+            setIsSearchingCandidates(false);
+          }
+        });
+    }, 250);
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [candidateSearchQuery, candidates, interviewForm.candidate_id, isInterviewModalOpen]);
+
+  useEffect(() => {
     if (requestedInterviewId && interviews.some((interview) => interview.id === requestedInterviewId)) {
       setEvaluationForm((current) => ({ ...current, interview_id: requestedInterviewId }));
       setEditingEvaluation(null);
@@ -273,9 +323,11 @@ export function InterviewsPage() {
     setMessage(null);
     setInterviewForm({
       ...initialInterviewForm,
-      candidate_id: candidates[0]?.id ?? "",
+      candidate_id: "",
       job_offer_id: jobs[0]?.id ?? "",
     });
+    setCandidateSearchQuery("");
+    setCandidateSuggestions([]);
     setIsInterviewModalOpen(true);
   };
 
@@ -284,6 +336,19 @@ export function InterviewsPage() {
     setFormError(null);
     setMessage(null);
     setInterviewForm(toInterviewFormState(interview));
+    const candidate = candidates.find((item) => item.id === interview.candidate_id);
+    setCandidateSearchQuery(candidate ? candidateSuggestionLabel(candidate) : "Chargement du candidat...");
+    setCandidateSuggestions([]);
+    if (!candidate) {
+      void getCandidateById(interview.candidate_id)
+        .then((loadedCandidate) => {
+          setCandidates((current) => current.some((item) => item.id === loadedCandidate.id) ? current : [...current, loadedCandidate]);
+          setCandidateSearchQuery(candidateSuggestionLabel(loadedCandidate));
+        })
+        .catch(() => {
+          setCandidateSearchQuery("Candidat sélectionné");
+        });
+    }
     setIsInterviewModalOpen(true);
   };
 
@@ -312,7 +377,7 @@ export function InterviewsPage() {
     setIsSubmitting(true);
 
     if (!interviewForm.candidate_id || !interviewForm.job_offer_id) {
-      setFormError("Sélectionnez un candidat et une offre d'emploi.");
+      setFormError("Sélectionnez un candidat réel dans les suggestions et une offre d'emploi.");
       setIsSubmitting(false);
       return;
     }
@@ -698,18 +763,53 @@ export function InterviewsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Candidat</span>
-                  <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    onChange={(event) => setInterviewForm((current) => ({ ...current, candidate_id: event.target.value }))}
-                    required
-                    value={interviewForm.candidate_id}
-                  >
-                    {candidates.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {candidate.first_name} {candidate.last_name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative mt-2">
+                    <input
+                      autoComplete="off"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                      onChange={(event) => {
+                        setCandidateSearchQuery(event.target.value);
+                        setInterviewForm((current) => ({ ...current, candidate_id: "" }));
+                      }}
+                      placeholder="Rechercher par nom, prénom, email ou poste actuel"
+                      required
+                      type="text"
+                      value={candidateSearchQuery}
+                    />
+                    {isSearchingCandidates ? (
+                      <p className="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-lg">
+                        Recherche en cours...
+                      </p>
+                    ) : null}
+                    {!isSearchingCandidates && candidateSuggestions.length > 0 ? (
+                      <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                        {candidateSuggestions.map((candidate) => (
+                          <button
+                            className="block w-full px-3 py-2 text-left text-sm hover:bg-orange-50"
+                            key={candidate.id}
+                            onClick={() => {
+                              setInterviewForm((current) => ({ ...current, candidate_id: candidate.id }));
+                              setCandidateSearchQuery(candidateSuggestionLabel(candidate));
+                              setCandidateSuggestions([]);
+                            }}
+                            type="button"
+                          >
+                            <span className="font-semibold text-[#24303F]">
+                              {candidate.first_name} {candidate.last_name}
+                            </span>
+                            <span className="text-slate-500"> — {candidate.current_title ?? "Poste actuel non renseigné"}</span>
+                            {candidate.email ? <span className="block text-xs text-slate-500">{candidate.email}</span> : null}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    {!isSearchingCandidates && candidateSearchQuery.trim().length >= 2 && candidateSuggestions.length === 0 && !interviewForm.candidate_id ? (
+                      <p className="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-lg">
+                        Aucun candidat trouvé.
+                      </p>
+                    ) : null}
+                  </div>
+                  <span className="mt-1 block text-xs text-slate-500">Sélectionnez un candidat réel du vivier avant d’enregistrer.</span>
                 </label>
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Poste / Offre d&apos;emploi</span>

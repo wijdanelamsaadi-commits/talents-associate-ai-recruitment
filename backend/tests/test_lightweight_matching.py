@@ -16,7 +16,7 @@ def test_lightweight_matching_uses_title_and_company():
 
     assert result.score > 0
     assert result.used_semantic_embedding is False
-    assert "no CV available" in result.recommendation
+    assert "aucun CV disponible" in result.recommendation
 
 
 def test_lightweight_matching_no_title_overlap_is_weak():
@@ -31,4 +31,4 @@ def test_lightweight_matching_no_title_overlap_is_weak():
     result = calculate_lightweight_match(candidate, job)
 
     assert result.score < 30
-    assert result.recommendation.startswith("weak_match")
+    assert result.recommendation.startswith("Correspondance faible")

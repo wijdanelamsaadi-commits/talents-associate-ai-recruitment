@@ -15,6 +15,7 @@ import {
 } from "../services/candidates";
 
 const PAGE_SIZE = 50;
+const OTHER_OPTION_VALUE = "__other__";
 
 type CandidateFormState = {
   first_name: string;
@@ -104,6 +105,16 @@ function formatCurrentPosition(candidate: Candidate) {
   return title || company || "-";
 }
 
+function formatIdentifiedProfile(candidate: Candidate) {
+  if (!candidate.identified_job_profile) {
+    return "-";
+  }
+  if (typeof candidate.job_profile_confidence === "number") {
+    return `${candidate.identified_job_profile} (${Math.round(candidate.job_profile_confidence * 100)} %)`;
+  }
+  return candidate.identified_job_profile;
+}
+
 function toFormState(candidate: Candidate): CandidateFormState {
   return {
     first_name: candidate.first_name,
@@ -116,6 +127,14 @@ function toFormState(candidate: Candidate): CandidateFormState {
     source: candidate.source,
     status: candidate.status,
   };
+}
+
+function predefinedSectorOptions() {
+  return SECTORS.filter((sector) => sector !== "Autre") as string[];
+}
+
+function isPredefinedSector(value: string) {
+  return value === "" || predefinedSectorOptions().includes(value);
 }
 
 export function CandidatesPage() {
@@ -135,6 +154,7 @@ export function CandidatesPage() {
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formState, setFormState] = useState<CandidateFormState>(initialFormState);
+  const [isCustomSector, setIsCustomSector] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState("all");
   const [candidateFilter, setCandidateFilter] = useState<CandidateFilter>("all");
@@ -153,6 +173,7 @@ export function CandidatesPage() {
         filter: candidateFilter,
         job_offer_id: pipelineJobId,
         pipeline_stage: pipelineStage,
+        q: searchQuery.trim() || undefined,
       });
       setCandidates(response.items);
       setTotalCandidates(response.total);
@@ -167,7 +188,13 @@ export function CandidatesPage() {
   useEffect(() => {
     const cursor = page === 1 ? null : cursorHistory[page - 2] ?? null;
     void loadCandidates(page, cursor);
-  }, [page, candidateFilter, pipelineJobId, pipelineStage]);
+  }, [page, candidateFilter, pipelineJobId, pipelineStage, searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+    setCursorHistory([]);
+    setNextCursor(null);
+  }, [searchQuery, sourceFilter, candidateFilter, pipelineJobId, pipelineStage]);
 
   const stats = useMemo(() => {
     const activeCount = candidates.filter((candidate) => candidate.status === "active").length;
@@ -211,6 +238,7 @@ export function CandidatesPage() {
         candidate.phone,
         candidate.location,
         candidate.current_title,
+        candidate.identified_job_profile,
         candidate.current_company,
         candidate.sector,
         formatSource(candidate.source),
@@ -226,6 +254,7 @@ export function CandidatesPage() {
   const openEditModal = (candidate: Candidate) => {
     setEditingCandidate(candidate);
     setFormState(toFormState(candidate));
+    setIsCustomSector(!isPredefinedSector(candidate.sector ?? ""));
     setFormError(null);
     setMessage(null);
     setIsModalOpen(true);
@@ -239,6 +268,11 @@ export function CandidatesPage() {
 
     setFormError(null);
     setIsSubmitting(true);
+    if (isCustomSector && !formState.sector.trim()) {
+      setFormError("Veuillez préciser le secteur.");
+      setIsSubmitting(false);
+      return;
+    }
 
     const payload = {
       first_name: formState.first_name.trim(),
@@ -256,6 +290,7 @@ export function CandidatesPage() {
       await updateCandidate(editingCandidate.id, payload);
       setMessage("Candidat mis à jour avec succès.");
       setFormState(initialFormState);
+      setIsCustomSector(false);
       setEditingCandidate(null);
       setIsModalOpen(false);
       await loadCandidates(page, page === 1 ? null : cursorHistory[page - 2] ?? null);
@@ -407,6 +442,7 @@ export function CandidatesPage() {
                   <th className="px-5 py-3 font-semibold">Téléphone</th>
                   <th className="px-5 py-3 font-semibold">Ville</th>
                   <th className="px-5 py-3 font-semibold">Poste actuel</th>
+                  <th className="px-5 py-3 font-semibold">Profil identifié</th>
                   <th className="px-5 py-3 font-semibold">Secteur</th>
                   <th className="px-5 py-3 font-semibold">Source</th>
                   <th className="px-5 py-3 font-semibold">Actions</th>
@@ -427,6 +463,7 @@ export function CandidatesPage() {
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{candidate.phone ?? "-"}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-700">{candidate.location ?? "-"}</td>
                     <td className="px-5 py-4 text-slate-700">{formatCurrentPosition(candidate)}</td>
+                    <td className="px-5 py-4 text-slate-700">{formatIdentifiedProfile(candidate)}</td>
                     <td className="px-5 py-4 text-slate-700">{candidate.sector ?? "-"}</td>
                     <td className="whitespace-nowrap px-5 py-4">
                       <SourceBadge source={candidate.source} />
@@ -557,16 +594,30 @@ export function CandidatesPage() {
                   <span className="text-sm font-medium text-slate-700">Secteur</span>
                   <select
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
-                    onChange={(event) => setFormState((current) => ({ ...current, sector: event.target.value }))}
-                    value={formState.sector}
+                    onChange={(event) => {
+                      const isOther = event.target.value === OTHER_OPTION_VALUE;
+                      setIsCustomSector(isOther);
+                      setFormState((current) => ({ ...current, sector: isOther ? "" : event.target.value }));
+                    }}
+                    value={isCustomSector ? OTHER_OPTION_VALUE : isPredefinedSector(formState.sector) ? formState.sector : OTHER_OPTION_VALUE}
                   >
                     <option value="">—</option>
-                    {SECTORS.map((sector) => (
+                    {predefinedSectorOptions().map((sector) => (
                       <option key={sector} value={sector}>
                         {sector}
                       </option>
                     ))}
+                    <option value={OTHER_OPTION_VALUE}>Autre</option>
                   </select>
+                  {isCustomSector ? (
+                    <input
+                      className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                      onChange={(event) => setFormState((current) => ({ ...current, sector: event.target.value }))}
+                      placeholder="Précisez le secteur"
+                      required
+                      value={formState.sector}
+                    />
+                  ) : null}
                 </label>
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Source</span>

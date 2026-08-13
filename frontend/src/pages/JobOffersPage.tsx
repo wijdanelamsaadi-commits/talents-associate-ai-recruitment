@@ -31,7 +31,25 @@ type JobFormState = {
   education_level: string;
   description: string;
   status: string;
-  languages: JobLanguage[];
+  languages: JobLanguageForm[];
+};
+
+type JobLanguageForm = JobLanguage & {
+  custom_language?: string;
+};
+
+type CustomFieldKey = "title" | "sector" | "contract_type" | "experience_level" | "education_level";
+
+type CustomFieldState = Record<CustomFieldKey, boolean>;
+
+const OTHER_OPTION_VALUE = "__other__";
+
+const initialCustomFieldState: CustomFieldState = {
+  title: false,
+  sector: false,
+  contract_type: false,
+  experience_level: false,
+  education_level: false,
 };
 
 const initialFormState: JobFormState = {
@@ -48,6 +66,35 @@ const initialFormState: JobFormState = {
   status: "open",
   languages: [{ language: "Français", level: "Courant" }],
 };
+
+function predefinedOptions(options: readonly string[]) {
+  return options.filter((option) => option !== "Autre");
+}
+
+function isPredefinedValue(value: string, options: readonly string[]) {
+  return value === "" || predefinedOptions(options).includes(value);
+}
+
+function selectValueFor(value: string, options: readonly string[], isCustom: boolean) {
+  if (isCustom) {
+    return OTHER_OPTION_VALUE;
+  }
+  return isPredefinedValue(value, options) ? value : OTHER_OPTION_VALUE;
+}
+
+function customStateForJob(job: JobOffer): CustomFieldState {
+  const exactExperienceLabel =
+    job.required_experience_years === null || job.required_experience_years === undefined
+      ? ""
+      : Object.entries(EXPERIENCE_LEVEL_TO_YEARS).find(([, years]) => years === job.required_experience_years)?.[0] ?? "";
+  return {
+    title: !isPredefinedValue(job.title, JOB_POSITIONS),
+    sector: !isPredefinedValue(job.sector ?? "", SECTORS),
+    contract_type: !isPredefinedValue(job.contract_type ?? "", CONTRACT_TYPES),
+    experience_level: Boolean(job.required_experience_years !== null && job.required_experience_years !== undefined && !exactExperienceLabel),
+    education_level: !isPredefinedValue(job.education_level ?? "", EDUCATION_LEVELS),
+  };
+}
 
 const statusOptions = [
   { value: "draft", label: "Brouillon" },
@@ -69,6 +116,12 @@ function joinSemicolonList(value: string[]) {
 }
 
 function toFormState(job: JobOffer): JobFormState {
+  const customState = customStateForJob(job);
+  const exactExperienceLabel =
+    job.required_experience_years === null || job.required_experience_years === undefined
+      ? ""
+      : Object.entries(EXPERIENCE_LEVEL_TO_YEARS).find(([, years]) => years === job.required_experience_years)?.[0] ?? "";
+
   return {
     title: job.title,
     company_name: job.company_name ?? "",
@@ -77,15 +130,28 @@ function toFormState(job: JobOffer): JobFormState {
     contract_type: job.contract_type ?? "",
     required_skills: joinSemicolonList(job.required_skills),
     soft_skills: joinSemicolonList(job.soft_skills),
-    experience_level: yearsToExperienceLevel(job.required_experience_years),
+    experience_level: customState.experience_level
+      ? String(job.required_experience_years)
+      : exactExperienceLabel || yearsToExperienceLevel(job.required_experience_years),
     education_level: job.education_level ?? "",
     description: job.description,
     status: job.status,
-    languages: job.languages.length > 0 ? job.languages : [{ language: "Français", level: "Courant" }],
+    languages:
+      job.languages.length > 0
+        ? job.languages.map((entry) =>
+            isPredefinedValue(entry.language, LANGUAGE_OPTIONS)
+              ? entry
+              : { ...entry, language: OTHER_OPTION_VALUE, custom_language: entry.language },
+          )
+        : [{ language: "Français", level: "Courant" }],
   };
 }
 
-function toPayload(formState: JobFormState): JobOfferPayload {
+function resolveLanguage(entry: JobLanguageForm) {
+  return entry.language === OTHER_OPTION_VALUE ? (entry.custom_language ?? "").trim() : entry.language.trim();
+}
+
+function toPayload(formState: JobFormState, customFields: CustomFieldState): JobOfferPayload {
   return {
     title: formState.title.trim(),
     company_name: formState.company_name.trim() || null,
@@ -94,9 +160,13 @@ function toPayload(formState: JobFormState): JobOfferPayload {
     contract_type: formState.contract_type.trim() || null,
     required_skills: splitSemicolonList(formState.required_skills),
     soft_skills: splitSemicolonList(formState.soft_skills),
-    languages: formState.languages.filter((entry) => entry.language && entry.level),
+    languages: formState.languages
+      .map((entry) => ({ language: resolveLanguage(entry), level: entry.level.trim() }))
+      .filter((entry) => entry.language && entry.level),
     required_experience_years: formState.experience_level
-      ? EXPERIENCE_LEVEL_TO_YEARS[formState.experience_level] ?? null
+      ? customFields.experience_level
+        ? Number.parseInt(formState.experience_level.trim(), 10)
+        : EXPERIENCE_LEVEL_TO_YEARS[formState.experience_level] ?? null
       : null,
     education_level: formState.education_level.trim() || null,
     description: formState.description.trim(),
@@ -104,10 +174,51 @@ function toPayload(formState: JobFormState): JobOfferPayload {
   };
 }
 
+function validateCustomFields(formState: JobFormState, customFields: CustomFieldState) {
+  const labels: Record<CustomFieldKey, string> = {
+    title: "poste",
+    sector: "secteur",
+    contract_type: "type de contrat",
+    experience_level: "niveau d'expérience",
+    education_level: "niveau d'études",
+  };
+
+  for (const field of Object.keys(customFields) as CustomFieldKey[]) {
+    if (customFields[field] && !formState[field].trim()) {
+      return `Veuillez préciser le ${labels[field]}.`;
+    }
+  }
+
+  if (customFields.experience_level) {
+    const years = Number.parseInt(formState.experience_level.trim(), 10);
+    if (!Number.isFinite(years) || years < 0) {
+      return "Veuillez saisir un nombre d'années d'expérience valide.";
+    }
+  }
+
+  const invalidLanguage = formState.languages.find(
+    (entry) => entry.language === OTHER_OPTION_VALUE && !(entry.custom_language ?? "").trim(),
+  );
+  if (invalidLanguage) {
+    return "Veuillez préciser la langue personnalisée.";
+  }
+
+  return null;
+}
+
 function buildShareUrl(job: JobOffer) {
-  const configuredBaseUrl = import.meta.env.VITE_PUBLIC_PORTAL_BASE_URL?.trim();
-  const baseUrl = (configuredBaseUrl || window.location.origin).replace(/\/+$/, "");
-  return `${baseUrl}/portal/jobs/${job.id}`;
+  const configuredDetailUrl = import.meta.env.VITE_PUBLIC_JOB_DETAIL_URL?.trim();
+  const fallbackDetailUrl = "https://talentsag.ma/detail-offre/";
+  const baseUrl = configuredDetailUrl || fallbackDetailUrl;
+
+  try {
+    const url = new URL(baseUrl, window.location.origin);
+    url.searchParams.set("job_id", job.id);
+    return url.toString();
+  } catch {
+    const separator = baseUrl.includes("?") ? "&" : "?";
+    return `${baseUrl}${separator}job_id=${encodeURIComponent(job.id)}`;
+  }
 }
 
 function buildShareText(job: JobOffer) {
@@ -135,6 +246,7 @@ export function JobOffersPage() {
   const [editingJob, setEditingJob] = useState<JobOffer | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formState, setFormState] = useState<JobFormState>(initialFormState);
+  const [customFields, setCustomFields] = useState<CustomFieldState>(initialCustomFieldState);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -186,6 +298,7 @@ export function JobOffersPage() {
   const openCreateModal = () => {
     setEditingJob(null);
     setFormState(initialFormState);
+    setCustomFields(initialCustomFieldState);
     setError(null);
     setMessage(null);
     setIsModalOpen(true);
@@ -194,16 +307,29 @@ export function JobOffersPage() {
   const openEditModal = (job: JobOffer) => {
     setEditingJob(job);
     setFormState(toFormState(job));
+    setCustomFields(customStateForJob(job));
     setError(null);
     setMessage(null);
     setIsModalOpen(true);
+  };
+
+  const updateSelectField = (field: CustomFieldKey, value: string) => {
+    const isCustom = value === OTHER_OPTION_VALUE;
+    setCustomFields((current) => ({ ...current, [field]: isCustom }));
+    setFormState((current) => ({ ...current, [field]: isCustom ? "" : value }));
   };
 
   const updateLanguage = (index: number, field: keyof JobLanguage, value: string) => {
     setFormState((current) => ({
       ...current,
       languages: current.languages.map((entry, entryIndex) =>
-        entryIndex === index ? { ...entry, [field]: value } : entry,
+        entryIndex === index
+          ? {
+              ...entry,
+              [field]: value,
+              ...(field === "language" && value !== OTHER_OPTION_VALUE ? { custom_language: "" } : {}),
+            }
+          : entry,
       ),
     }));
   };
@@ -229,7 +355,14 @@ export function JobOffersPage() {
     setMessage(null);
 
     try {
-      const payload = toPayload(formState);
+      const validationError = validateCustomFields(formState, customFields);
+      if (validationError) {
+        setError(validationError);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const payload = toPayload(formState, customFields);
       if (editingJob) {
         await updateJobOffer(editingJob.id, payload);
         setMessage("Offre d'emploi mise à jour.");
@@ -404,17 +537,27 @@ export function JobOffersPage() {
                   <span className="text-sm font-medium text-slate-700">Poste</span>
                   <select
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
-                    onChange={(event) => setFormState((current) => ({ ...current, title: event.target.value }))}
+                    onChange={(event) => updateSelectField("title", event.target.value)}
                     required
-                    value={formState.title}
+                    value={selectValueFor(formState.title, JOB_POSITIONS, customFields.title)}
                   >
                     <option value="">Sélectionner un poste</option>
-                    {JOB_POSITIONS.map((position) => (
+                    {predefinedOptions(JOB_POSITIONS).map((position) => (
                       <option key={position} value={position}>
                         {position}
                       </option>
                     ))}
+                    <option value={OTHER_OPTION_VALUE}>Autre</option>
                   </select>
+                  {customFields.title ? (
+                    <input
+                      className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                      onChange={(event) => setFormState((current) => ({ ...current, title: event.target.value }))}
+                      placeholder="Précisez le poste"
+                      required
+                      value={formState.title}
+                    />
+                  ) : null}
                 </label>
 
                 <label className="block">
@@ -430,16 +573,26 @@ export function JobOffersPage() {
                   <span className="text-sm font-medium text-slate-700">Secteur d&apos;activité</span>
                   <select
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
-                    onChange={(event) => setFormState((current) => ({ ...current, sector: event.target.value }))}
-                    value={formState.sector}
+                    onChange={(event) => updateSelectField("sector", event.target.value)}
+                    value={selectValueFor(formState.sector, SECTORS, customFields.sector)}
                   >
                     <option value="">Sélectionner un secteur</option>
-                    {SECTORS.map((sector) => (
+                    {predefinedOptions(SECTORS).map((sector) => (
                       <option key={sector} value={sector}>
                         {sector}
                       </option>
                     ))}
+                    <option value={OTHER_OPTION_VALUE}>Autre</option>
                   </select>
+                  {customFields.sector ? (
+                    <input
+                      className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                      onChange={(event) => setFormState((current) => ({ ...current, sector: event.target.value }))}
+                      placeholder="Précisez le secteur"
+                      required
+                      value={formState.sector}
+                    />
+                  ) : null}
                 </label>
 
                 <label className="block">
@@ -455,48 +608,80 @@ export function JobOffersPage() {
                   <span className="text-sm font-medium text-slate-700">Type de contrat</span>
                   <select
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
-                    onChange={(event) => setFormState((current) => ({ ...current, contract_type: event.target.value }))}
-                    value={formState.contract_type}
+                    onChange={(event) => updateSelectField("contract_type", event.target.value)}
+                    value={selectValueFor(formState.contract_type, CONTRACT_TYPES, customFields.contract_type)}
                   >
                     <option value="">Sélectionner un type</option>
-                    {CONTRACT_TYPES.map((contractType) => (
+                    {predefinedOptions(CONTRACT_TYPES).map((contractType) => (
                       <option key={contractType} value={contractType}>
                         {contractType}
                       </option>
                     ))}
+                    <option value={OTHER_OPTION_VALUE}>Autre</option>
                   </select>
+                  {customFields.contract_type ? (
+                    <input
+                      className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                      onChange={(event) => setFormState((current) => ({ ...current, contract_type: event.target.value }))}
+                      placeholder="Précisez le type de contrat"
+                      required
+                      value={formState.contract_type}
+                    />
+                  ) : null}
                 </label>
 
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Niveau d&apos;expérience</span>
                   <select
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
-                    onChange={(event) => setFormState((current) => ({ ...current, experience_level: event.target.value }))}
-                    value={formState.experience_level}
+                    onChange={(event) => updateSelectField("experience_level", event.target.value)}
+                    value={selectValueFor(formState.experience_level, EXPERIENCE_LEVELS, customFields.experience_level)}
                   >
                     <option value="">Sélectionner un niveau</option>
-                    {EXPERIENCE_LEVELS.map((level) => (
+                    {predefinedOptions(EXPERIENCE_LEVELS).map((level) => (
                       <option key={level} value={level}>
                         {level}
                       </option>
                     ))}
+                    <option value={OTHER_OPTION_VALUE}>Autre</option>
                   </select>
+                  {customFields.experience_level ? (
+                    <input
+                      className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                      min={0}
+                      onChange={(event) => setFormState((current) => ({ ...current, experience_level: event.target.value }))}
+                      placeholder="Précisez le niveau d’expérience"
+                      required
+                      type="number"
+                      value={formState.experience_level}
+                    />
+                  ) : null}
                 </label>
 
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Niveau d&apos;études</span>
                   <select
                     className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
-                    onChange={(event) => setFormState((current) => ({ ...current, education_level: event.target.value }))}
-                    value={formState.education_level}
+                    onChange={(event) => updateSelectField("education_level", event.target.value)}
+                    value={selectValueFor(formState.education_level, EDUCATION_LEVELS, customFields.education_level)}
                   >
                     <option value="">Sélectionner un niveau</option>
-                    {EDUCATION_LEVELS.map((level) => (
+                    {predefinedOptions(EDUCATION_LEVELS).map((level) => (
                       <option key={level} value={level}>
                         {level}
                       </option>
                     ))}
+                    <option value={OTHER_OPTION_VALUE}>Autre</option>
                   </select>
+                  {customFields.education_level ? (
+                    <input
+                      className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                      onChange={(event) => setFormState((current) => ({ ...current, education_level: event.target.value }))}
+                      placeholder="Précisez le niveau d’études"
+                      required
+                      value={formState.education_level}
+                    />
+                  ) : null}
                 </label>
 
                 <label className="block">
@@ -547,18 +732,37 @@ export function JobOffersPage() {
                   </button>
                 </div>
                 {formState.languages.map((entry, index) => (
-                  <div key={`${entry.language}-${index}`} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                    <select
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
-                      onChange={(event) => updateLanguage(index, "language", event.target.value)}
-                      value={entry.language}
-                    >
-                      {LANGUAGE_OPTIONS.map((language) => (
-                        <option key={language} value={language}>
-                          {language}
-                        </option>
-                      ))}
-                    </select>
+                  <div key={`${entry.language}-${entry.custom_language ?? ""}-${index}`} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                    <div>
+                      <select
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                        onChange={(event) => updateLanguage(index, "language", event.target.value)}
+                        value={entry.language}
+                      >
+                        {predefinedOptions(LANGUAGE_OPTIONS).map((language) => (
+                          <option key={language} value={language}>
+                            {language}
+                          </option>
+                        ))}
+                        <option value={OTHER_OPTION_VALUE}>Autre</option>
+                      </select>
+                      {entry.language === OTHER_OPTION_VALUE ? (
+                        <input
+                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                          onChange={(event) =>
+                            setFormState((current) => ({
+                              ...current,
+                              languages: current.languages.map((languageEntry, languageIndex) =>
+                                languageIndex === index ? { ...languageEntry, custom_language: event.target.value } : languageEntry,
+                              ),
+                            }))
+                          }
+                          placeholder="Précisez la langue"
+                          required
+                          value={entry.custom_language ?? ""}
+                        />
+                      ) : null}
+                    </div>
                     <select
                       className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                       onChange={(event) => updateLanguage(index, "level", event.target.value)}

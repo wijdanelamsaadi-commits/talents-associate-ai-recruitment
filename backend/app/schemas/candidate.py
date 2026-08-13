@@ -69,6 +69,9 @@ class CandidateUpdate(BaseModel):
 
 class CandidateRead(CandidateBase):
     id: UUID
+    identified_job_profile: str | None = None
+    job_profile_confidence: float | None = None
+    job_profile_matched_terms: list[str] | None = None
     created_at: datetime
     updated_at: datetime
 

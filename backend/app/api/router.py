@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies import require_recruiter_or_admin
-from app.api.routes import admin, applications, auth, candidates, cv_upload, dashboard, evaluations, health, imports, interviews, jobs, matching, portal, timeline
+from app.api.routes import admin, applications, auth, candidates, cv_upload, dashboard, evaluations, health, imports, interviews, jobs, matching, portal, references, timeline
 
 
 api_router = APIRouter()
@@ -17,6 +17,7 @@ api_router.include_router(dashboard.router, dependencies=protected_dependencies)
 api_router.include_router(imports.router, dependencies=protected_dependencies)
 api_router.include_router(jobs.router, dependencies=protected_dependencies)
 api_router.include_router(matching.router, dependencies=protected_dependencies)
+api_router.include_router(references.router, dependencies=protected_dependencies)
 api_router.include_router(interviews.router, dependencies=protected_dependencies)
 api_router.include_router(evaluations.router, dependencies=protected_dependencies)
 api_router.include_router(timeline.router, dependencies=protected_dependencies)

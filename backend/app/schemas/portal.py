@@ -110,6 +110,7 @@ class PublicJobRead(BaseModel):
     contract_type: str | None
     required_skills: list[str]
     preferred_skills: list[str]
+    soft_skills: list[str]
     required_experience_years: int | None
     education_level: str | None
     description: str
@@ -119,10 +120,14 @@ class PublicJobRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    @field_validator("required_skills", "preferred_skills", mode="before")
+    @field_validator("required_skills", "preferred_skills", "soft_skills", mode="before")
     @classmethod
-    def default_empty_skill_lists(cls, value: list[str] | None) -> list[str]:
-        return value or []
+    def default_empty_skill_lists(cls, value: list[str] | str | None) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [item.strip() for item in value.replace("\n", ";").split(";") if item.strip()]
+        return [str(item).strip() for item in value if str(item).strip()]
 
 
 class CandidateNotificationRead(BaseModel):

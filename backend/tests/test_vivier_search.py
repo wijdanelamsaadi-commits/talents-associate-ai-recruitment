@@ -59,7 +59,10 @@ class FakeDb:
         return None
 
     def scalars(self, statement):
-        # Returns all candidates
+        entities = [entry.get("entity") for entry in getattr(statement, "column_descriptions", [])]
+        if ExtractedCVData in entities:
+            cvs = [item for item in self.items if isinstance(item, ExtractedCVData)]
+            return SimpleNamespace(all=lambda: cvs)
         candidates = [item for item in self.items if isinstance(item, Candidate)]
         return SimpleNamespace(all=lambda: candidates)
 
@@ -158,6 +161,214 @@ def test_vivier_search_service_logic():
     assert skill_results[0][1] > 0
 
 
+def test_vivier_search_uses_identified_profile_without_open_job_offer():
+    candidate_id = uuid4()
+    candidate = Candidate(
+        id=candidate_id,
+        first_name="Dina",
+        last_name="Analyse",
+        email="dina@example.com",
+        sector="Informatique",
+        current_title="Consultant BI Senior",
+        identified_job_profile="Data Analyst",
+        job_profile_confidence=0.9,
+        job_profile_matched_terms=["power bi", "sql"],
+        status="active",
+        source="cv_upload",
+        is_talent_pool=False,
+        consent_given=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    parsed_cv = ExtractedCVData(
+        id=uuid4(),
+        candidate_id=candidate_id,
+        cv_file_id=uuid4(),
+        raw_text="Profil Data Analyst avec Power BI, SQL, reporting et dashboards.",
+        ai_output={
+            "identified_job_profile": "Data Analyst",
+            "current_title": "Data Analyst",
+            "skills": ["Power BI", "SQL", "reporting"],
+        },
+        parsing_status="parsed",
+        status="approved",
+    )
+    db = FakeDb(items=[candidate, parsed_cv])
+
+    results = matching_service.search_candidates_vivier(
+        db,
+        poste="Data Analyst",
+        technical_skills="Power BI; SQL",
+    )
+
+    assert len(results) == 1
+    assert results[0][0].first_name == "Dina"
+    assert results[0][1] > 0
+
+
+def test_vivier_search_falls_back_to_current_title_when_identified_profile_missing():
+    candidate = Candidate(
+        id=uuid4(),
+        first_name="Youssef",
+        last_name="Devops",
+        email="youssef@example.com",
+        sector="Informatique",
+        current_title="DevOps Engineer",
+        identified_job_profile=None,
+        status="active",
+        source="cv_upload",
+        is_talent_pool=False,
+        consent_given=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db = FakeDb(items=[candidate])
+
+    results = matching_service.search_candidates_vivier(db, poste="DevOps Engineer")
+
+    assert len(results) == 1
+    assert results[0][0].first_name == "Youssef"
+    assert results[0][5]["profile_source"] == "candidate.current_title"
+
+
+def test_vivier_search_finance_sector_uses_title_when_sector_is_empty():
+    finance_candidate = Candidate(
+        id=uuid4(),
+        first_name="Adnane",
+        last_name="Finance",
+        email=None,
+        sector=None,
+        current_title="Finance Officer",
+        current_company="Arab Open University",
+        source="linkedin_csv",
+        status="active",
+        is_talent_pool=False,
+        consent_given=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    unrelated_candidate = Candidate(
+        id=uuid4(),
+        first_name="Nadia",
+        last_name="Operations",
+        email=None,
+        sector=None,
+        current_title="Responsable production",
+        current_company="Industrie",
+        source="linkedin_csv",
+        status="active",
+        is_talent_pool=False,
+        consent_given=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db = FakeDb(items=[finance_candidate, unrelated_candidate])
+
+    results = matching_service.search_candidates_vivier(db, secteur="Finance")
+
+    assert len(results) == 1
+    assert results[0][0].first_name == "Adnane"
+    assert results[0][1] > 0
+    assert results[0][5]["secteur_score"] > 0
+
+
+def test_vivier_search_finance_officer_scores_are_variable():
+    officer = Candidate(
+        id=uuid4(),
+        first_name="Adnane",
+        last_name="Officer",
+        email=None,
+        sector=None,
+        current_title="Finance Officer",
+        source="linkedin_csv",
+        status="active",
+        is_talent_pool=False,
+        consent_given=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    analyst = Candidate(
+        id=uuid4(),
+        first_name="Sara",
+        last_name="Analyst",
+        email=None,
+        sector=None,
+        current_title="Financial Analyst",
+        source="linkedin_csv",
+        status="active",
+        is_talent_pool=False,
+        consent_given=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db = FakeDb(items=[analyst, officer])
+
+    results = matching_service.search_candidates_vivier(db, poste="Finance Officer")
+
+    assert [result[0].first_name for result in results][:2] == ["Adnane", "Sara"]
+    assert results[0][1] > results[1][1]
+    assert len({result[1] for result in results}) > 1
+
+
+def test_vivier_search_data_analyst_prioritizes_identified_profile():
+    data_candidate = Candidate(
+        id=uuid4(),
+        first_name="Dina",
+        last_name="Data",
+        email=None,
+        sector=None,
+        current_title="Consultante BI",
+        identified_job_profile="Data Analyst",
+        source="cv_upload",
+        status="active",
+        is_talent_pool=False,
+        consent_given=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    other_candidate = Candidate(
+        id=uuid4(),
+        first_name="Karim",
+        last_name="Sales",
+        email=None,
+        sector=None,
+        current_title="Sales Analyst",
+        source="linkedin_csv",
+        status="active",
+        is_talent_pool=False,
+        consent_given=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db = FakeDb(items=[other_candidate, data_candidate])
+
+    results = matching_service.search_candidates_vivier(db, poste="Data Analyst")
+
+    assert results[0][0].first_name == "Dina"
+    assert results[0][5]["profile_source"] == "candidate.identified_job_profile"
+
+
+def test_vivier_search_without_criteria_returns_no_artificial_100_scores():
+    candidate = Candidate(
+        id=uuid4(),
+        first_name="Neutral",
+        last_name="Candidate",
+        email=None,
+        current_title="Finance Officer",
+        source="linkedin_csv",
+        status="active",
+        is_talent_pool=False,
+        consent_given=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db = FakeDb(items=[candidate])
+
+    results = matching_service.search_candidates_vivier(db)
+
+    assert results == []
+
+
 def test_vivier_search_route():
     recruiter = SimpleNamespace(id=uuid4(), role="recruiter", status="active")
     c1 = Candidate(
@@ -168,7 +379,7 @@ def test_vivier_search_route():
         sector="Telecom",
         current_title="Network Engineer",
         status="active",
-        source="manual",
+        source="cv_upload",
         is_talent_pool=False,
         consent_given=False,
         created_at=datetime.now(timezone.utc),

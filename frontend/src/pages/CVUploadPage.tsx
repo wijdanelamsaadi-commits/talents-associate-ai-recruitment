@@ -314,33 +314,35 @@ export function CVUploadPage() {
           </Link>
         </div>
 
-        <form className="mt-6 grid gap-5 lg:grid-cols-[1fr_auto] items-end" onSubmit={handleUpload}>
+        <form className="mt-6" onSubmit={handleUpload}>
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Fichier CV ou lot ZIP</span>
-            <input
-              accept=".pdf,.doc,.docx,.zip,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/zip"
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#EE6C2F] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
-              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-              type="file"
-            />
+            <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-center">
+              <input
+                accept=".pdf,.doc,.docx,.zip,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/zip"
+                className="min-h-10 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#EE6C2F] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white lg:flex-1"
+                onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                type="file"
+              />
+              <button
+                className="h-10 w-full shrink-0 rounded-lg bg-[#EE6C2F] px-4 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
+                disabled={isUploading || isLoadingPage}
+                type="submit"
+              >
+                {isUploading ? "Analyse en cours..." : "Importer et analyser le CV"}
+              </button>
+            </div>
             <span className="mt-1 block text-xs text-slate-500">PDF, DOC, DOCX ou ZIP. Maximum 5 Mo par CV.</span>
           </label>
-
-          <div className="flex items-end">
-            <button
-              className="h-10 w-full rounded-lg bg-[#EE6C2F] px-4 text-sm font-semibold text-white hover:bg-[#D9551B] disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
-              disabled={isUploading || isLoadingPage}
-              type="submit"
-            >
-              {isUploading ? "Analyse en cours..." : "Importer et analyser le CV"}
-            </button>
-          </div>
         </form>
 
         {(isUploading || processingStage === "completed") && processingStage !== "idle" ? (
           <div className="mt-5">
             <div className="h-2 rounded-full bg-slate-100">
-              <div className="h-2 rounded-full bg-[#EE6C2F]" style={{ width: `${uploadProgress}%` }} />
+              <div
+                className="h-2 rounded-full bg-[#EE6C2F]"
+                style={{ width: `${processingStage === "completed" ? 100 : uploadProgress ?? 0}%` }}
+              />
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-4">
               {processingSteps.map((step, index) => {
@@ -418,7 +420,7 @@ export function CVUploadPage() {
                         {cvFile.original_filename}
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
-                        {candidate ? `${candidate.first_name} ${candidate.last_name}` : cvFile.candidate_id}
+                        {candidate ? `${candidate.first_name} ${candidate.last_name}` : "Candidat lié non chargé"}
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">{formatBytes(cvFile.file_size_bytes)}</td>
                       <td className="whitespace-nowrap px-5 py-4">

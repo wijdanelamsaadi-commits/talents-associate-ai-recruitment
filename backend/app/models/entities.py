@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Float,
     JSON,
     Numeric,
     String,
@@ -108,6 +109,9 @@ class Candidate(TimestampMixin, Base):
     portfolio_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     current_title: Mapped[str | None] = mapped_column(String(150), nullable=True)
     current_company: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    identified_job_profile: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    job_profile_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    job_profile_matched_terms: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     sector: Mapped[str | None] = mapped_column(String(150), nullable=True)
     gender: Mapped[str | None] = mapped_column(String(1), nullable=True)
     source: Mapped[str] = mapped_column(String(50), default="manual", index=True, nullable=False)

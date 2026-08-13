@@ -11,6 +11,9 @@ export type Candidate = {
   portfolio_url: string | null;
   current_title: string | null;
   current_company: string | null;
+  identified_job_profile: string | null;
+  job_profile_confidence: number | null;
+  job_profile_matched_terms: string[] | null;
   sector: string | null;
   gender: "M" | "F" | null;
   source: string;
@@ -103,6 +106,9 @@ export type CandidateHistoryCVFile = {
   parsing_status: string;
   parser_model: string | null;
   uploaded_at: string;
+  is_current?: boolean | null;
+  current?: boolean | null;
+  latest?: boolean | null;
 };
 
 export type CandidateHistoryTimelineEvent = {
@@ -162,6 +168,7 @@ export async function getCandidatesPaginated(params?: {
   filter?: "all" | "active" | "rejected" | "archived" | "talent_pool";
   job_offer_id?: string;
   pipeline_stage?: string;
+  q?: string;
 }): Promise<PaginatedCandidatesResponse> {
   const response = await apiClient.get<PaginatedCandidatesResponse>("/api/candidates", {
     params: {
@@ -171,12 +178,13 @@ export async function getCandidatesPaginated(params?: {
       ...(params?.after_id ? { after_id: params.after_id } : {}),
       ...(params?.job_offer_id ? { job_offer_id: params.job_offer_id } : {}),
       ...(params?.pipeline_stage ? { pipeline_stage: params.pipeline_stage } : {}),
+      ...(params?.q ? { q: params.q } : {}),
     },
   });
   return response.data;
 }
 
-export async function getCandidates(params?: { skip?: number; limit?: number }): Promise<Candidate[]> {
+export async function getCandidates(params?: { skip?: number; limit?: number; q?: string }): Promise<Candidate[]> {
   const response = await getCandidatesPaginated(params);
   return response.items;
 }
@@ -237,6 +245,8 @@ export type VivierSearchResult = {
   score: number;
   has_cv: boolean;
   cv_file_id: string | null;
+  matched_skills?: string[];
+  score_details?: Record<string, unknown> | null;
 };
 
 export type VivierSearchParams = {

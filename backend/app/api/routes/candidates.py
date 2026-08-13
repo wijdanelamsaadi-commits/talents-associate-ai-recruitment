@@ -56,6 +56,7 @@ def list_candidates(
         default=None,
         pattern="^(recu|preselectionne|non_selectionne|entretien_cabinet|entretien_client|profil_valide|refus_candidat)$",
     ),
+    q: str | None = Query(default=None, max_length=255),
     db: Session = Depends(get_db),
 ) -> PaginatedCandidatesResponse:
     cursor_id = last_id or after_id
@@ -67,6 +68,7 @@ def list_candidates(
         candidate_filter=filter,
         job_offer_id=job_offer_id,
         pipeline_stage=pipeline_stage,
+        search_query=q,
     )
     next_cursor = str(candidates[-1].id) if candidates and len(candidates) == limit else None
     return PaginatedCandidatesResponse(
@@ -76,6 +78,7 @@ def list_candidates(
             candidate_filter=filter,
             job_offer_id=job_offer_id,
             pipeline_stage=pipeline_stage,
+            search_query=q,
         ),
         next_cursor=next_cursor,
     )
