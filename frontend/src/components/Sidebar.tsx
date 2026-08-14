@@ -46,16 +46,18 @@ export function Sidebar() {
   const spaceLabel = isAdmin ? "Espace administrateur" : "Espace recruteur";
 
   return (
-    <aside className="fixed inset-x-0 top-0 z-30 border-b border-orange-100 bg-white text-[#24303F] shadow-sm lg:inset-y-0 lg:right-auto lg:w-72 lg:border-b-0 lg:border-r lg:border-orange-100">
+    <aside className="fixed inset-x-0 top-0 z-30 border-b border-[#EE6C2F]/30 bg-[var(--color-sidebar)] text-[var(--color-text-light)] shadow-lg shadow-slate-950/10 lg:inset-y-0 lg:right-auto lg:w-72 lg:border-b-0 lg:border-r lg:border-[#EE6C2F]/20">
       <div className="flex h-16 items-center justify-between px-4 lg:h-full lg:flex-col lg:items-stretch lg:justify-start lg:gap-8 lg:px-6 lg:py-7">
         <NavLink to={homePath} className="flex min-w-0 items-center gap-3 lg:flex-col lg:items-start">
-          <img
-            alt="Talents Associate"
-            className="h-11 w-auto object-contain lg:h-24"
-            src="/talents-associate-logo-official.png"
-          />
+          <span className="rounded-xl bg-white px-3 py-2 shadow-sm lg:px-4 lg:py-3">
+            <img
+              alt="Talents Associate"
+              className="h-9 w-auto object-contain lg:h-20"
+              src="/talents-associate-logo-official.png"
+            />
+          </span>
           <span className="hidden min-w-0 lg:block">
-            <span className="block truncate text-xs font-semibold text-[#EE6C2F]">{spaceLabel}</span>
+            <span className="block truncate text-xs font-semibold uppercase tracking-wide text-[#EE6C2F]">{spaceLabel}</span>
           </span>
         </NavLink>
 
@@ -70,12 +72,12 @@ export function Sidebar() {
                 [
                   "flex h-11 shrink-0 items-center gap-3 rounded-lg border-l-4 px-3 text-sm font-bold transition",
                   isActive
-                    ? "border-[#EE6C2F] bg-orange-50 text-[#EE6C2F]"
-                    : "border-transparent bg-white text-[#EE6C2F] hover:border-orange-200 hover:bg-orange-50",
+                    ? "border-[#EE6C2F] bg-[var(--color-sidebar-active)] text-white shadow-sm"
+                    : "border-transparent text-white/85 hover:border-[#EE6C2F]/70 hover:bg-white/10 hover:text-white",
                 ].join(" ")
               }
             >
-              <span className="flex h-8 min-w-8 items-center justify-center rounded-md bg-[#EE6C2F]/10 text-[#EE6C2F]">
+              <span className="flex h-8 min-w-8 items-center justify-center rounded-md bg-[#EE6C2F]/15 text-[#EE6C2F]">
                 <Icon className="h-5 w-5" aria-hidden="true" />
               </span>
               <span className="hidden lg:inline">{item.label}</span>

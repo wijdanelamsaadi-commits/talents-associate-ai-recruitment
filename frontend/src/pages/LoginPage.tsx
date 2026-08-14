@@ -61,42 +61,46 @@ export function LoginPage() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-white text-[#24303F] lg:grid lg:grid-cols-[1fr_1fr]">
-      <section className="relative flex min-h-screen flex-col justify-center px-6 py-10 sm:px-12 lg:px-20">
+      <section className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-[var(--color-navy)] px-6 py-10 text-white sm:px-12 lg:px-20">
+        <div className="pointer-events-none absolute -left-24 top-16 h-72 w-72 rounded-full bg-[#EE6C2F]/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-[-8rem] right-[-7rem] h-96 w-96 rounded-full border border-[#EE6C2F]/25" />
         <div className="mx-auto w-full max-w-xl">
-          <img
-            alt="Talents Associate"
-            className="h-24 w-auto object-contain sm:h-28"
-            src="/talents-associate-logo-official.png"
-          />
-          <h1 className="mt-6 text-4xl font-extrabold leading-tight text-[#24303F] sm:text-5xl">
+          <span className="inline-flex rounded-2xl bg-white px-4 py-3 shadow-lg shadow-slate-950/20">
+            <img
+              alt="Talents Associate"
+              className="h-20 w-auto object-contain sm:h-24"
+              src="/talents-associate-logo-official.png"
+            />
+          </span>
+          <h1 className="mt-6 text-4xl font-extrabold leading-tight text-white sm:text-5xl">
             Bienvenue sur <span className="block text-[#EE6C2F]">Talents Associate</span>
           </h1>
-          <p className="mt-6 max-w-lg text-lg leading-8 text-slate-600">
+          <p className="mt-6 max-w-lg text-lg leading-8 text-slate-200">
             La plateforme intelligente de gestion des talents et du recrutement.
           </p>
 
           <div className="mt-14 grid gap-6 text-center sm:grid-cols-3">
-            <div className="border-slate-200 sm:border-r sm:pr-6">
-              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-orange-50 text-[#EE6C2F]">
+            <div className="border-white/15 sm:border-r sm:pr-6">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-[#EE6C2F]/15 text-[#EE6C2F] ring-1 ring-[#EE6C2F]/25">
                 <UsersIcon className="h-7 w-7" aria-hidden="true" />
               </span>
               <p className="mt-3 text-sm font-semibold leading-5">Gérez vos candidats facilement</p>
             </div>
-            <div className="border-slate-200 sm:border-r sm:px-6">
-              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-orange-50 text-[#EE6C2F]">
+            <div className="border-white/15 sm:border-r sm:px-6">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-[#EE6C2F]/15 text-[#EE6C2F] ring-1 ring-[#EE6C2F]/25">
                 <TargetIcon className="h-7 w-7" aria-hidden="true" />
               </span>
               <p className="mt-3 text-sm font-semibold leading-5">Trouvez les meilleurs profils</p>
             </div>
             <div className="sm:pl-6">
-              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-orange-50 text-[#EE6C2F]">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-[#EE6C2F]/15 text-[#EE6C2F] ring-1 ring-[#EE6C2F]/25">
                 <ChartIcon className="h-7 w-7" aria-hidden="true" />
               </span>
               <p className="mt-3 text-sm font-semibold leading-5">Pilotez vos recrutements en toute simplicité</p>
             </div>
           </div>
         </div>
-        <p className="mx-auto mt-12 w-full max-w-xl text-sm text-slate-500">
+        <p className="mx-auto mt-12 w-full max-w-xl text-sm text-slate-300">
           © 2026 Talents Associate. Tous droits réservés.
         </p>
       </section>

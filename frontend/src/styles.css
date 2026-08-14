@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 :root {
+  --color-navy: #071b3a;
+  --color-navy-deep: #03112a;
+  --color-orange: #ee6c2f;
+  --color-orange-dark: #d9551b;
+  --color-sidebar: #061936;
+  --color-sidebar-active: #102b57;
+  --color-text-light: #f8fafc;
+  --color-text-muted-light: #cbd5e1;
   color: #0b1f3a;
   background: #f6f8fb;
   font-family:
