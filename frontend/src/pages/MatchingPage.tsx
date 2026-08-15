@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { EmptyState } from "../components/EmptyState";
+import { JobTitleAutocomplete } from "../components/JobTitleAutocomplete";
 import { ListSearch } from "../components/ListSearch";
 import { StatCard } from "../components/StatCard";
 import { EDUCATION_LEVELS, EXPERIENCE_LEVELS, SECTORS } from "../constants/sectors";
@@ -101,16 +102,14 @@ export function MatchingPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [candidateData, jobData, resultData, referenceTitles] = await Promise.all([
+      const [candidateData, jobData, resultData] = await Promise.all([
         getCandidates(),
         getJobOffers(),
         getMatchingResults(),
-        getJobReferenceTitles(),
       ]);
       setCandidates(candidateData);
       setJobs(jobData);
       setResults(resultData);
-      setJobReferenceTitles(referenceTitles);
     } catch (loadError) {
       setError(getApiErrorMessage(loadError, "Impossible de charger le moteur de matching. Vérifiez que le backend est démarré."));
     } finally {
@@ -120,6 +119,29 @@ export function MatchingPage() {
 
   useEffect(() => {
     void loadData();
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadJobReferenceTitles = async () => {
+      try {
+        const referenceTitles = await getJobReferenceTitles();
+        if (isMounted) {
+          setJobReferenceTitles(referenceTitles);
+        }
+      } catch (loadError) {
+        if (isMounted) {
+          setError(getApiErrorMessage(loadError, "Impossible de charger la liste officielle des postes."));
+        }
+      }
+    };
+
+    void loadJobReferenceTitles();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const averageScore = useMemo(() => {
@@ -277,7 +299,14 @@ export function MatchingPage() {
 
         <form className="mt-6 space-y-5" onSubmit={handleVivierSearch}>
           <div className="grid gap-4 lg:grid-cols-2">
-            <label className="block">
+            <JobTitleAutocomplete
+              label="Poste (intitule)"
+              onChange={(poste) => setSearchForm((current) => ({ ...current, poste }))}
+              options={jobReferenceTitles}
+              placeholder="Saisie libre ou selection depuis la liste officielle"
+              value={searchForm.poste}
+            />
+            <label className="hidden">
               <span className="text-sm font-medium text-slate-700">Poste (intitulé)</span>
               <input
                 className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"

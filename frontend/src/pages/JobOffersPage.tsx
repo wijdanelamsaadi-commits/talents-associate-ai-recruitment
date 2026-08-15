@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { EmptyState } from "../components/EmptyState";
+import { JobTitleAutocomplete } from "../components/JobTitleAutocomplete";
 import { ListSearch } from "../components/ListSearch";
 import {
   CONTRACT_TYPES,
@@ -10,7 +11,6 @@ import {
 } from "../constants/sectors";
 import {
   EXPERIENCE_LEVEL_TO_YEARS,
-  JOB_POSITIONS,
   JobLanguage,
   LANGUAGE_LEVELS,
   LANGUAGE_OPTIONS,
@@ -18,6 +18,7 @@ import {
 } from "../constants/jobOffers";
 import { getApiErrorMessage } from "../lib/errors";
 import { JobOffer, JobOfferPayload, createJobOffer, deleteJobOffer, getJobOffers, updateJobOffer } from "../services/jobs";
+import { getJobReferenceTitles } from "../services/references";
 
 type JobFormState = {
   title: string;
@@ -88,7 +89,7 @@ function customStateForJob(job: JobOffer): CustomFieldState {
       ? ""
       : Object.entries(EXPERIENCE_LEVEL_TO_YEARS).find(([, years]) => years === job.required_experience_years)?.[0] ?? "";
   return {
-    title: !isPredefinedValue(job.title, JOB_POSITIONS),
+    title: false,
     sector: !isPredefinedValue(job.sector ?? "", SECTORS),
     contract_type: !isPredefinedValue(job.contract_type ?? "", CONTRACT_TYPES),
     experience_level: Boolean(job.required_experience_years !== null && job.required_experience_years !== undefined && !exactExperienceLabel),
@@ -174,7 +175,7 @@ function toPayload(formState: JobFormState, customFields: CustomFieldState): Job
   };
 }
 
-function validateCustomFields(formState: JobFormState, customFields: CustomFieldState) {
+function validateCustomFields(formState: JobFormState, customFields: CustomFieldState, jobTitleOptions: readonly string[]) {
   const labels: Record<CustomFieldKey, string> = {
     title: "poste",
     sector: "secteur",
@@ -187,6 +188,14 @@ function validateCustomFields(formState: JobFormState, customFields: CustomField
     if (customFields[field] && !formState[field].trim()) {
       return `Veuillez préciser le ${labels[field]}.`;
     }
+  }
+
+  if (!formState.title.trim()) {
+    return "Veuillez selectionner un poste.";
+  }
+
+  if (!jobTitleOptions.includes(formState.title.trim())) {
+    return "Veuillez choisir un poste dans la liste officielle.";
   }
 
   if (customFields.experience_level) {
@@ -251,6 +260,8 @@ export function JobOffersPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sharingJob, setSharingJob] = useState<JobOffer | null>(null);
+  const [jobTitleOptions, setJobTitleOptions] = useState<string[]>([]);
+  const [isLoadingJobTitles, setIsLoadingJobTitles] = useState(true);
 
   const filteredJobs = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -294,6 +305,47 @@ export function JobOffersPage() {
   useEffect(() => {
     void loadJobs();
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadJobTitles = async () => {
+      setIsLoadingJobTitles(true);
+      try {
+        const titles = await getJobReferenceTitles();
+        if (isMounted) {
+          setJobTitleOptions(titles);
+        }
+      } catch (loadError) {
+        if (isMounted) {
+          setError(getApiErrorMessage(loadError, "Impossible de charger la liste officielle des postes."));
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingJobTitles(false);
+        }
+      }
+    };
+
+    void loadJobTitles();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isModalOpen && !sharingJob) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isModalOpen, sharingJob]);
 
   const openCreateModal = () => {
     setEditingJob(null);
@@ -355,7 +407,7 @@ export function JobOffersPage() {
     setMessage(null);
 
     try {
-      const validationError = validateCustomFields(formState, customFields);
+      const validationError = validateCustomFields(formState, customFields, jobTitleOptions);
       if (validationError) {
         setError(validationError);
         setIsSubmitting(false);
@@ -521,9 +573,14 @@ export function JobOffersPage() {
       ) : null}
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#24303F]/40 px-4 py-6">
-          <section className="w-full max-w-4xl rounded-lg bg-white shadow-xl">
-            <div className="border-b border-slate-200 px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#111827]/70 px-4 py-6 backdrop-blur-sm">
+          <section
+            aria-modal="true"
+            className="flex max-h-[calc(100vh-3rem)] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl"
+            role="dialog"
+          >
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
+              <div>
               <h3 className="text-lg font-semibold text-[#24303F]">
                 {editingJob ? "Modifier l'offre d'emploi" : "Créer une offre d'emploi"}
               </h3>
@@ -531,34 +588,27 @@ export function JobOffersPage() {
                 Séparez les compétences par des points-virgules (;).
               </p>
             </div>
-            <form className="space-y-5 p-6" onSubmit={handleSubmit}>
+              <button
+                aria-label="Fermer"
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-lg font-semibold leading-none text-slate-500 hover:border-[#EE6C2F] hover:text-[#EE6C2F]"
+                onClick={() => setIsModalOpen(false)}
+                type="button"
+              >
+                x
+              </button>
+            </div>
+            <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Poste</span>
-                  <select
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
-                    onChange={(event) => updateSelectField("title", event.target.value)}
-                    required
-                    value={selectValueFor(formState.title, JOB_POSITIONS, customFields.title)}
-                  >
-                    <option value="">Sélectionner un poste</option>
-                    {predefinedOptions(JOB_POSITIONS).map((position) => (
-                      <option key={position} value={position}>
-                        {position}
-                      </option>
-                    ))}
-                    <option value={OTHER_OPTION_VALUE}>Autre</option>
-                  </select>
-                  {customFields.title ? (
-                    <input
-                      className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
-                      onChange={(event) => setFormState((current) => ({ ...current, title: event.target.value }))}
-                      placeholder="Précisez le poste"
-                      required
-                      value={formState.title}
-                    />
-                  ) : null}
-                </label>
+                <JobTitleAutocomplete
+                  disabled={isLoadingJobTitles}
+                  label="Poste"
+                  onChange={(title) => setFormState((current) => ({ ...current, title }))}
+                  options={jobTitleOptions}
+                  placeholder={isLoadingJobTitles ? "Chargement des postes..." : "Rechercher un poste"}
+                  required
+                  value={formState.title}
+                />
 
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Client</span>
@@ -789,14 +839,16 @@ export function JobOffersPage() {
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">Description</span>
                 <textarea
-                  className="mt-2 min-h-28 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                  className="mt-2 min-h-36 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                   onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))}
                   required
                   value={formState.description}
                 />
               </label>
 
-              <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
+              </div>
+
+              <div className="flex shrink-0 justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
                 <button
                   className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   onClick={() => setIsModalOpen(false)}
@@ -818,13 +870,17 @@ export function JobOffersPage() {
       ) : null}
 
       {sharingJob ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#24303F]/40 px-4 py-6">
-          <section className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#111827]/70 px-4 py-6 backdrop-blur-sm">
+          <section
+            aria-modal="true"
+            className="flex max-h-[calc(100vh-3rem)] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl"
+            role="dialog"
+          >
             <div className="border-b border-slate-200 px-6 py-4">
               <h3 className="text-lg font-semibold text-[#24303F]">Partager l'offre</h3>
               <p className="mt-1 text-sm text-slate-600">Modèle prêt à publier sur les réseaux sociaux.</p>
             </div>
-            <div className="space-y-4 p-6">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
               <textarea
                 className="min-h-56 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
                 readOnly

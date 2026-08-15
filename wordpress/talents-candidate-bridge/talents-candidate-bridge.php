@@ -13,18 +13,23 @@ if (!defined('ABSPATH')) {
 
 const TALENTS_CANDIDATE_BRIDGE_VERSION = '1.2.0';
 const TALENTS_CANDIDATE_BRIDGE_OPTION = 'talents_candidate_bridge_settings';
+const TALENTS_CANDIDATE_BRIDGE_VERSION_OPTION = 'talents_candidate_bridge_version';
 const TALENTS_CANDIDATE_BRIDGE_NONCE_ACTION = 'talents_candidate_bridge_submit';
 const TALENTS_CANDIDATE_BRIDGE_ADMIN_NONCE_ACTION = 'talents_candidate_bridge_test';
 const TALENTS_CANDIDATE_BRIDGE_MAX_CV_BYTES = 5242880;
 const TALENTS_CANDIDATE_BRIDGE_DEFAULT_API_URL = 'https://api.talentsag.ma/api/portal/applications';
 const TALENTS_CANDIDATE_BRIDGE_CACHE_TTL = 300;
+const TALENTS_CANDIDATE_BRIDGE_DETAIL_CACHE_TTL = 60;
 const TALENTS_CANDIDATE_BRIDGE_DETAIL_SLUG = 'detail-offre';
 const TALENTS_CANDIDATE_BRIDGE_APPLY_SLUG = 'postuler-offre';
 
+register_activation_hook(__FILE__, 'talents_candidate_bridge_purge_job_cache');
 add_action('admin_menu', 'talents_candidate_bridge_register_settings_page');
 add_action('admin_init', 'talents_candidate_bridge_register_settings');
+add_action('admin_init', 'talents_candidate_bridge_maybe_purge_job_cache_after_update');
 add_action('admin_enqueue_scripts', 'talents_candidate_bridge_enqueue_admin_assets');
 add_action('wp_enqueue_scripts', 'talents_candidate_bridge_enqueue_public_assets');
+add_action('template_redirect', 'talents_candidate_bridge_disable_job_page_cache', 0);
 add_action('wp_ajax_talents_candidate_submit', 'talents_candidate_bridge_handle_submit');
 add_action('wp_ajax_nopriv_talents_candidate_submit', 'talents_candidate_bridge_handle_submit');
 add_action('wp_ajax_talents_candidate_bridge_test', 'talents_candidate_bridge_handle_connection_test');
@@ -173,6 +178,52 @@ function talents_candidate_bridge_enqueue_public_assets(): void
             'missingCv' => 'Veuillez ajouter votre CV au format PDF, DOC ou DOCX.',
         )
     );
+}
+
+function talents_candidate_bridge_disable_job_page_cache(): void
+{
+    if (empty($_GET['job_id']) || !is_page(array(TALENTS_CANDIDATE_BRIDGE_DETAIL_SLUG, TALENTS_CANDIDATE_BRIDGE_APPLY_SLUG))) {
+        return;
+    }
+
+    if (!defined('DONOTCACHEPAGE')) {
+        define('DONOTCACHEPAGE', true);
+    }
+    if (!defined('DONOTCACHEOBJECT')) {
+        define('DONOTCACHEOBJECT', true);
+    }
+    if (!defined('DONOTCACHEDB')) {
+        define('DONOTCACHEDB', true);
+    }
+
+    nocache_headers();
+}
+
+function talents_candidate_bridge_purge_job_cache(): void
+{
+    global $wpdb;
+
+    $patterns = array(
+        '_transient_talents_candidate_job%',
+        '_transient_timeout_talents_candidate_job%',
+        '_transient_talents_candidate_jobs%',
+        '_transient_timeout_talents_candidate_jobs%',
+    );
+
+    foreach ($patterns as $pattern) {
+        $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $pattern));
+    }
+
+    update_option(TALENTS_CANDIDATE_BRIDGE_VERSION_OPTION, TALENTS_CANDIDATE_BRIDGE_VERSION, false);
+}
+
+function talents_candidate_bridge_maybe_purge_job_cache_after_update(): void
+{
+    if (get_option(TALENTS_CANDIDATE_BRIDGE_VERSION_OPTION) === TALENTS_CANDIDATE_BRIDGE_VERSION) {
+        return;
+    }
+
+    talents_candidate_bridge_purge_job_cache();
 }
 
 function talents_candidate_bridge_render_spontaneous_form(): string
@@ -530,7 +581,7 @@ function talents_candidate_bridge_verify_nonce(): bool
 function talents_candidate_bridge_validate_request(): array
 {
     $fields = array(
-        'opportunite' => talents_candidate_bridge_post_text('opportunite'),
+        'opportunite' => talents_candidate_bridge_normalize_job_id(talents_candidate_bridge_post_text('opportunite')),
         'nom' => talents_candidate_bridge_post_text('nom'),
         'prenom' => talents_candidate_bridge_post_text('prenom'),
         'email' => sanitize_email(talents_candidate_bridge_post_text('email')),
@@ -656,6 +707,7 @@ function talents_candidate_bridge_get_open_jobs(): array
 
 function talents_candidate_bridge_get_job_detail(string $job_id): ?array
 {
+    $job_id = talents_candidate_bridge_normalize_job_id($job_id);
     if (!talents_candidate_bridge_is_uuid($job_id)) {
         return null;
     }
@@ -685,13 +737,13 @@ function talents_candidate_bridge_get_job_detail(string $job_id): ?array
         return null;
     }
 
-    set_transient($cache_key, $job, TALENTS_CANDIDATE_BRIDGE_CACHE_TTL);
+    set_transient($cache_key, $job, TALENTS_CANDIDATE_BRIDGE_DETAIL_CACHE_TTL);
     return $job;
 }
 
 function talents_candidate_bridge_current_job_from_query(): ?array
 {
-    $job_id = isset($_GET['job_id']) ? sanitize_text_field(wp_unslash($_GET['job_id'])) : '';
+    $job_id = isset($_GET['job_id']) ? talents_candidate_bridge_normalize_job_id(wp_unslash($_GET['job_id'])) : '';
     if (!talents_candidate_bridge_is_uuid($job_id)) {
         return null;
     }
@@ -869,6 +921,13 @@ function talents_candidate_bridge_page_warning(bool $page_available, string $mes
 function talents_candidate_bridge_query_text(string $key): string
 {
     return isset($_GET[$key]) ? sanitize_text_field(wp_unslash($_GET[$key])) : '';
+}
+
+function talents_candidate_bridge_normalize_job_id($value): string
+{
+    $decoded = rawurldecode((string) $value);
+    $decoded = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\p{C}]+/u', '', $decoded);
+    return sanitize_text_field(trim((string) $decoded));
 }
 
 function talents_candidate_bridge_is_uuid(string $value): bool
