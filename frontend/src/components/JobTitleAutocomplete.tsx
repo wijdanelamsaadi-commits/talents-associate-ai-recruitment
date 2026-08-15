@@ -10,8 +10,6 @@ type JobTitleAutocompleteProps = {
   disabled?: boolean;
 };
 
-const MAX_VISIBLE_OPTIONS = 80;
-
 export function JobTitleAutocomplete({
   label,
   options,
@@ -27,10 +25,9 @@ export function JobTitleAutocomplete({
 
   const filteredOptions = useMemo(() => {
     const normalizedValue = value.trim().toLowerCase();
-    const matchingOptions = normalizedValue
+    return normalizedValue
       ? options.filter((option) => option.toLowerCase().includes(normalizedValue))
       : options;
-    return matchingOptions.slice(0, MAX_VISIBLE_OPTIONS);
   }, [options, value]);
 
   const openList = () => {
