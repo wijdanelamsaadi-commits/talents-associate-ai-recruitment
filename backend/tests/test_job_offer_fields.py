@@ -44,3 +44,18 @@ def test_job_offer_schema_accepts_custom_business_values():
     assert job.required_experience_years == 6
     assert job.soft_skills == ["Orientation client", "Pensée stratégique", "Curiosité"]
     assert job.languages[0].language == "Amazigh"
+
+
+def test_job_offer_schema_accepts_custom_title_from_other_option():
+    job = JobOfferCreate(
+        title="Ingénieur Biomédical",
+        description="Mission de coordination biomédicale",
+        sector="Santé",
+        contract_type="Mission",
+        education_level="Bac+5",
+        required_skills=["Maintenance biomédicale"],
+        status="open",
+    )
+
+    assert job.title == "Ingénieur Biomédical"
+    assert job.title != "Autre"

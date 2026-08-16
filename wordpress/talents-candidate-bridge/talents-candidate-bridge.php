@@ -30,6 +30,11 @@ add_action('admin_init', 'talents_candidate_bridge_maybe_purge_job_cache_after_u
 add_action('admin_enqueue_scripts', 'talents_candidate_bridge_enqueue_admin_assets');
 add_action('wp_enqueue_scripts', 'talents_candidate_bridge_enqueue_public_assets');
 add_action('template_redirect', 'talents_candidate_bridge_disable_job_page_cache', 0);
+add_filter('aioseo_canonical_url', 'talents_candidate_bridge_filter_job_canonical_url');
+add_filter('aioseo_facebook_tags', 'talents_candidate_bridge_filter_job_open_graph_tags');
+add_filter('wpseo_canonical', 'talents_candidate_bridge_filter_job_canonical_url');
+add_filter('wpseo_opengraph_url', 'talents_candidate_bridge_filter_job_open_graph_url');
+add_filter('get_canonical_url', 'talents_candidate_bridge_filter_job_canonical_url');
 add_action('wp_ajax_talents_candidate_submit', 'talents_candidate_bridge_handle_submit');
 add_action('wp_ajax_nopriv_talents_candidate_submit', 'talents_candidate_bridge_handle_submit');
 add_action('wp_ajax_talents_candidate_bridge_test', 'talents_candidate_bridge_handle_connection_test');
@@ -197,6 +202,66 @@ function talents_candidate_bridge_disable_job_page_cache(): void
     }
 
     nocache_headers();
+}
+
+function talents_candidate_bridge_current_job_detail_share_url(): string
+{
+    if (empty($_GET['job_id']) || !is_page(TALENTS_CANDIDATE_BRIDGE_DETAIL_SLUG)) {
+        return '';
+    }
+
+    $job_id = talents_candidate_bridge_normalize_job_id(wp_unslash($_GET['job_id']));
+    if (!talents_candidate_bridge_is_uuid($job_id)) {
+        return '';
+    }
+
+    return talents_candidate_bridge_job_url(TALENTS_CANDIDATE_BRIDGE_DETAIL_SLUG, $job_id);
+}
+
+function talents_candidate_bridge_filter_job_canonical_url($url)
+{
+    $job_url = talents_candidate_bridge_current_job_detail_share_url();
+    return $job_url !== '' ? $job_url : $url;
+}
+
+function talents_candidate_bridge_filter_job_open_graph_url($url)
+{
+    $job_url = talents_candidate_bridge_current_job_detail_share_url();
+    return $job_url !== '' ? $job_url : $url;
+}
+
+function talents_candidate_bridge_filter_job_open_graph_tags($tags)
+{
+    $job_url = talents_candidate_bridge_current_job_detail_share_url();
+    if ($job_url === '' || !is_array($tags)) {
+        return $tags;
+    }
+
+    $updated = false;
+    foreach ($tags as $key => $value) {
+        if (($key === 'og:url' || $key === 'url') && is_string($value)) {
+            $tags[$key] = $job_url;
+            $updated = true;
+            continue;
+        }
+
+        if (!is_array($value)) {
+            continue;
+        }
+
+        $property = isset($value['property']) ? (string) $value['property'] : '';
+        $name = isset($value['name']) ? (string) $value['name'] : '';
+        if ($property === 'og:url' || $name === 'twitter:url') {
+            $tags[$key]['content'] = $job_url;
+            $updated = true;
+        }
+    }
+
+    if (!$updated) {
+        $tags['og:url'] = $job_url;
+    }
+
+    return $tags;
 }
 
 function talents_candidate_bridge_purge_job_cache(): void

@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { EmptyState } from "../components/EmptyState";
-import { JobTitleAutocomplete } from "../components/JobTitleAutocomplete";
 import { ListSearch } from "../components/ListSearch";
 import {
   CONTRACT_TYPES,
@@ -83,13 +82,13 @@ function selectValueFor(value: string, options: readonly string[], isCustom: boo
   return isPredefinedValue(value, options) ? value : OTHER_OPTION_VALUE;
 }
 
-function customStateForJob(job: JobOffer): CustomFieldState {
+function customStateForJob(job: JobOffer, jobTitleOptions: readonly string[] = []): CustomFieldState {
   const exactExperienceLabel =
     job.required_experience_years === null || job.required_experience_years === undefined
       ? ""
       : Object.entries(EXPERIENCE_LEVEL_TO_YEARS).find(([, years]) => years === job.required_experience_years)?.[0] ?? "";
   return {
-    title: false,
+    title: !isPredefinedValue(job.title, jobTitleOptions),
     sector: !isPredefinedValue(job.sector ?? "", SECTORS),
     contract_type: !isPredefinedValue(job.contract_type ?? "", CONTRACT_TYPES),
     experience_level: Boolean(job.required_experience_years !== null && job.required_experience_years !== undefined && !exactExperienceLabel),
@@ -355,7 +354,7 @@ export function JobOffersPage() {
   const openEditModal = (job: JobOffer) => {
     setEditingJob(job);
     setFormState(toFormState(job));
-    setCustomFields(customStateForJob(job));
+    setCustomFields(customStateForJob(job, jobTitleOptions));
     setError(null);
     setMessage(null);
     setIsModalOpen(true);
@@ -598,15 +597,33 @@ export function JobOffersPage() {
             <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
               <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
               <div className="grid gap-4 sm:grid-cols-2">
-                <JobTitleAutocomplete
-                  disabled={isLoadingJobTitles}
-                  label="Poste"
-                  onChange={(title) => setFormState((current) => ({ ...current, title }))}
-                  options={jobTitleOptions}
-                  placeholder={isLoadingJobTitles ? "Chargement des postes..." : "Rechercher un poste"}
-                  required
-                  value={formState.title}
-                />
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-700">Poste</span>
+                  <select
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+                    disabled={isLoadingJobTitles}
+                    onChange={(event) => updateSelectField("title", event.target.value)}
+                    required
+                    value={selectValueFor(formState.title, jobTitleOptions, customFields.title)}
+                  >
+                    <option value="">{isLoadingJobTitles ? "Chargement des postes..." : "Sélectionnez un poste"}</option>
+                    {jobTitleOptions.map((title) => (
+                      <option key={title} value={title}>
+                        {title}
+                      </option>
+                    ))}
+                    <option value={OTHER_OPTION_VALUE}>Autre</option>
+                  </select>
+                  {customFields.title ? (
+                    <input
+                      className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#EE6C2F] focus:ring-2 focus:ring-[#EE6C2F]/20"
+                      onChange={(event) => setFormState((current) => ({ ...current, title: event.target.value }))}
+                      placeholder="Précisez le poste"
+                      required
+                      value={formState.title}
+                    />
+                  ) : null}
+                </label>
 
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Client</span>
