@@ -384,12 +384,12 @@ function talents_candidate_bridge_render_job_detail(): string
             <?php echo talents_candidate_bridge_detail_item('Statut', $job['status']); ?>
         </div>
         <div class="talents-job-detail__body">
-            <h2>Description complète</h2>
+            <h2>Missions</h2>
             <?php echo talents_candidate_bridge_render_formatted_text($job['description'] ?: 'Description non renseignée.'); ?>
-            <h2>Compétences requises</h2>
+            <h2>Compétences techniques</h2>
             <?php echo talents_candidate_bridge_render_skills($job['required_skills'], true); ?>
             <?php if (!empty($job['preferred_skills'])) : ?>
-                <h2>Compétences souhaitées</h2>
+                <h2>Compétences comportementales</h2>
                 <?php echo talents_candidate_bridge_render_skills($job['preferred_skills']); ?>
             <?php endif; ?>
         </div>

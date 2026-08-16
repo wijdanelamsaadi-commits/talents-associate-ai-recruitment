@@ -5,11 +5,23 @@ import { EmptyState } from "../components/EmptyState";
 import { ListSearch } from "../components/ListSearch";
 import { getApiErrorMessage } from "../lib/errors";
 import { Candidate, getCandidates } from "../services/candidates";
-import { CVFile, ExtractedCVText, ParsedCV, getCVFiles, getCVText, parseCV, uploadBatchCVs, uploadCV } from "../services/cv";
+import {
+  CVFile,
+  CVImportJob,
+  ExtractedCVText,
+  ParsedCV,
+  getCVFiles,
+  getCVImportJob,
+  getCVText,
+  getLatestCVImportJob,
+  parseCV,
+  startCVImportJob,
+  uploadCV,
+} from "../services/cv";
 
 const allowedExtensions = [".pdf", ".doc", ".docx", ".zip"];
 const maxFileSizeBytes = 5 * 1024 * 1024;
-type ProcessingStage = "idle" | "uploading" | "parsing" | "matching" | "completed";
+type ProcessingStage = "idle" | "uploading" | "parsing" | "matching" | "completed" | "failed";
 
 function formatBytes(bytes: number | null) {
   if (!bytes) {
@@ -74,6 +86,7 @@ export function CVUploadPage() {
   const [isTextLoading, setIsTextLoading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [processingStage, setProcessingStage] = useState<ProcessingStage>("idle");
+  const [activeImportJob, setActiveImportJob] = useState<CVImportJob | null>(null);
   const [matchingCount, setMatchingCount] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -127,9 +140,63 @@ export function CVUploadPage() {
     }
   };
 
+  const syncImportJobState = (job: CVImportJob | null) => {
+    setActiveImportJob(job);
+    if (!job) {
+      return;
+    }
+    if (job.status === "pending") {
+      setProcessingStage("uploading");
+    } else if (job.status === "processing") {
+      setProcessingStage("parsing");
+    } else if (job.status === "completed") {
+      setProcessingStage("completed");
+      setMatchingCount(job.success_count);
+      setMessage(job.message);
+      setWarning(job.duplicate_count > 0 ? `${job.duplicate_count} doublon(s) ignoré(s).` : null);
+      setError(null);
+    } else if (job.status === "failed") {
+      setProcessingStage("failed");
+      setError(job.error_message ?? job.message ?? "Le traitement du lot ZIP a échoué.");
+    }
+  };
+
+  const loadLatestImportJob = async () => {
+    try {
+      const job = await getLatestCVImportJob();
+      syncImportJobState(job);
+    } catch {
+      // L'historique CV reste affichable même si le suivi du dernier job échoue.
+    }
+  };
+
   useEffect(() => {
     void loadPageData();
+    void loadLatestImportJob();
   }, []);
+
+  useEffect(() => {
+    if (!activeImportJob || !["pending", "processing"].includes(activeImportJob.status)) {
+      return;
+    }
+    const intervalId = window.setInterval(() => {
+      void getCVImportJob(activeImportJob.id)
+        .then((job) => {
+          const wasRunning = ["pending", "processing"].includes(activeImportJob.status);
+          const isFinished = ["completed", "failed"].includes(job.status);
+          syncImportJobState(job);
+          if (wasRunning && isFinished) {
+            setIsUploading(false);
+            setUploadProgress(null);
+            void loadPageData();
+          }
+        })
+        .catch((pollError) => {
+          setError(getApiErrorMessage(pollError, "Impossible de récupérer l'état de l'import ZIP."));
+        });
+    }, 2000);
+    return () => window.clearInterval(intervalId);
+  }, [activeImportJob]);
 
   const validateFile = (file: File | null) => {
     if (!file) {
@@ -171,22 +238,15 @@ export function CVUploadPage() {
     setUploadProgress(0);
     try {
       if (isZip) {
-        const result = await uploadBatchCVs(selectedFile as File, (progressEvent) => {
+        const job = await startCVImportJob(selectedFile as File, (progressEvent) => {
           if (progressEvent.total) {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setUploadProgress(progress);
           }
         });
-        const duplicateCount = result.results.filter((item) => item.status === "duplicate").length;
-        setProcessingStage("completed");
-        if (duplicateCount > 0) {
-          setWarning(
-            `Import ZIP terminé avec ${duplicateCount} doublon(s) ignoré(s). Ce CV existe déjà dans la base de données.`,
-          );
-        }
-        setMessage(`Import ZIP terminé. ${result.success_count} succès, ${result.error_count} erreur(s). Total analysé : ${result.total}.`);
+        syncImportJobState(job);
+        setMessage(job.message ?? "Import ZIP lancé. Le traitement continue côté serveur.");
         setSelectedFile(null);
-        await loadPageData();
       } else {
         const uploaded = await uploadCV(undefined, selectedFile as File, (progressEvent) => {
           if (progressEvent.total) {
@@ -296,8 +356,15 @@ export function CVUploadPage() {
     { key: "parsing", label: "Analyse du CV" },
     { key: "matching", label: "Matching IA" },
     { key: "completed", label: "Terminé" },
+    { key: "failed", label: "Erreur" },
   ];
   const activeStepIndex = processingSteps.findIndex((step) => step.key === processingStage);
+  const importJobProgress =
+    activeImportJob?.total_count && activeImportJob.total_count > 0
+      ? Math.round((activeImportJob.processed_count * 100) / activeImportJob.total_count)
+      : null;
+  const progressWidth =
+    processingStage === "completed" ? 100 : processingStage === "failed" ? 100 : importJobProgress ?? uploadProgress ?? 0;
 
   return (
     <div className="space-y-6">
@@ -336,12 +403,12 @@ export function CVUploadPage() {
           </label>
         </form>
 
-        {(isUploading || processingStage === "completed") && processingStage !== "idle" ? (
+        {(isUploading || activeImportJob || processingStage === "completed" || processingStage === "failed") && processingStage !== "idle" ? (
           <div className="mt-5">
             <div className="h-2 rounded-full bg-slate-100">
               <div
-                className="h-2 rounded-full bg-[#EE6C2F]"
-                style={{ width: `${processingStage === "completed" ? 100 : uploadProgress ?? 0}%` }}
+                className={["h-2 rounded-full", processingStage === "failed" ? "bg-red-500" : "bg-[#EE6C2F]"].join(" ")}
+                style={{ width: `${progressWidth}%` }}
               />
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-4">
@@ -361,10 +428,25 @@ export function CVUploadPage() {
               })}
             </div>
             <p className="mt-2 text-xs text-slate-500">
-              {processingStage === "completed"
-                ? `Terminé. ${matchingCount ?? 0} résultat(s) de matching IA enregistré(s).`
-                : `Étape en cours : ${processingSteps[activeStepIndex]?.label ?? "Import"}. Progression : ${uploadProgress ?? 0}%`}
+              {activeImportJob ? (
+                <>
+                  Lot : <span className="font-semibold">{activeImportJob.filename}</span>. Étape :{" "}
+                  <span className="font-semibold">{activeImportJob.current_step ?? formatParsingStatus(activeImportJob.status)}</span>
+                  {activeImportJob.current_filename ? ` — ${activeImportJob.current_filename}` : ""}. Progression :{" "}
+                  {activeImportJob.processed_count}/{activeImportJob.total_count ?? "?"} CV traité(s).
+                </>
+              ) : processingStage === "completed" ? (
+                `Terminé. ${matchingCount ?? 0} résultat(s) de matching IA enregistré(s).`
+              ) : (
+                `Étape en cours : ${processingSteps[activeStepIndex]?.label ?? "Import"}. Progression : ${uploadProgress ?? 0}%`
+              )}
             </p>
+            {activeImportJob?.status === "completed" || activeImportJob?.status === "failed" ? (
+              <p className="mt-1 text-xs text-slate-500">
+                Résultat : {activeImportJob.success_count} succès, {activeImportJob.duplicate_count} doublon(s),{" "}
+                {activeImportJob.error_count} erreur(s).
+              </p>
+            ) : null}
           </div>
         ) : null}
 

@@ -93,7 +93,7 @@ export function JobTitleAutocomplete({
               </button>
             ))
           ) : (
-            <div className="px-3 py-2 text-slate-500">Aucun poste trouve</div>
+            <div className="px-3 py-2 text-slate-500">Aucun poste trouvé</div>
           )}
         </div>
       ) : null}

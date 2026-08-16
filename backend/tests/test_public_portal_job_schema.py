@@ -2,6 +2,18 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.schemas.portal import PublicJobRead
+from app.models import JobOffer
+from app.services.portal_service import get_public_job
+
+
+class FakePortalJobDb:
+    def __init__(self, job: JobOffer | None):
+        self.job = job
+
+    def scalar(self, _statement):
+        if self.job and self.job.status == "open":
+            return self.job
+        return None
 
 
 def test_public_job_read_exposes_soft_skills() -> None:
@@ -68,3 +80,35 @@ def test_public_job_read_defaults_missing_soft_skills_to_empty_list() -> None:
     )
 
     assert job.soft_skills == []
+
+
+def test_public_job_detail_returns_active_open_offer_by_uuid() -> None:
+    job_id = uuid4()
+    job = JobOffer(
+        id=job_id,
+        title="Ingénieur Biomédical",
+        description="Missions du poste",
+        status="open",
+        required_skills=[],
+        preferred_skills=[],
+        soft_skills=[],
+        languages=[],
+    )
+
+    assert get_public_job(FakePortalJobDb(job), job_id) is job
+
+
+def test_public_job_detail_hides_closed_offer() -> None:
+    job_id = uuid4()
+    job = JobOffer(
+        id=job_id,
+        title="Ingénieur Biomédical",
+        description="Missions du poste",
+        status="closed",
+        required_skills=[],
+        preferred_skills=[],
+        soft_skills=[],
+        languages=[],
+    )
+
+    assert get_public_job(FakePortalJobDb(job), job_id) is None

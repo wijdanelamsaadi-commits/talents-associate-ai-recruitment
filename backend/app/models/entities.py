@@ -165,6 +165,19 @@ class OutlookCVImport(TimestampMixin, Base):
     report: Mapped[dict | None] = mapped_column(JSONB)
 
 
+class JobReferenceTitle(TimestampMixin, Base):
+    __tablename__ = "job_reference_titles"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    title: Mapped[str] = mapped_column(String(180), nullable=False)
+    normalized_title: Mapped[str] = mapped_column(String(180), unique=True, index=True, nullable=False)
+    source: Mapped[str] = mapped_column(String(40), default="system", nullable=False)
+
+
 class CVFile(TimestampMixin, Base):
     __tablename__ = "cv_files"
     __table_args__ = (
@@ -193,6 +206,39 @@ class CVFile(TimestampMixin, Base):
     candidate: Mapped[Candidate] = relationship(back_populates="cv_files")
     uploaded_by: Mapped[User | None] = relationship(back_populates="uploaded_cv_files")
     extracted_data: Mapped[ExtractedCVData | None] = relationship(back_populates="cv_file", cascade="all, delete-orphan")
+
+
+class CVImportJob(TimestampMixin, Base):
+    __tablename__ = "cv_import_jobs"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending', 'processing', 'completed', 'failed')", name="ck_cv_import_jobs_status"),
+        CheckConstraint("total_count IS NULL OR total_count >= 0", name="ck_cv_import_jobs_total_count"),
+        CheckConstraint("processed_count >= 0", name="ck_cv_import_jobs_processed_count"),
+        CheckConstraint("success_count >= 0", name="ck_cv_import_jobs_success_count"),
+        CheckConstraint("duplicate_count >= 0", name="ck_cv_import_jobs_duplicate_count"),
+        CheckConstraint("error_count >= 0", name="ck_cv_import_jobs_error_count"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True, nullable=False)
+    current_step: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    current_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    total_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    processed_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    success_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    duplicate_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    error_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ExtractedCVData(TimestampMixin, Base):

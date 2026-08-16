@@ -65,3 +65,25 @@ class CVBatchUploadSummary(BaseModel):
     success_count: int
     error_count: int
     results: list[CVBatchResultItem]
+
+
+class CVImportJobRead(BaseModel):
+    id: UUID
+    filename: str
+    status: str
+    current_step: str | None
+    current_filename: str | None
+    total_count: int | None
+    processed_count: int
+    success_count: int
+    duplicate_count: int
+    error_count: int
+    message: str | None
+    error_message: str | None
+    result: dict | None
+    started_at: datetime | None
+    completed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

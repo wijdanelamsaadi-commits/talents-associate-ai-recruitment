@@ -53,7 +53,7 @@ URL lisible recommandée si les permaliens personnalisés sont activés :
 /detail-offre/?job_id=UUID
 ```
 
-Le shortcode valide strictement `job_id` et charge le détail depuis l'API. Aucun titre libre n'est accepté. La description est affichée en liste à puces. Les compétences techniques sont affichées comme compétences requises, et les compétences comportementales `soft_skills` sont affichées comme compétences souhaitées. Si aucune compétence comportementale n'est renseignée, la section **Compétences souhaitées** est masquée.
+Le shortcode valide strictement `job_id` et charge le détail depuis l'API. Aucun titre libre n'est accepté. La description est affichée sous le titre **Missions** et en liste à puces. Les compétences techniques sont affichées sous **Compétences techniques**, et les compétences comportementales `soft_skills` sont affichées sous **Compétences comportementales**. Si aucune compétence comportementale n'est renseignée, la section **Compétences comportementales** est masquée.
 
 ### Page "Postuler à l'offre"
 

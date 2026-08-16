@@ -7,7 +7,7 @@ const FALLBACK_API_BASE_URL = "https://api.talentsag.ma";
 
 function assertJobTitleList(value: unknown): string[] {
   if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
-    throw new Error("La liste des postes de reference est indisponible.");
+    throw new Error("La liste des postes de référence est indisponible.");
   }
   return value;
 }

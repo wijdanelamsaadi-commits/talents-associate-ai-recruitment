@@ -41,6 +41,26 @@ export type CVBatchUploadSummary = {
   results: CVBatchResultItem[];
 };
 
+export type CVImportJob = {
+  id: string;
+  filename: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  current_step: string | null;
+  current_filename: string | null;
+  total_count: number | null;
+  processed_count: number;
+  success_count: number;
+  duplicate_count: number;
+  error_count: number;
+  message: string | null;
+  error_message: string | null;
+  result: { items?: CVBatchResultItem[] } | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ExtractedCVText = {
   cv_file_id: string;
   candidate_id: string;
@@ -129,6 +149,32 @@ export async function parseCV(cvFileId: string): Promise<ParsedCV> {
 
 export async function getParsedCV(cvFileId: string): Promise<ParsedCV> {
   const response = await apiClient.get<ParsedCV>(`/api/cv/${cvFileId}/parsed`);
+  return response.data;
+}
+
+export async function startCVImportJob(
+  file: File,
+  onUploadProgress?: (progressEvent: AxiosProgressEvent) => void,
+): Promise<CVImportJob> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await apiClient.post<CVImportJob>("/api/cv/import-jobs", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+    onUploadProgress,
+  });
+  return response.data;
+}
+
+export async function getLatestCVImportJob(): Promise<CVImportJob | null> {
+  const response = await apiClient.get<CVImportJob | null>("/api/cv/import-jobs/active");
+  return response.data;
+}
+
+export async function getCVImportJob(jobId: string): Promise<CVImportJob> {
+  const response = await apiClient.get<CVImportJob>(`/api/cv/import-jobs/${jobId}`);
   return response.data;
 }
 

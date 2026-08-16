@@ -1,19 +1,24 @@
 import io
 import os
+import uuid
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import SessionLocal, get_db
+from app.models import CVImportJob
 from app.schemas import (
     CVBatchResultItem,
     CVBatchUploadSummary,
     CVFileRead,
+    CVImportJobRead,
     CVUploadProcessedRead,
     ExtractedCVTextRead,
     ParsedCVRead,
@@ -24,6 +29,8 @@ from app.services.text_extraction import TextExtractionError
 
 
 router = APIRouter(prefix="/cv", tags=["cv"])
+CV_IMPORT_JOB_DIRECTORY = Path(__file__).resolve().parents[2] / "uploads" / "cv_import_jobs"
+SUPPORTED_BATCH_EXTENSIONS = {".pdf", ".doc", ".docx"}
 
 
 @router.post("/upload", response_model=CVUploadProcessedRead, status_code=status.HTTP_201_CREATED)
@@ -179,6 +186,63 @@ def upload_cv_batch(
     )
 
 
+@router.post("/import-jobs", response_model=CVImportJobRead, status_code=status.HTTP_202_ACCEPTED)
+def start_cv_import_job(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> CVImportJobRead:
+    if not file.filename or not file.filename.lower().endswith(".zip"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="L'import asynchrone accepte uniquement les fichiers .zip.",
+        )
+
+    try:
+        file_bytes = file.file.read()
+        total_count = _count_supported_zip_entries(file_bytes)
+    except zipfile.BadZipFile as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Fichier ZIP invalide.") from exc
+
+    CV_IMPORT_JOB_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    stored_path = CV_IMPORT_JOB_DIRECTORY / f"{uuid.uuid4()}.zip"
+    stored_path.write_bytes(file_bytes)
+
+    job = CVImportJob(
+        filename=file.filename,
+        storage_path=str(stored_path),
+        status="pending",
+        current_step="Import préparé",
+        total_count=total_count,
+        processed_count=0,
+        success_count=0,
+        duplicate_count=0,
+        error_count=0,
+        message="Import ZIP lancé. Vous pouvez quitter cette page, le traitement continue côté serveur.",
+        result={"items": []},
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    background_tasks.add_task(_process_cv_import_job, job.id)
+    return job
+
+
+@router.get("/import-jobs/active", response_model=CVImportJobRead | None)
+def get_latest_cv_import_job(db: Session = Depends(get_db)) -> CVImportJobRead | None:
+    statement = select(CVImportJob).order_by(CVImportJob.created_at.desc()).limit(1)
+    return db.scalar(statement)
+
+
+@router.get("/import-jobs/{job_id}", response_model=CVImportJobRead)
+def get_cv_import_job(job_id: UUID, db: Session = Depends(get_db)) -> CVImportJobRead:
+    job = db.get(CVImportJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job d'import CV introuvable.")
+    return job
+
+
 @router.get("/files", response_model=list[CVFileRead])
 def list_cv_files(
     skip: int = Query(default=0, ge=0),
@@ -259,4 +323,104 @@ def download_cv_file(cv_file_id: UUID, db: Session = Depends(get_db)) -> FileRes
         filename=cv_file.original_filename,
         media_type=cv_file.mime_type or "application/octet-stream",
     )
+
+
+def _count_supported_zip_entries(file_bytes: bytes) -> int:
+    with zipfile.ZipFile(io.BytesIO(file_bytes)) as archive:
+        return sum(1 for filename in archive.namelist() if _is_supported_zip_cv(filename))
+
+
+def _is_supported_zip_cv(filename: str) -> bool:
+    if filename.endswith("/") or filename.startswith("__MACOSX/") or "/." in filename:
+        return False
+    return Path(filename).suffix.lower() in SUPPORTED_BATCH_EXTENSIONS
+
+
+def _process_cv_import_job(job_id: UUID) -> None:
+    with SessionLocal() as db:
+        job = db.get(CVImportJob, job_id)
+        if job is None:
+            return
+        job.status = "processing"
+        job.started_at = datetime.now(timezone.utc)
+        job.current_step = "Ouverture du fichier ZIP"
+        db.commit()
+
+        results: list[dict] = []
+        try:
+            with zipfile.ZipFile(job.storage_path) as archive:
+                valid_filenames = [filename for filename in archive.namelist() if _is_supported_zip_cv(filename)]
+                job.total_count = len(valid_filenames)
+                db.commit()
+
+                for filename in valid_filenames:
+                    display_filename = Path(filename).name
+                    job.current_filename = display_filename
+                    job.current_step = "Analyse du CV"
+                    db.commit()
+
+                    try:
+                        extracted_file_bytes = archive.read(filename)
+                        mock_upload_file = UploadFile(
+                            file=io.BytesIO(extracted_file_bytes),
+                            size=len(extracted_file_bytes),
+                            filename=display_filename,
+                            headers=None,
+                        )
+                        cv_file = cv_service.upload_cv(db, candidate_id=None, upload_file=mock_upload_file)
+                        cv_service.parse_and_auto_match_cv(db, cv_file_id=cv_file.id)
+                        job.success_count += 1
+                        results.append(
+                            {
+                                "filename": display_filename,
+                                "status": "success",
+                                "candidate_id": str(cv_file.candidate_id),
+                                "error_message": None,
+                            }
+                        )
+                    except DuplicateCVError as exc:
+                        job.duplicate_count += 1
+                        results.append(
+                            {
+                                "filename": display_filename,
+                                "status": "duplicate",
+                                "candidate_id": str(exc.cv_file.candidate_id) if exc.cv_file.candidate_id else None,
+                                "error_message": "Ce CV existe déjà dans la base de données.",
+                            }
+                        )
+                    except Exception as exc:
+                        job.error_count += 1
+                        results.append(
+                            {
+                                "filename": display_filename,
+                                "status": "error",
+                                "candidate_id": None,
+                                "error_message": str(exc),
+                            }
+                        )
+                    finally:
+                        job.processed_count += 1
+                        job.result = {"items": results}
+                        job.message = (
+                            f"{job.processed_count}/{job.total_count or 0} CV traité(s). "
+                            f"{job.success_count} succès, {job.duplicate_count} doublon(s), {job.error_count} erreur(s)."
+                        )
+                        db.commit()
+
+            job.status = "completed"
+            job.current_step = "Terminé"
+            job.current_filename = None
+            job.completed_at = datetime.now(timezone.utc)
+            job.message = (
+                f"Import ZIP terminé. {job.success_count} succès, {job.duplicate_count} doublon(s), "
+                f"{job.error_count} erreur(s). Total analysé : {job.total_count or 0}."
+            )
+            db.commit()
+        except Exception as exc:
+            job.status = "failed"
+            job.current_step = "Erreur"
+            job.error_message = str(exc)
+            job.completed_at = datetime.now(timezone.utc)
+            job.message = "Le traitement du ZIP a échoué. Consultez le détail de l'erreur."
+            db.commit()
 

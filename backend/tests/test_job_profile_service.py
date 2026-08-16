@@ -4,11 +4,18 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_current_user
+from app.core.database import get_db
 from app.data.job_reference_titles import JOB_REFERENCE_TITLES
 from app.main import app
-from app.models import Candidate, ExtractedCVData
+from app.models import Candidate, ExtractedCVData, JobReferenceTitle
 from app.services.cv_service import update_candidate_profile_from_parsed_cv
-from app.services.job_profile_service import classify_candidate_profile, enrich_parsed_data_with_profile, get_job_reference_titles
+from app.services.job_profile_service import (
+    add_job_reference_title,
+    classify_candidate_profile,
+    enrich_parsed_data_with_profile,
+    get_job_reference_titles,
+    normalize_job_title,
+)
 
 
 client = TestClient(app)
@@ -39,6 +46,46 @@ class FakeProfileDb:
 
     def refresh(self, item):
         pass
+
+
+class FakeReferenceScalars:
+    def __init__(self, values):
+        self.values = values
+
+    def all(self):
+        return self.values
+
+
+class FakeReferenceDb:
+    def __init__(self, references=None):
+        self.references = references or []
+        self.committed = False
+
+    def scalars(self, statement):
+        selected_keys = [getattr(column, "key", "") for column in getattr(statement, "selected_columns", [])]
+        if selected_keys == ["normalized_title"]:
+            return FakeReferenceScalars([reference.normalized_title for reference in self.references])
+        return FakeReferenceScalars(sorted(self.references, key=lambda reference: reference.title))
+
+    def scalar(self, statement):
+        params = statement.compile().params
+        expected_normalized = next(iter(params.values()), None)
+        for reference in self.references:
+            if reference.normalized_title == expected_normalized:
+                return reference
+        return None
+
+    def add(self, item):
+        self.references.append(item)
+
+    def add_all(self, items):
+        self.references.extend(items)
+
+    def flush(self):
+        pass
+
+    def commit(self):
+        self.committed = True
 
 
 def test_reference_contains_expected_250_titles():
@@ -185,7 +232,9 @@ def test_cv_reparse_recalculates_identified_profile_separately_from_current_titl
 
 def test_job_reference_endpoint_requires_recruiter_and_returns_titles():
     recruiter = SimpleNamespace(id=uuid4(), role="recruiter", status="active")
+    db = FakeReferenceDb()
     app.dependency_overrides[get_current_user] = lambda: recruiter
+    app.dependency_overrides[get_db] = lambda: db
     try:
         response = client.get("/api/references/job-titles")
         assert response.status_code == 200
@@ -194,3 +243,35 @@ def test_job_reference_endpoint_requires_recruiter_and_returns_titles():
         assert "Data Analyst" in data
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(get_db, None)
+
+
+def test_custom_job_reference_is_added_without_case_duplicate():
+    db = FakeReferenceDb()
+
+    first = add_job_reference_title(db, "Ingénieur Biomédical", source="job_offer")
+    second = add_job_reference_title(db, " ingénieur biomédical ", source="job_offer")
+    third = add_job_reference_title(db, "INGÉNIEUR BIOMÉDICAL", source="job_offer")
+
+    assert first is not None
+    assert second is first
+    assert third is first
+    assert len(db.references) == 1
+    assert db.references[0].title == "Ingénieur Biomédical"
+    assert db.references[0].normalized_title == normalize_job_title("ingénieur biomédical")
+
+
+def test_shared_job_reference_list_includes_custom_title():
+    db = FakeReferenceDb(
+        references=[
+            JobReferenceTitle(
+                title="Ingénieur Biomédical",
+                normalized_title=normalize_job_title("Ingénieur Biomédical"),
+                source="job_offer",
+            )
+        ]
+    )
+
+    titles = get_job_reference_titles(db)
+
+    assert "Ingénieur Biomédical" in titles

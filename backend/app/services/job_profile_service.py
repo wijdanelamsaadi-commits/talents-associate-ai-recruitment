@@ -3,7 +3,11 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.data.job_reference_titles import JOB_REFERENCE_TITLES
+from app.models import JobReferenceTitle
 
 
 @dataclass(frozen=True)
@@ -97,8 +101,38 @@ ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
 }
 
 
-def get_job_reference_titles() -> list[str]:
-    return list(JOB_REFERENCE_TITLES)
+def get_job_reference_titles(db: Session | None = None) -> list[str]:
+    if db is None:
+        return list(JOB_REFERENCE_TITLES)
+    ensure_seed_job_reference_titles(db)
+    statement = select(JobReferenceTitle).order_by(JobReferenceTitle.title.asc())
+    return [reference.title for reference in db.scalars(statement).all()]
+
+
+def ensure_seed_job_reference_titles(db: Session) -> None:
+    existing_normalized = set(db.scalars(select(JobReferenceTitle.normalized_title)).all())
+    missing_references = [
+        JobReferenceTitle(title=title.strip(), normalized_title=normalize_job_title(title), source="system")
+        for title in JOB_REFERENCE_TITLES
+        if title.strip() and normalize_job_title(title) not in existing_normalized
+    ]
+    if missing_references:
+        db.add_all(missing_references)
+        db.commit()
+
+
+def add_job_reference_title(db: Session, title: str | None, *, source: str = "user") -> JobReferenceTitle | None:
+    clean_title = _clean_display_title(title)
+    if not clean_title:
+        return None
+    normalized_title = normalize_job_title(clean_title)
+    existing = db.scalar(select(JobReferenceTitle).where(JobReferenceTitle.normalized_title == normalized_title))
+    if existing is not None:
+        return existing
+    reference = JobReferenceTitle(title=clean_title, normalized_title=normalized_title, source=source)
+    db.add(reference)
+    db.flush()
+    return reference
 
 
 def is_reference_title(value: str | None) -> bool:
@@ -229,3 +263,12 @@ def _normalize(value: str | None) -> str:
     text = text.replace("’", "'").replace("-", " ").replace("_", " ").replace("/", " ")
     text = re.sub(r"[^a-z0-9+#.]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def normalize_job_title(value: str | None) -> str:
+    return _normalize(value)
+
+
+def _clean_display_title(value: str | None) -> str:
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    return text[:180]

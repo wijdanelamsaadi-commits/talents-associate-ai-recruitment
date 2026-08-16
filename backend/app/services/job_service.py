@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import JobOffer
 from app.schemas import JobOfferCreate, JobOfferUpdate
 from app.services.embedding_service import build_job_embedding_text, generate_embedding
+from app.services.job_profile_service import add_job_reference_title
 
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ EMBEDDING_TEXT_FIELDS = (
 
 def create_job_offer(db: Session, job_in: JobOfferCreate) -> JobOffer:
     job_data = job_in.model_dump()
+    add_job_reference_title(db, job_data.get("title"), source="job_offer")
     job = JobOffer(
         **job_data,
         employment_type=_map_contract_to_employment_type(job_data.get("contract_type")),
@@ -52,6 +54,8 @@ def get_job_offer(db: Session, job_id: UUID) -> JobOffer | None:
 
 def update_job_offer(db: Session, job: JobOffer, job_in: JobOfferUpdate) -> JobOffer:
     update_data = job_in.model_dump(exclude_unset=True)
+    if "title" in update_data:
+        add_job_reference_title(db, update_data.get("title"), source="job_offer")
     for field, value in update_data.items():
         setattr(job, field, value)
 

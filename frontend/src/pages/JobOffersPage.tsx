@@ -175,7 +175,7 @@ function toPayload(formState: JobFormState, customFields: CustomFieldState): Job
   };
 }
 
-function validateCustomFields(formState: JobFormState, customFields: CustomFieldState, jobTitleOptions: readonly string[]) {
+function validateCustomFields(formState: JobFormState, customFields: CustomFieldState) {
   const labels: Record<CustomFieldKey, string> = {
     title: "poste",
     sector: "secteur",
@@ -191,11 +191,7 @@ function validateCustomFields(formState: JobFormState, customFields: CustomField
   }
 
   if (!formState.title.trim()) {
-    return "Veuillez selectionner un poste.";
-  }
-
-  if (!jobTitleOptions.includes(formState.title.trim())) {
-    return "Veuillez choisir un poste dans la liste officielle.";
+    return "Veuillez sélectionner un poste.";
   }
 
   if (customFields.experience_level) {
@@ -407,7 +403,7 @@ export function JobOffersPage() {
     setMessage(null);
 
     try {
-      const validationError = validateCustomFields(formState, customFields, jobTitleOptions);
+      const validationError = validateCustomFields(formState, customFields);
       if (validationError) {
         setError(validationError);
         setIsSubmitting(false);
@@ -426,6 +422,8 @@ export function JobOffersPage() {
       setEditingJob(null);
       setFormState(initialFormState);
       await loadJobs();
+      const titles = await getJobReferenceTitles();
+      setJobTitleOptions(titles);
     } catch (submitError) {
       setError(getApiErrorMessage(submitError, "L'offre d'emploi n'a pas pu être enregistrée."));
     } finally {
